@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<title>Marvel Hero Rush TCG — Battle Simulator</title>
+<meta name="viewport" content="width=1280">
+<link rel="stylesheet" href="css/styles.css">
+<!-- Card data is committed locally (js/cards.js) so the sim is
+     self-contained and works under any GitHub Pages subpath. -->
+<script src="js/cards.js"></script>
+<script src="js/mhr-decks.js"></script>
+</head>
+<body>
+
+<!-- ============ Setup screen ============ -->
+<section id="setup-screen" class="screen visible">
+  <header class="topbar">
+    <div class="brand">
+      <h1>MARVEL HERO RUSH <small>Battle Sim</small></h1>
+      <p class="subtitle">Marvel Hero Rush TCG · 模擬對戰 · v0.1</p>
+    </div>
+  </header>
+  <main class="setup-main">
+    <h2>選擇你嘅主牌組</h2>
+    <p class="muted">AI 會用緊接嘅下一副牌組；deck 來源：<code>/opt/data/mhr-decks.json</code></p>
+    <div id="deck-picker" class="deck-picker"></div>
+    <div class="setup-actions">
+      <button id="btn-start" class="btn-primary" disabled>開始對戰</button>
+      <a class="link-muted" href="README.md" target="_blank">README / 規則假設</a>
+    </div>
+  </main>
+</section>
+
+<!-- ============ Battle screen ============ -->
+<section id="battle-screen" class="screen">
+  <header class="battle-topbar">
+    <div class="hud hud-p">
+      <span class="hud-label">PLAYER</span>
+      <span class="rp-bar"><span class="rp-fill" id="rp-fill-p"></span><span class="rp-text" id="rp-text-p">0 / 9</span></span>
+      <span class="hud-meta" id="hud-meta-p"></span>
+    </div>
+    <div class="turn-indicator">
+      <div id="turn-num">回合 1</div>
+      <div id="phase-label" class="phase-label">DRAW</div>
+      <div id="active-side" class="active-side">Player</div>
+    </div>
+    <div class="hud hud-a">
+      <span class="hud-label">AI</span>
+      <span class="rp-bar"><span class="rp-fill" id="rp-fill-a"></span><span class="rp-text" id="rp-text-a">0 / 9</span></span>
+      <span class="hud-meta" id="hud-meta-a"></span>
+    </div>
+  </header>
+
+  <main class="battle-main">
+    <!-- AI field -->
+    <div class="field field-ai" id="field-ai">
+      <div class="field-row">
+        <div class="zone zone-back" data-side="A" data-slot="back"><span class="zone-label">BACK</span></div>
+        <div class="zone zone-front" data-side="A" data-slot="front"><span class="zone-label">FRONT</span></div>
+        <div class="zone zone-wing zone-wing-r" data-side="A" data-slot="wing1"><span class="zone-label">WING-1</span></div>
+        <div class="zone zone-wing zone-wing-l" data-side="A" data-slot="wing2"><span class="zone-label">WING-2</span></div>
+      </div>
+      <div class="bench bench-info bench-ai">
+        <div class="bench-cell">牌庫 <strong id="deck-cnt-a">50</strong></div>
+        <div class="bench-cell">Retreat <strong id="retreat-cnt-a">0</strong></div>
+        <div class="bench-cell">Void <strong id="void-cnt-a">0</strong></div>
+        <div class="bench-cell">手牌 <strong id="hand-cnt-a">7</strong></div>
+      </div>
+    </div>
+
+    <!-- Middle: log + actions -->
+    <aside class="center-panel">
+      <div class="log-panel">
+        <div class="log-header">Battle Log</div>
+        <div id="log-list" class="log-list"></div>
+      </div>
+      <div class="action-panel" id="action-panel">
+        <div class="action-row">
+          <button id="btn-attack" class="btn-action" disabled>� 攻擊</button>
+          <button id="btn-end-turn" class="btn-action btn-end">結束回合 ▶</button>
+        </div>
+        <div class="action-hint" id="action-hint">選擇一張手牌叫出，或選擇 FRONT 角色攻擊。</div>
+      </div>
+    </aside>
+
+    <!-- Player field -->
+    <div class="field field-p" id="field-p">
+      <div class="field-row">
+        <div class="zone zone-wing zone-wing-l" data-side="P" data-slot="wing2"><span class="zone-label">WING-2</span></div>
+        <div class="zone zone-wing zone-wing-r" data-side="P" data-slot="wing1"><span class="zone-label">WING-1</span></div>
+        <div class="zone zone-front" data-side="P" data-slot="front"><span class="zone-label">FRONT</span></div>
+        <div class="zone zone-back" data-side="P" data-slot="back"><span class="zone-label">BACK</span></div>
+      </div>
+      <div class="bench bench-info bench-p">
+        <div class="bench-cell">手牌 <strong id="hand-cnt-p">7</strong></div>
+        <div class="bench-cell">Void <strong id="void-cnt-p">0</strong></div>
+        <div class="bench-cell">Retreat <strong id="retreat-cnt-p">0</strong></div>
+        <div class="bench-cell">牌庫 <strong id="deck-cnt-p">50</strong></div>
+      </div>
+    </div>
+
+    <!-- Hand area -->
+    <div class="hand-area" id="hand-area">
+      <div class="hand-label">你嘅手牌（點擊卡叫出到 FRONT）</div>
+      <div id="hand-list" class="hand-list"></div>
+    </div>
+  </main>
+
+  <!-- Modal for retreat cost selection -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-card">
+      <div id="modal-title" class="modal-title"></div>
+      <div id="modal-body" class="modal-body"></div>
+      <div class="modal-actions">
+        <button id="modal-cancel" class="btn-action">取消</button>
+        <button id="modal-confirm" class="btn-primary">確認</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Win overlay -->
+  <div id="win-overlay" class="win-overlay hidden">
+    <div class="win-card">
+      <div id="win-title" class="win-title">遊戲結束</div>
+      <div id="win-detail" class="win-detail"></div>
+      <button id="btn-rematch" class="btn-primary">再來一局</button>
+    </div>
+  </div>
+</section>
+
+<!-- Order matters: data → engine → ai → app -->
+<script src="js/data.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
