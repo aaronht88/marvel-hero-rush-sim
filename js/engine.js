@@ -1,28 +1,36 @@
 // =============================================================
-// Marvel Hero Rush TCG — Engine
-// Pure game logic. No DOM access. Emits events via a callback
-// so the UI layer (app.js) can react.
+// Marvel Hero Rush TCG — Engine v0.2
+// Aligned to official 簡中 rulebook (doc_97084c6e..., 17 pages).
+// Pure game logic. No DOM access. UI subscribes via callbacks.
 // =============================================================
 // State shape:
 //   {
-//     players: { P: playerState, A: aiState },
+//     players: { P, A },
 //     activeSide: "P" | "A",
 //     turn: int,
-//     phase: "DRAW" | "CALL" | "BATTLE" | "END",
+//     phase: "DRAW" | "ACTION" | "BATTLE" | "RESPOND" | "END",
 //     log: [{ side, msg }],
 //     winner: null | "P" | "A" | "DRAW",
 //     deckNames: { P, A },
+//     firstPlayer: "P" | "A",
+//     pending: null | { kind, ... },   // modal for UI to resolve
+//     turnFlags: { [side]: {
+//         setDeployUsed, callCount, movedUids, attackedUids
+//         counterStepUsed, // for RESPOND/BATTLE counter step
+//     }}
 //   }
-//
 // playerState = {
-//   name, deck[], hand[], retreat[], void[],
-//   battle: { front, back, wing: [w1,w2] },
-//   base: { faceDown: [] },          // face-down set cards
-//   rushPoints,
-//   attached: {},                     // cardInstanceId -> [card, ...]
+//   name, deckLabel,
+//   deck[], hand[], retreat[], void[], rushDeck[], timeline[],
+//   battle: { front, back, wing: [w1, w2] },   // 戰區
+//   base: { faceDown: [] },                    // 基地 (face-down set cards)
+//   rushPoints,                                // = timeline.length
+//   attached: { uid: [card,...] },
+//   movedThisTurn: { uid: true },
+//   attackedThisTurn: { uid: true },
 // }
 // Card instances are full objects; identity preserved across
-// hand → field → retreat so effect source tracking works.
+// hand → field → retreat/void so effect source tracking works.
 // =============================================================
 
 (function (global) {
@@ -31,21 +39,24 @@
   const DATA = global.MHR_DATA;
   const DECKS = DATA.DECKS;
 
-  // ---- Constants ----
-  const RUSH_TO_WIN = 9;
-  const HAND_SIZE_START = 7;
-  const HAND_SIZE_MAX = 9;          // soft cap shown in UI
-  const BATTLE_SIZE = 4;            // front + back + 2 wing slots
+  // ---- Constants (official) ----
+  const RUSH_TO_WIN = 9;          // 9 張衝擊卡 或 對方牌組 0
+  const HAND_SIZE_START = 6;      // 起始手牌 6
+  const HAND_SIZE_MAX = 9;        // 回合結束 >9 棄至 9
+  const BASE_SIZE_MAX = 6;        // 基地上限 6 張（角色卡和蓋卡）
+  const RUSH_DECK_SIZE = 9;       // 衝擊卡組 9 張
+  const BATTLE_SIZE = 4;          // 先鋒 + 後衛 + 2 側翼
 
   // ---- Event bus ----
-  // engine emits structured events so UI can stay dumb.
   const EVT = {
-    LOG: "log",          // (entry) — appended log line
-    STATE: "state",      // ()     — re-render
-    PROMPT: "prompt",    // (q)    — ask UI for player choice
-    PHASE: "phase",      // (phase)
-    TURN: "turn",        // (side, turn)
-    WIN: "win",          // (winner, reason)
+    LOG: "log",
+    STATE: "state",
+    PROMPT: "prompt",
+    PHASE: "phase",
+    TURN: "turn",
+    WIN: "win",
+    ATTACK: "attack",   // (attackerSide, attackerUid, targetUid, kind)
+                        //  kind = "card" | "weakness:front"|"weakness:back"|"weakness:wing1"|"weakness:wing2"
   };
 
   // ---- helpers ----
@@ -55,12 +66,7 @@
   })();
 
   function cloneCard(c) {
-    // Shallow clone; effect fields unchanged, uid added.
     return Object.assign({}, c, { _uid: uid() });
-  }
-
-  function deepClone(o) {
-    return JSON.parse(JSON.stringify(o));
   }
 
   function log(state, msg, side) {
@@ -68,7 +74,7 @@
   }
 
   // =============================================================
-  // 0. SETUP
+  // 0. SETUP — per official page 9
   // =============================================================
   function newPlayer(name, deckArr, deckLabel) {
     const deck = deckArr.map(cloneCard);
@@ -86,14 +92,17 @@
       voidZone: [],
       battle: { front: null, back: null, wing: [null, null] },
       base: { faceDown: [] },
-      rushPoints: 0,
-      attached: {}, // uid -> [card, ...]
-      _actedThisTurn: {}, // uid -> true (for ONCE PER TURN effects)
-      _attackedThisTurn: {}, // uid -> true
+      // 衝擊卡組 (9 張 game tokens, not in CARDS array)
+      rushDeck: Array.from({ length: RUSH_DECK_SIZE }, () => ({ _uid: "rp" + Math.random().toString(36).slice(2, 8) })),
+      // 時間線 (placed rush cards, = 玩家勝利步伐)
+      timeline: [],
+      rushPoints: 0,        // 同步 = timeline.length
+      attached: {},
+      // per-turn flags live on state.turnFlags[side]
     };
   }
 
-  function initGame(deckNameP, deckNameA, rngSeed) {
+  function initGame(deckNameP, deckNameA /*, rngSeed */) {
     const dp = DECKS[deckNameP];
     const da = DECKS[deckNameA];
     if (!dp || !da) throw new Error("Unknown deck: " + (deckNameP || deckNameA));
@@ -103,88 +112,149 @@
         P: newPlayer("Player", dp, deckNameP),
         A: newPlayer("AI", da, deckNameA),
       },
-      activeSide: "P",        // player goes first
+      activeSide: "P",
       turn: 1,
       phase: "DRAW",
       log: [],
       winner: null,
       deckNames: { P: deckNameP, A: deckNameA },
+      firstPlayer: "P",
+      pending: null,
+      turnFlags: {},
     };
 
-    // Both players draw opening hand of 7
+    // 雙方抽 6 張起始手牌
     drawTo(state, "P", HAND_SIZE_START);
     drawTo(state, "A", HAND_SIZE_START);
 
-    log(state, `=== Game Start ===  Player:${deckNameP} vs AI:${deckNameA}`);
-    log(state, `第 1 回合開始（Player 先手）`);
+    log(state, `=== 遊戲開始 ===  ${deckNameP} vs ${deckNameA}`);
+    log(state, `第 1 回合（先攻：Player）`);
 
-    // First turn skip battle phase (assumption, common TCG convention)
-    state._firstTurn = true;
+    initTurnFlags(state, "P");
     return state;
   }
 
+  function initTurnFlags(state, side) {
+    state.turnFlags[side] = {
+      setDeployUsed: false,   // 基地部署 1 次/回合
+      callCount: 0,           // 行動號召 上限 3 次（先攻首回合 1）
+      movedUids: {},          // 戰基移動 每角色 1 次
+      attackedUids: {},       // 戰鬥 每角色 1 次
+      counterStepUsed: false, // 應對步驟 1 次/回合
+      doubleAttackUids: {},   // BP01-011 雙攻旗
+      oncePerTurnUids: {},    // ONCE PER TURN 已觸發 uid
+    };
+  }
+
+  // Max call count for current turn (先攻首回合 1 次, 否則 3 次)
+  function maxCallCount(state, side) {
+    if (state.turn === 1 && state.firstPlayer === side) return 1;
+    return 3;
+  }
+
+  // First-turn battle phase is skipped for the first player.
+  function isFirstTurnBattleSkipped(state, side) {
+    return state.turn === 1 && state.firstPlayer === side;
+  }
+
+  // =============================================================
+  // 1. DRAW / DISCARD helpers
+  // =============================================================
   function drawTo(state, side, n) {
     const p = state.players[side];
     while (p.hand.length < n) {
       if (p.deck.length === 0) {
-        // Deck-out: the OPPONENT wins
+        // Deck-out: opponent wins
         const opp = side === "P" ? "A" : "P";
-        log(state, `${p.name} 牌庫耗盡！${state.players[opp].name} 獲勝（deck-out）`, opp);
-        state.winner = opp;
+        if (!state.winner) {
+          log(state, `${p.name} 牌組耗盡！${state.players[opp].name} 獲勝（deck-out）`, opp);
+          state.winner = opp;
+        }
         return;
       }
       p.hand.push(p.deck.shift());
     }
   }
 
-  // =============================================================
-  // 1. PHASE FLOW
-  // =============================================================
-  // Returns: a list of pending "prompt" requests the UI must resolve
-  // before the engine can continue. For AI side, the AI module
-  // resolves them itself.
-  function startTurn(state) {
-    const side = state.activeSide;
+  function drawN(state, side, n) {
     const p = state.players[side];
-    p._actedThisTurn = {};
-    p._attackedThisTurn = {};
-
-    if (state.turn > 1 || !state._firstTurn || side === "A") {
-      // Draw phase: +1 card
-      drawTo(state, side, p.hand.length + 1);
-      log(state, `${p.name} 抽 1 張牌（手牌 ${p.hand.length}）`, side);
+    for (let i = 0; i < n; i++) {
+      if (p.deck.length === 0) {
+        const opp = side === "P" ? "A" : "P";
+        if (!state.winner) {
+          log(state, `${p.name} 牌組耗盡！${state.players[opp].name} 獲勝（deck-out）`, opp);
+          state.winner = opp;
+        }
+        return;
+      }
+      p.hand.push(p.deck.shift());
     }
-
-    // AUTO effects: refresh stat recalc at turn start (e.g. Lv
-    // changes from hand-size, etc.). Hook runs each turn-start.
-    state.phase = "CALL";
-    autoRefreshBuffs(state, side, "turnStart");
-
-    // AI on its turn decides everything end-to-end via ai.js
-    // For human, we just expose actions.
   }
 
+  function discardDownTo(state, side, max) {
+    const p = state.players[side];
+    while (p.hand.length > max) {
+      // For simplicity discard the LAST card in hand to RETREAT (= 捨棄 → 撤退)
+      const c = p.hand.pop();
+      p.retreat.push(c);
+      log(state, `${p.name} 捨棄 ${shortName(c)} → RETREAT`, side);
+    }
+  }
+
+  // =============================================================
+  // 2. PHASE FLOW (official 6 步: 開始 → 抽2 → 行動 → 戰鬥 → 應對 → 結束)
+  // =============================================================
+  // startTurn: 開始 → 抽 2 → 進 行動
+  function startTurn(state) {
+    const side = state.activeSide;
+    initTurnFlags(state, side);
+
+    // 1. 回合開始 — 觸發回合開始效果 (未實裝 TRIG【TURN_START】 系列, 但保留 hook)
+
+    // 2. 抽卡階段 — 抽 2 張
+    drawN(state, side, 2);
+    log(state, `${state.players[side].name} 抽 2 張（手牌 ${state.players[side].hand.length}）`, side);
+
+    state.phase = "ACTION";
+  }
+
+  // endTurn: 結束 → 切邊
   function endTurn(state) {
     const side = state.activeSide;
     const p = state.players[side];
-    // turn-end TRIGs (e.g. Thor 「Thunder Ally」 did-not-attack)
-    autoRefreshBuffs(state, side, "turnEnd");
+
+    // 6. 回合結束：①觸發回合結束效果 ②本回合效果結束（_powerMod 重置）③手牌 >9 棄至 9
+    p.attached = p.attached || {};
+    battleChars(p).forEach(({ card }) => { card._powerMod = 0; card._rMod = 0; });
+
+    discardDownTo(state, side, HAND_SIZE_MAX);
+    log(state, `${p.name} 回合結束（手牌上限 ${HAND_SIZE_MAX}）`, side);
 
     // Switch side
     state.activeSide = side === "P" ? "A" : "P";
     if (state.activeSide === "P") state.turn++;
     state.phase = "DRAW";
+    state.pending = null;
 
     if (state.winner) {
       log(state, `遊戲結束！贏家：${state.players[state.winner].name}`);
       return;
     }
-    log(state, `第 ${state.turn} 回合，${state.players[state.activeSide].name} 行動`);
+    log(state, `第 ${state.turn} 回合 — ${state.players[state.activeSide].name}`);
     startTurn(state);
   }
 
+  // AI / opponent auto-resolves any pending modal immediately.
+  // For human, UI consumes pending and calls back into engine.
+  function setPending(state, p) {
+    state.pending = p;
+  }
+  function clearPending(state) {
+    state.pending = null;
+  }
+
   // =============================================================
-  // 2. ZONES — query helpers
+  // 3. ZONES
   // =============================================================
   function battleChars(p) {
     const out = [];
@@ -196,6 +266,17 @@
     return out;
   }
 
+  // All positions on the field, with whether empty (破綻) or occupied.
+  // Order matches attack order: front, wing1, wing2, back.
+  function battleSlots(p) {
+    return [
+      { slot: "front", card: p.battle.front },
+      { slot: "wing1", card: p.battle.wing[0] },
+      { slot: "wing2", card: p.battle.wing[1] },
+      { slot: "back",  card: p.battle.back },
+    ];
+  }
+
   function isInBattle(p, card) {
     if (!card) return null;
     if (p.battle.front === card) return "front";
@@ -203,6 +284,14 @@
     const wi = p.battle.wing.indexOf(card);
     if (wi >= 0) return "wing" + (wi + 1);
     return null;
+  }
+
+  // Returns Lv a card occupies on field (default card.level).
+  // Some cards have AUTO Lv-modifiers — we apply `_lvMod` if set
+  // by those effects (real implementation is partial).
+  function cardEffectiveLv(card) {
+    if (!card) return 0;
+    return card.level + (card._lvMod || 0);
   }
 
   function cardEffectivePower(state, side, card) {
@@ -213,218 +302,369 @@
     for (const a of att) {
       base += attachBonusPower(a, card);
     }
-    // Per-turn Power modifiers (Power+2000 etc.) stored on card
     if (card._powerMod) base += card._powerMod;
     return base;
   }
 
-  function attachBonusPower(attCard /* attached card */, host /* host card */) {
-    // Hard-coded bonuses for implemented attach effects.
+  function cardEffectiveRange(card) {
+    if (!card) return 0;
+    return DATA.numRange(card.attackRange) + (card._rMod || 0);
+  }
+
+  function attachBonusPower(attCard, host) {
     const t = attCard.effect || "";
     if (t.includes("Power+1000")) return 1000;
     return 0;
   }
 
+  // Compute distance (R) from attacker to target. Per official diagram
+  // (page 12): 先鋒↔先鋒 R-1, 側翼 R-2, 後衛 R-3.
+  function distance(slotA, slotB) {
+    // slot is one of: front, wing1, wing2, back
+    const idx = { front: 0, wing1: 1, wing2: 2, back: 3 };
+    return Math.abs(idx[slotA] - idx[slotB]);
+  }
+
   // =============================================================
-  // 3. CALL / RETREAT
+  // 4. BASE 部署 (蓋放 1 張手牌 → 基地, 抽 1 張)
   // =============================================================
-  // Call a card from hand to BATTLE (front) by paying retreat
-  // cost: combined Lv of selected retreating cards must equal
-  // the called card's Lv (Lv1-3 need NO retreat cost).
-  function callCard(state, side, handIdx, retreatUids) {
+  function setDeploy(state, side, handIdx) {
     const p = state.players[side];
+    const flags = state.turnFlags[side];
+    if (flags.setDeployUsed) return { ok: false, err: "本回合已用過基地部署" };
+    if (p.base.faceDown.length >= BASE_SIZE_MAX) {
+      return { ok: false, err: `基地已滿（上限 ${BASE_SIZE_MAX}）` };
+    }
     const card = p.hand[handIdx];
     if (!card) return { ok: false, err: "手牌索引無效" };
-    if (p.battle.front) return { ok: false, err: "FRONT 位已被佔用（要先 retreat）" };
+    p.hand.splice(handIdx, 1);
+    // Mark as face-down set card (lose effects, not public)
+    const set = Object.assign({}, card, { _faceDown: true, _origUid: card._uid });
+    set._uid = uid();
+    p.base.faceDown.push(set);
+    flags.setDeployUsed = true;
 
-    const lv = card.level;
+    log(state, `${p.name} 基地部署 ${shortName(card)}（蓋卡）→ 抽 1`, side);
+    drawN(state, side, 1);
+    return { ok: true };
+  }
+
+  // =============================================================
+  // 5. 行動號召 (CALL)
+  // =============================================================
+  // 官方規則：Lv ≤ 3 直接放場上；Lv ≥ 4 要 retreat 我方場上 ≥1 張，
+  // 合計 Lv = 該角色 Lv。每回合最多 3 次（先攻首回合 1 次）。
+  // 蓋卡可作 Lv 1 用作 retreat cost。
+  function callCard(state, side, handIdx, retreatUids) {
+    const p = state.players[side];
+    const flags = state.turnFlags[side];
+    if (flags.callCount >= maxCallCount(state, side)) {
+      return { ok: false, err: `行動號召次數已用完（${maxCallCount(state, side)} 次/回合）` };
+    }
+    const card = p.hand[handIdx];
+    if (!card) return { ok: false, err: "手牌索引無效" };
+
+    // 默認進 front；如果已有 front，必須先空置 — 戰基移動用唔係 call
+    // 官方 call 流程：放進場上空置戰區，UI 處理（基於哪格空放落去）。
+    // 我哋簡化：call 後面放 FRONT。Lv 4+ 可退蓋卡充 Lv 1。
+    const lv = cardEffectiveLv(card);
+
     if (lv >= 4) {
-      // Need retreat: combine Lv of selected cards = lv
       const sources = [];
-      const sumLv = retreatUids.reduce((s, uid) => {
-        const c = findCardOnField(p, uid);
-        if (!c) return s;
+      let sumLv = 0;
+      for (const uidStr of (retreatUids || [])) {
+        // find in battle or base
+        const c = findAnywhereOnField(p, uidStr);
+        if (!c) continue;
+        // 蓋卡當 Lv1
+        const cLv = c._faceDown ? 1 : cardEffectiveLv(c);
+        sumLv += cLv;
         sources.push(c);
-        return s + c.level;
-      }, 0);
-      if (sumLv !== lv) {
-        return { ok: false, err: `叫 Lv${lv} 需要 retreat 總 Lv=${lv}（目前 ${sumLv}）` };
       }
-      sources.forEach(c => retreatCard(state, side, c, "call-cost"));
+      if (sumLv !== lv) {
+        return { ok: false, err: `號召 Lv${lv} 需要 retreat 合計 Lv = ${lv}（目前 ${sumLv}）` };
+      }
+      sources.forEach(c => retreatCard(state, side, c, "號召 cost"));
     }
 
-    // Remove from hand, place in front
+    // 放進場上空置戰區 — 官方規則：號召可放進任何空置戰區
+    // （先鋒/側翼×2/後衛）。BUGFIX：front 已佔時唔可以覆蓋，
+    // 要自動搵下一個空置戰區，全部滿就 error。
     p.hand.splice(handIdx, 1);
-    p.battle.front = card;
-    p._actedThisTurn[card._uid] = true;
-    log(state, `${p.name} 叫出 ${shortName(card)} 到 FRONT（Lv${lv}）`, side);
-
-    // Trigger on-call effects (TRIG【FIELD】 when enters field)
+    const slot = firstEmptyBattleSlot(p);
+    if (!slot) {
+      // rollback: 冇空位就唔可以號召（手牌還原）
+      p.hand.splice(handIdx, 0, card);
+      return { ok: false, err: "戰區已滿（先鋒/側翼×2/後衛都有人）" };
+    }
+    p.battle[slot] = card;
+    if (slot === "wing1") p.battle.wing[0] = card;
+    else if (slot === "wing2") p.battle.wing[1] = card;
+    flags.callCount += 1;
+    p._placedThisTurn = p._placedThisTurn || {};
+    p._placedThisTurn[card._uid] = true;   // 戰基移動限制
+    log(state, `${p.name} 號召 ${shortName(card)} → ${slotLabel(slot)}（Lv${lv}）`, side);
     triggerEnter(state, side, card);
     return { ok: true };
   }
 
-  function findCardOnField(p, uid) {
-    if (p.battle.front && p.battle.front._uid === uid) return p.battle.front;
-    if (p.battle.back && p.battle.back._uid === uid) return p.battle.back;
+  function firstEmptyBattleSlot(p) {
+    if (!p.battle.front) return "front";
+    if (!p.battle.wing[0]) return "wing1";
+    if (!p.battle.wing[1]) return "wing2";
+    if (!p.battle.back) return "back";
+    return null;
+  }
+
+  function findAnywhereOnField(p, uidStr) {
+    if (p.battle.front && p.battle.front._uid === uidStr) return p.battle.front;
+    if (p.battle.back && p.battle.back._uid === uidStr) return p.battle.back;
     for (const w of p.battle.wing) {
-      if (w && w._uid === uid) return w;
+      if (w && w._uid === uidStr) return w;
     }
     for (const c of p.base.faceDown) {
-      if (c && c._uid === uid) return c;
+      if (c && c._uid === uidStr) return c;
     }
     return null;
   }
 
+  function findCardOnField(p, uid) {
+    // Same as findAnywhereOnField
+    return findAnywhereOnField(p, uid);
+  }
+
   function retreatCard(state, side, card, reason) {
     const p = state.players[side];
-    // Remove from wherever it is
     if (p.battle.front === card) p.battle.front = null;
     else if (p.battle.back === card) p.battle.back = null;
     else {
       const wi = p.battle.wing.indexOf(card);
       if (wi >= 0) p.battle.wing[wi] = null;
     }
-    // Attached cards go with it (assumed: attachments are cleared
-    // when host retreats). Move them to retreat.
+    // also remove from base if face-down
+    const bi = p.base.faceDown.indexOf(card);
+    if (bi >= 0) p.base.faceDown.splice(bi, 1);
+
     const att = p.attached[card._uid] || [];
     delete p.attached[card._uid];
     p.retreat.push(card, ...att);
-    log(state, `${p.name} ${shortName(card)} 進入 RETREAT (${reason || "retreat"})`, side);
+    log(state, `${p.name} ${shortName(card)} → RETREAT（${reason || "retreat"}）`, side);
   }
 
   // =============================================================
-  // 4. BATTLE
+  // 6. 戰基移動 (戰區 ↔ 基地)
   // =============================================================
-  // Power-compare: lower Power retreats. Ties = Both Lose.
-  // Rush Point: retreat caused by opponent's attack/ability = +1 RP
-  // to the opponent. (Assumption — see README.)
-  function attack(state, attackerSide, attackerUid, targetUid) {
-    const atkP = state.players[attackerSide];
-    const defP = state.players[attackerSide === "P" ? "A" : "P"];
-    const atk = findCardOnField(atkP, attackerUid);
-    const tgt = findCardOnField(defP, targetUid);
-    if (!atk) return { ok: false, err: "找不到攻擊者" };
-    if (!tgt) return { ok: false, err: "找不到目標" };
-    if (atk._attackedThisTurn && atk._attackedThisTurn[atk._uid]) {
-      // Allow only if has Double Attack — simplified: block re-attack
-      return { ok: false, err: "本回合已攻擊過" };
+  // 規則：每場上角色每回合 1 次戰基移動；當回合放置進場嘅角色不能移動。
+  function battleBaseMove(state, side, uid, toBase) {
+    const p = state.players[side];
+    const flags = state.turnFlags[side];
+    const c = findAnywhereOnField(p, uid);
+    if (!c) return { ok: false, err: "場上搵唔到該卡" };
+    const slot = isInBattle(p, c);
+    if (p._placedThisTurn && p._placedThisTurn[uid]) {
+      return { ok: false, err: "當回合放置進場嘅角色不能戰基移動" };
     }
-    atk._attackedThisTurn = atk._attackedThisTurn || {};
-    atk._attackedThisTurn[atk._uid] = true;
+    if (flags.movedUids[uid]) return { ok: false, err: "該角色本回合已用過戰基移動" };
 
-    // COUNTER·ACTI window: defender may use counter from hand
-    // (For human vs AI: AI decides here. UI prompts human only
-    // when called from P side; we expose a hook.)
-    const aPower = cardEffectivePower(state, attackerSide, atk);
-    const tPower = cardEffectivePower(state, attackerSide === "P" ? "A" : "P", tgt);
-
-    log(state, `${atkP.name} ${shortName(atk)} (P${aPower}) 攻擊 ${defP.name} ${shortName(tgt)} (P${tPower})`, attackerSide);
-
-    // Compare
-    let atkRetreat = false, tgtRetreat = false;
-    if (aPower > tPower) { tgtRetreat = true; }
-    else if (aPower < tPower) { atkRetreat = true; }
-    else { atkRetreat = true; tgtRetreat = true; } // Both Lose
-
-    if (tgtRetreat) {
-      const wasFront = defP.battle.front === tgt;
-      retreatCard(state, attackerSide === "P" ? "A" : "P", tgt, "戰敗");
-      // Rush Point: opponent retreated your target → +1 RP
-      const opp = attackerSide;
-      state.players[opp].rushPoints = Math.min(RUSH_TO_WIN, state.players[opp].rushPoints + 1);
-      log(state, `${state.players[opp].name} +1 Rush Point（${shortName(tgt)} 戰敗）`, opp);
-      checkWin(state);
-      // If FRONT was the target and lost, opponent may be eligible
-      // for Rush Point gain (already handled above). Empty FRONT
-      // for next round — caller must re-call to fill.
-    }
-    if (atkRetreat) {
-      retreatCard(state, attackerSide, atk, "戰敗");
-      const opp = attackerSide === "P" ? "A" : "P";
-      state.players[opp].rushPoints = Math.min(RUSH_TO_WIN, state.players[opp].rushPoints + 1);
-      log(state, `${state.players[opp].name} +1 Rush Point（${shortName(atk)} 戰敗）`, opp);
-      checkWin(state);
+    if (toBase) {
+      if (p.base.faceDown.length >= BASE_SIZE_MAX) return { ok: false, err: `基地已滿` };
+      if (!slot) return { ok: false, err: "該卡唔喺戰區" };
+      // 移去基地（becomes 蓋卡 - loses effect, not public）
+      if (p.battle.front === c) p.battle.front = null;
+      else if (p.battle.back === c) p.battle.back = null;
+      else {
+        const wi = p.battle.wing.indexOf(c);
+        if (wi >= 0) p.battle.wing[wi] = null;
+      }
+      const set = Object.assign({}, c, { _faceDown: true });
+      set._uid = uid;       // keep uid so movedUids still works
+      p.base.faceDown.push(set);
+      flags.movedUids[uid] = true;
+      log(state, `${p.name} ${shortName(c)} 戰基移動：${slotLabel(slot)} → 基地（蓋卡）`, side);
+    } else {
+      if (p.battle.front) return { ok: false, err: "先鋒已有人，無法搬入戰區" };
+      // base → battle: take first face-down that matches this uid
+      const bi = p.base.faceDown.indexOf(c);
+      if (bi < 0) return { ok: false, err: "該卡唔喺基地" };
+      p.base.faceDown.splice(bi, 1);
+      const faceUp = Object.assign({}, c);
+      faceUp._faceDown = false;
+      p.battle.front = faceUp;
+      flags.movedUids[uid] = true;
+      log(state, `${p.name} ${shortName(c)} 戰基移動：基地 → 先鋒（翻面）`, side);
     }
     return { ok: true };
   }
 
+  function slotLabel(slot) {
+    return { front: "先鋒", back: "後衛", wing1: "側翼-1", wing2: "側翼-2" }[slot] || slot;
+  }
+
   // =============================================================
-  // 5. RUSH POINT / WIN CHECK
+  // 7. BATTLE PHASE
   // =============================================================
+  // 順序：先鋒 → 側翼(2 格可自定先後) → 後衛
+  // 攻擊：選 R 值內敵方角色或破綻作目標
+  // 結算：角色vs角色 (大勝/小敗/相殺)，角色vs破綻 (+1 RP)
+  function attackableTargets(state, attackerSide, attackerUid) {
+    const atkP = state.players[attackerSide];
+    const defP = state.players[attackerSide === "P" ? "A" : "P"];
+    const atk = findAnywhereOnField(atkP, attackerUid);
+    if (!atk) return [];
+    const aSlot = isInBattle(atkP, atk);
+    if (!aSlot) return [];
+    const range = cardEffectiveRange(atk);
+    const targets = [];
+    for (const t of battleSlots(defP)) {
+      if (distance(aSlot, t.slot) <= range) {
+        if (t.card) {
+          // 攔截 keyword: if defender has 攔截, redirect to them
+          if (hasAbility(t.card, "攔截")) {
+            // already the target
+          }
+          targets.push({ kind: "card", slot: t.slot, card: t.card, dist: distance(aSlot, t.slot) });
+        } else {
+          // 破綻
+          targets.push({ kind: "weakness", slot: t.slot, dist: distance(aSlot, t.slot) });
+        }
+      }
+    }
+    return targets;
+  }
+
+  // Execute an attack. target may be:
+  //   { kind: "card", slot, card }
+  //   { kind: "weakness", slot }
+  function attack(state, attackerSide, attackerUid, target) {
+    const atkP = state.players[attackerSide];
+    const defP = state.players[attackerSide === "P" ? "A" : "P"];
+    const atk = findAnywhereOnField(atkP, attackerUid);
+    if (!atk) return { ok: false, err: "攻擊者唔喺場上" };
+    const flags = state.turnFlags[attackerSide];
+    if (flags.attackedUids[attackerUid]) {
+      if (!flags.doubleAttackUids[attackerUid]) {
+        return { ok: false, err: "本角色本回合已攻擊過" };
+      }
+    }
+
+    // Set attacked flag
+    flags.attackedUids[attackerUid] = true;
+
+    // ②應對步驟 (簡化版): 守方先用 COUNTER (HAND), 否則 skip
+    if (attackerSide === "A") {
+      useCounter(state, "P", attackerUid);
+    } else {
+      // human decides — UI shows prompt before/after attack
+    }
+
+    if (target.kind === "weakness") {
+      // 攻破綻：時間線 +1 RP
+      const aPower = cardEffectivePower(state, attackerSide, atk);
+      const aSlot = isInBattle(atkP, atk);
+      log(state, `${atkP.name} ${shortName(atk)} (P${aPower}) 攻擊 ${slotLabel(target.slot)}破綻`, attackerSide);
+      gainRushPoint(state, attackerSide, `攻破綻 ${slotLabel(target.slot)}`);
+      // 強襲 keyword: if attacker has 強襲, weakness is "successful"
+      // 強襲 triggers when 攻擊戰勝 → 自動當破綻。我哋已 hit 破綻
+      return { ok: true, result: "weakness" };
+    }
+
+    const tgt = target.card;
+    const aPower = cardEffectivePower(state, attackerSide, atk);
+    const tPower = cardEffectivePower(state, attackerSide === "P" ? "A" : "P", tgt);
+    const aSlot = isInBattle(atkP, atk);
+    const tSlot = isInBattle(defP, tgt);
+    log(state, `${atkP.name} ${shortName(atk)} (P${aPower}) 攻 ${defP.name} ${shortName(tgt)} (P${tPower})`, attackerSide);
+
+    let atkRetreat = false, tgtRetreat = false;
+    if (aPower > tPower) tgtRetreat = true;
+    else if (aPower < tPower) atkRetreat = true;
+    else { atkRetreat = true; tgtRetreat = true; }
+
+    if (tgtRetreat) {
+      retreatCard(state, attackerSide === "P" ? "A" : "P", tgt, "戰敗");
+    }
+    if (atkRetreat) {
+      retreatCard(state, attackerSide, atk, "戰敗");
+    }
+    // 強襲：若攻擊戰勝，判定破綻成功（只單純 +1 RP if 戰勝）
+    if (aPower > tPower && hasAbility(atk, "強襲")) {
+      gainRushPoint(state, attackerSide, "強襲（攻擊戰勝）");
+    }
+    return { ok: true, result: atkRetreat ? (tgtRetreat ? "both" : "attacker_lost") : (tgtRetreat ? "attacker_won" : "draw?") };
+  }
+
+  // Helper: check if a card has a 能力 keyword
+  function hasAbility(card, kw) {
+    if (!card) return false;
+    const t = card.effect || "";
+    return t.indexOf(kw) >= 0;
+  }
+
+  // =============================================================
+  // 8. RUSH POINT / WIN
+  // =============================================================
+  function gainRushPoint(state, side, why) {
+    const p = state.players[side];
+    if (p.timeline.length >= RUSH_TO_WIN) return;
+    p.timeline.push(p.rushDeck.shift());
+    p.rushPoints = p.timeline.length;
+    log(state, `${p.name} +1 Rush Point（${why}）→ 時間線 ${p.timeline.length}/${RUSH_TO_WIN}`, side);
+    checkWin(state);
+  }
+
   function checkWin(state) {
     if (state.winner) return;
-    if (state.players.P.rushPoints >= RUSH_TO_WIN) {
+    if (state.players.P.timeline.length >= RUSH_TO_WIN) {
       state.winner = "P";
-      log(state, `Player 達到 ${RUSH_TO_WIN} Rush Point，獲勝！`);
-    } else if (state.players.A.rushPoints >= RUSH_TO_WIN) {
+      log(state, `時間線滿 9 張，Player 獲勝！`);
+    } else if (state.players.A.timeline.length >= RUSH_TO_WIN) {
       state.winner = "A";
-      log(state, `AI 達到 ${RUSH_TO_WIN} Rush Point，獲勝！`);
+      log(state, `時間線滿 9 張，AI 獲勝！`);
     }
   }
 
   // =============================================================
-  // 6. EFFECT IMPLEMENTATIONS
+  // 9. EFFECT IMPLEMENTATIONS (partial — see README v0.2)
   // =============================================================
-  // Only the most common patterns from the 4 preset decks are
-  // implemented. Unimplemented cards still go on the field but
-  // their effects are stubbed with a "未實裝" log line.
-  //
-  // The implemented subset focuses on:
-  //   - draw N cards
-  //   - +Power / -Power (one turn)
-  //   - prune (= remove from field → VOID) a single character
-  //   - place card from RETREAT back to field
-  //   - COUNTER·ACTI from HAND (BP01-002 type)
-  //   - move BATTLE↔BASE
-  //   - gain Rush Point from effects
-  // =============================================================
+  // Priority order: TRIG【FIELD】on enter, AUTO continuous refresh,
+  // COUNTER·ACTI from HAND, ONCE PER TURN. Most still stub.
 
   function triggerEnter(state, side, card) {
-    // Fire TRIG【FIELD】 / TRIG【BATTLE】 effects when card enters
-    // battle. We try a small set of patterns; fall through to
-    // a stub log otherwise.
     const t = card.effect || "";
     if (!t.trim()) {
-      log(state, `[效果未實裝] ${shortName(card)} 入場效果`, side);
+      log(state, `[效果未實裝] ${shortName(card)} 入場`, side);
       return;
     }
-
-    // Pattern: "you draw 1 card"
-    if (/you draw (\d+) card/i.test(t)) {
-      const m = t.match(/you draw (\d+) card/i);
-      const n = parseInt(m[1], 10);
-      drawTo(state, side, state.players[side].hand.length + n);
-      log(state, `[效果] ${shortName(card)} 入場：抽 ${n} 張`, side);
-      // BP01-011 also gets "second chance to attack"
+    // Pattern: "you draw 1 card" / "you draw N cards"
+    const drawMatch = t.match(/you draw (\d+) cards?/i);
+    if (drawMatch) {
+      const n = parseInt(drawMatch[1], 10);
+      drawN(state, side, n);
+      log(state, `[效果] ${shortName(card)} 入場：抽 ${n}`, side);
       if (/second chance to attack/i.test(t)) {
-        card._doubleAttack = true;
+        state.turnFlags[side].doubleAttackUids[card._uid] = true;
         log(state, `[效果] ${shortName(card)} 本回合可攻擊 2 次`, side);
       }
       return;
     }
-
-    // Pattern: "you prune 1 of your opponent's characters with LvX or below"
+    // Pattern: "you prune 1 of your opponent's characters"
     if (/you prune 1 of your opponent's character/i.test(t)) {
-      // Simplified: prune weakest opposing battle char matching filter.
       const opp = side === "P" ? "A" : "P";
       const oppBattle = battleChars(state.players[opp]);
       const lvMatch = t.match(/Lv(\d+) or below/i);
       const maxLv = lvMatch ? parseInt(lvMatch[1], 10) : 99;
       const powMatch = t.match(/Power (\d+) or lower/i);
       const maxPow = powMatch ? parseInt(powMatch[1], 10) : 99999;
-      const target = oppBattle.find(x => x.card.level <= maxLv && cardEffectivePower(state, opp, x.card) <= maxPow);
-      if (target) {
-        pruneCard(state, opp, target.card);
-        log(state, `[效果] ${shortName(card)} 入場：除外 ${shortName(target.card)}`, side);
-        gainRushPoint(state, side, "除外效果");
+      const tgt = oppBattle.find(x => cardEffectiveLv(x.card) <= maxLv && cardEffectivePower(state, opp, x.card) <= maxPow);
+      if (tgt) {
+        pruneCard(state, opp, tgt.card);
+        log(state, `[效果] ${shortName(card)} 入場：除外 ${shortName(tgt.card)}`, side);
       } else {
-        log(state, `[效果] ${shortName(card)} 入場：沒有合法目標除外`, side);
+        log(state, `[效果] ${shortName(card)} 入場：無合法目標除外`, side);
       }
       return;
     }
-
-    // Pattern: "opponent's character in FRONT gets Power-X000"  (BP01-007 type)
+    // Pattern: opponent's character in FRONT gets Power-X000
     if (/opponent's character in FRONT gets Power-/i.test(t)) {
       const opp = side === "P" ? "A" : "P";
       const target = state.players[opp].battle.front;
@@ -432,17 +672,25 @@
         const m = t.match(/Power-(\d+)/);
         const amt = m ? parseInt(m[1], 10) : 0;
         target._powerMod = (target._powerMod || 0) - amt;
-        log(state, `[效果] ${shortName(card)}：${shortName(target)} 本回合 -${amt} Power`, side);
+        log(state, `[效果] ${shortName(card)}：${shortName(target)} -${amt} Power`, side);
       }
       return;
     }
-
-    // Pattern: TRIG【HAND】when "your red character attacks, you may discard this card in HAND. ... gets Power+3000"
-    // (BP01-005 / BP01-002 style) — these are HAND-side triggers,
-    // handled via canUseCounter() below rather than triggerEnter.
-
-    // Fall-through
-    log(state, `[效果未實裝] ${shortName(card)}：${truncate(t, 60)}`, side);
+    // Pattern: face down into BASE
+    if (/place .* face down into your BASE/i.test(t)) {
+      const m = t.match(/place the top (\d+) cards? of your deck face down/i);
+      const n = m ? parseInt(m[1], 10) : 1;
+      for (let i = 0; i < n; i++) {
+        if (state.players[side].deck.length === 0) break;
+        const c = state.players[side].deck.shift();
+        const set = Object.assign({}, cloneCard(c), { _faceDown: true });
+        state.players[side].base.faceDown.push(set);
+      }
+      log(state, `[效果] ${shortName(card)} 入場：${n} 張蓋放 BASE`, side);
+      return;
+    }
+    // fall-through
+    log(state, `[效果未實裝] ${shortName(card)}：${truncate(t, 50)}`, side);
   }
 
   function pruneCard(state, side, card) {
@@ -456,115 +704,83 @@
     const att = p.attached[card._uid] || [];
     delete p.attached[card._uid];
     p.voidZone.push(card, ...att);
+    log(state, `${p.name} ${shortName(card)} → VOID（裁剪）`, side);
   }
 
-  function gainRushPoint(state, side, why) {
-    state.players[side].rushPoints = Math.min(RUSH_TO_WIN, state.players[side].rushPoints + 1);
-    log(state, `${state.players[side].name} +1 Rush Point（${why}）`, side);
-    checkWin(state);
-  }
-
-  // Refresh Power/R buffs at turn start/end. Many AUTO effects
-  // are turn-conditional (e.g. BP01-004 "Lv+X if only red"). For
-  // v1 we recompute per-character mods at boundaries; complex
-  // AUTO effects stay stubbed.
-  function autoRefreshBuffs(state, side, when) {
-    const p = state.players[side];
-    battleChars(p).forEach(({ card }) => {
-      if (when === "turnStart") {
-        // Reset per-turn Power mod from previous turn
-        // (mods set during THIS turn are kept; only clear on new turn)
-        // For now: keep _powerMod across turns but reset at start
-        // — most "in this turn" effects expire at end.
-        // (Proper implementation: track per-turn expiry.)
-        card._powerMod = 0;
-      }
-      if (when === "turnEnd") {
-        // TRIG【WING】: did not attack → opponent char -Power X
-        // (BP01-003 「Thunder Ally」Thor)
-        if (card.effect && /TRIG【WING】/.test(card.effect)) {
-          const attacked = p._attackedThisTurn[card._uid];
-          if (!attacked) {
-            const opp = side === "P" ? "A" : "P";
-            const t = card.effect;
-            const m = t.match(/Power-X in this turn/);
-            if (m) {
-              const amt = DATA.numPower(card.power);
-              // Apply to opp's front
-              const tgt = state.players[opp].battle.front;
-              if (tgt) {
-                tgt._powerMod = (tgt._powerMod || 0) - amt;
-                log(state, `[效果] ${shortName(card)} 未攻擊：${shortName(tgt)} -${amt} Power`, side);
-              }
-            }
-          }
-        }
-        card._powerMod = 0;
-      }
-    });
-  }
-
-  // COUNTER·ACTI window for defender. Returns true if a counter
-  // was found and used. The engine caller (AI or human prompt)
-  // decides.
+  // COUNTER·ACTI: discard from HAND to apply Power-N to attacker
   function useCounter(state, defenderSide, attackerUid) {
-    // For each hand card matching COUNTER·ACTI, ask the player to
-    // decide. We auto-pick first valid counter (heuristic).
     const p = state.players[defenderSide];
     for (let i = 0; i < p.hand.length; i++) {
       const c = p.hand[i];
       if (!c.effect) continue;
-      if (!/COUNTER·ACTI【HAND】/.test(c.effect)) continue;
-      if (/Power-(\d+)/.test(c.effect)) {
-        const m = c.effect.match(/Power-(\d+)/);
-        const amt = parseInt(m[1], 10);
-        // Discard card
-        p.hand.splice(i, 1);
-        p.retreat.push(c);
-        // Apply to attacker's effective power (negative mod)
-        const atkP = state.players[defenderSide === "P" ? "A" : "P"];
-        const atk = findCardOnField(atkP, attackerUid);
-        if (atk) {
-          atk._powerMod = (atk._powerMod || 0) - amt;
-          log(state, `[COUNTER] ${p.name} 從手牌棄 ${shortName(c)}：${shortName(atk)} -${amt} Power`, defenderSide);
-        }
-        return true;
+      if (!/COUNTER·ACTI/i.test(c.effect)) continue;
+      const m = c.effect.match(/Power-(\d+)/);
+      if (!m) continue;
+      const amt = parseInt(m[1], 10);
+      p.hand.splice(i, 1);
+      p.retreat.push(c);
+      const atkP = state.players[defenderSide === "P" ? "A" : "P"];
+      const atk = findAnywhereOnField(atkP, attackerUid);
+      if (atk) {
+        atk._powerMod = (atk._powerMod || 0) - amt;
+        log(state, `[COUNTER] ${p.name} 棄 ${shortName(c)}：${shortName(atk)} -${amt} Power`, defenderSide);
       }
+      return true;
     }
     return false;
   }
 
   // =============================================================
-  // 7. UTILITIES EXPORTED FOR UI
+  // 10. UTILITIES
   // =============================================================
   function shortName(c) {
     if (!c) return "?";
-    // Trim 「Japanese brackets」 for display
-    return c.name.replace(/^「.*」/, "").trim() || c.name;
+    return (c.name || "").replace(/^「.*」/, "").trim() || c.name;
   }
-
   function truncate(s, n) {
     if (!s) return "";
     return s.length > n ? s.slice(0, n) + "…" : s;
   }
 
-  // ---- Public API ----
+  // =============================================================
+  // PUBLIC API
+  // =============================================================
   global.MHR_ENGINE = {
     initGame,
     startTurn,
     endTurn,
+    setDeploy,
     callCard,
+    battleBaseMove,
     retreatCard,
     attack,
+    attackableTargets,
     useCounter,
     cardEffectivePower,
+    cardEffectiveRange,
+    cardEffectiveLv,
     battleChars,
+    battleSlots,
     findCardOnField,
+    findAnywhereOnField,
     isInBattle,
     shortName,
     drawTo,
+    drawN,
+    discardDownTo,
+    gainRushPoint,
+    checkWin,
+    hasAbility,
+    distance,
+    setPending,
+    clearPending,
+    maxCallCount,
+    isFirstTurnBattleSkipped,
     EVT,
     RUSH_TO_WIN,
+    HAND_SIZE_START,
     HAND_SIZE_MAX,
+    BASE_SIZE_MAX,
+    RUSH_DECK_SIZE,
   };
 })(window);

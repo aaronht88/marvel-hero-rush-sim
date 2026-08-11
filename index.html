@@ -2,8 +2,8 @@
 <html lang="zh-HK">
 <head>
 <meta charset="UTF-8">
-<title>Marvel Hero Rush TCG — Battle Simulator</title>
-<meta name="viewport" content="width=1280">
+<title>Marvel Hero Rush TCG — Battle Simulator v0.2</title>
+<meta name="viewport" content="width=1480">
 <link rel="stylesheet" href="css/styles.css">
 <!-- Card data is committed locally (js/cards.js) so the sim is
      self-contained and works under any GitHub Pages subpath. -->
@@ -17,7 +17,7 @@
   <header class="topbar">
     <div class="brand">
       <h1>MARVEL HERO RUSH <small>Battle Sim</small></h1>
-      <p class="subtitle">Marvel Hero Rush TCG · 模擬對戰 · v0.1</p>
+      <p class="subtitle">Marvel Hero Rush TCG · 模擬對戰 · v0.2 (官方規則對齊)</p>
     </div>
   </header>
   <main class="setup-main">
@@ -51,62 +51,138 @@
     </div>
   </header>
 
-  <main class="battle-main">
-    <!-- AI field -->
-    <div class="field field-ai" id="field-ai">
-      <div class="field-row">
-        <div class="zone zone-back" data-side="A" data-slot="back"><span class="zone-label">BACK</span></div>
-        <div class="zone zone-front" data-side="A" data-slot="front"><span class="zone-label">FRONT</span></div>
-        <div class="zone zone-wing zone-wing-r" data-side="A" data-slot="wing1"><span class="zone-label">WING-1</span></div>
-        <div class="zone zone-wing zone-wing-l" data-side="A" data-slot="wing2"><span class="zone-label">WING-2</span></div>
+  <!-- =============== AI half of the mat (top, faces down) =============== -->
+  <div class="mat mat-ai" id="mat-ai">
+    <!-- For AI: 時間線 + 卡組 strip runs ABOVE the wing+back+front+base column -->
+    <div class="mat-topstrip mat-topstrip-ai">
+      <div class="zone zone-timeline" data-side="A" data-zone="timeline">
+        <span class="zone-label">時間線 ⑦</span>
+        <div class="timeline-grid" id="timeline-A"></div>
       </div>
-      <div class="bench bench-info bench-ai">
-        <div class="bench-cell">牌庫 <strong id="deck-cnt-a">50</strong></div>
-        <div class="bench-cell">Retreat <strong id="retreat-cnt-a">0</strong></div>
-        <div class="bench-cell">Void <strong id="void-cnt-a">0</strong></div>
-        <div class="bench-cell">手牌 <strong id="hand-cnt-a">7</strong></div>
+      <div class="zone zone-side">
+        <span class="zone-label">虛空區 ⑥</span>
+        <span class="zone-count" id="void-cnt-a">0</span>
+      </div>
+      <div class="zone zone-side">
+        <span class="zone-label">撤退區 ⑤</span>
+        <span class="zone-count" id="retreat-cnt-a">0</span>
+      </div>
+      <div class="zone zone-deck" data-side="A" data-zone="deck">
+        <span class="zone-label">卡組 ⑧</span>
+        <span class="zone-count" id="deck-cnt-a">50</span>
+      </div>
+      <div class="zone zone-rushdeck" data-side="A" data-zone="rushdeck">
+        <span class="zone-label">衝擊卡組 ⑨</span>
+        <span class="zone-count" id="rushdeck-cnt-a">9</span>
       </div>
     </div>
 
-    <!-- Middle: log + actions -->
-    <aside class="center-panel">
-      <div class="log-panel">
-        <div class="log-header">Battle Log</div>
-        <div id="log-list" class="log-list"></div>
+    <div class="mat-body mat-body-ai">
+      <!-- Left column: 衝擊卡組 9 card face -->
+      <div class="mat-sidecol mat-sidecol-l">
+        <!-- (visually: 衝擊卡組 is to the left of BASE; for AI it's the leftmost column above the 3 battle zones) -->
       </div>
-      <div class="action-panel" id="action-panel">
-        <div class="action-row">
-          <button id="btn-attack" class="btn-action" disabled>� 攻擊</button>
-          <button id="btn-end-turn" class="btn-action btn-end">結束回合 ▶</button>
+      <div class="mat-battlecol">
+        <div class="battle-stack">
+          <div class="zone zone-front" data-side="A" data-slot="front"><span class="zone-label">先鋒 ①</span></div>
+          <div class="zone-wing-row">
+            <div class="zone zone-wing" data-side="A" data-slot="wing1"><span class="zone-label">側翼 ②</span></div>
+            <div class="zone zone-wing" data-side="A" data-slot="wing2"><span class="zone-label">側翼 ②</span></div>
+          </div>
+          <div class="zone zone-back" data-side="A" data-slot="back"><span class="zone-label">後衛 ③</span></div>
         </div>
-        <div class="action-hint" id="action-hint">選擇一張手牌叫出，或選擇 FRONT 角色攻擊。</div>
+        <div class="zone zone-base" data-side="A" data-zone="base">
+          <span class="zone-label">基地區 ④ (上限 6)</span>
+          <div class="base-slots" id="base-A"></div>
+        </div>
       </div>
-    </aside>
-
-    <!-- Player field -->
-    <div class="field field-p" id="field-p">
-      <div class="field-row">
-        <div class="zone zone-wing zone-wing-l" data-side="P" data-slot="wing2"><span class="zone-label">WING-2</span></div>
-        <div class="zone zone-wing zone-wing-r" data-side="P" data-slot="wing1"><span class="zone-label">WING-1</span></div>
-        <div class="zone zone-front" data-side="P" data-slot="front"><span class="zone-label">FRONT</span></div>
-        <div class="zone zone-back" data-side="P" data-slot="back"><span class="zone-label">BACK</span></div>
-      </div>
-      <div class="bench bench-info bench-p">
-        <div class="bench-cell">手牌 <strong id="hand-cnt-p">7</strong></div>
-        <div class="bench-cell">Void <strong id="void-cnt-p">0</strong></div>
-        <div class="bench-cell">Retreat <strong id="retreat-cnt-p">0</strong></div>
-        <div class="bench-cell">牌庫 <strong id="deck-cnt-p">50</strong></div>
+      <div class="mat-sidecol mat-sidecol-r">
+        <div class="zone zone-side">
+          <span class="zone-label">手牌</span>
+          <span class="zone-count" id="hand-cnt-a">6</span>
+        </div>
       </div>
     </div>
+  </div>
 
-    <!-- Hand area -->
-    <div class="hand-area" id="hand-area">
-      <div class="hand-label">你嘅手牌（點擊卡叫出到 FRONT）</div>
-      <div id="hand-list" class="hand-list"></div>
+  <!-- =============== Center: phase strip + log + action panel =============== -->
+  <div class="center-strip">
+    <div class="phase-banner">
+      <span class="phase-pill" id="phase-pill">DRAW</span>
+      <span id="phase-help">回合開始：抽 2 張</span>
     </div>
-  </main>
+    <div class="log-panel">
+      <div class="log-header">Battle Log</div>
+      <div id="log-list" class="log-list"></div>
+    </div>
+    <div class="action-panel" id="action-panel">
+      <div class="action-row">
+        <button id="btn-set-deploy" class="btn-action" disabled>🃏 基地部署</button>
+        <button id="btn-battle-move" class="btn-action" disabled>↔ 戰基移動</button>
+        <button id="btn-attack" class="btn-action" disabled>⚔ 攻擊</button>
+        <button id="btn-end-turn" class="btn-action btn-end" disabled>結束回合 ▶</button>
+      </div>
+      <div class="action-hint" id="action-hint">…</div>
+    </div>
+  </div>
 
-  <!-- Modal for retreat cost selection -->
+  <!-- =============== Player half of the mat (bottom, faces up) =============== -->
+  <div class="mat mat-p" id="mat-p">
+    <div class="mat-body mat-body-p">
+      <div class="mat-sidecol mat-sidecol-l">
+        <div class="zone zone-side">
+          <span class="zone-label">手牌</span>
+          <span class="zone-count" id="hand-cnt-p">6</span>
+        </div>
+      </div>
+      <div class="mat-battlecol">
+        <div class="battle-stack">
+          <div class="zone zone-back" data-side="P" data-slot="back"><span class="zone-label">後衛 ③</span></div>
+          <div class="zone-wing-row">
+            <div class="zone zone-wing" data-side="P" data-slot="wing1"><span class="zone-label">側翼 ②</span></div>
+            <div class="zone zone-wing" data-side="P" data-slot="wing2"><span class="zone-label">側翼 ②</span></div>
+          </div>
+          <div class="zone zone-front" data-side="P" data-slot="front"><span class="zone-label">先鋒 ①</span></div>
+        </div>
+        <div class="zone zone-base" data-side="P" data-zone="base">
+          <span class="zone-label">基地區 ④ (上限 6)</span>
+          <div class="base-slots" id="base-P"></div>
+        </div>
+      </div>
+      <div class="mat-sidecol mat-sidecol-r"></div>
+    </div>
+
+    <div class="mat-topstrip mat-topstrip-p">
+      <div class="zone zone-timeline" data-side="P" data-zone="timeline">
+        <span class="zone-label">時間線 ⑦</span>
+        <div class="timeline-grid" id="timeline-P"></div>
+      </div>
+      <div class="zone zone-side">
+        <span class="zone-label">虛空區 ⑥</span>
+        <span class="zone-count" id="void-cnt-p">0</span>
+      </div>
+      <div class="zone zone-side">
+        <span class="zone-label">撤退區 ⑤</span>
+        <span class="zone-count" id="retreat-cnt-p">0</span>
+      </div>
+      <div class="zone zone-deck" data-side="P" data-zone="deck">
+        <span class="zone-label">卡組 ⑧</span>
+        <span class="zone-count" id="deck-cnt-p">50</span>
+      </div>
+      <div class="zone zone-rushdeck" data-side="P" data-zone="rushdeck">
+        <span class="zone-label">衝擊卡組 ⑨</span>
+        <span class="zone-count" id="rushdeck-cnt-p">9</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hand area for player (visible cards) -->
+  <div class="hand-area" id="hand-area">
+    <div class="hand-label">你嘅手牌（點擊卡叫出到先鋒；先鋒已被佔時先要戰基移動）</div>
+    <div id="hand-list" class="hand-list"></div>
+  </div>
+
+  <!-- Modal: retreat cost picker -->
   <div id="modal" class="modal hidden">
     <div class="modal-card">
       <div id="modal-title" class="modal-title"></div>

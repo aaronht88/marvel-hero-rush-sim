@@ -1,9 +1,11 @@
 // =============================================================
-// Marvel Hero Rush TCG — App (UI binding)
-// Owns the DOM, delegates game logic to engine.js. Listens to
-// engine.log/state events and re-renders.
+// Marvel Hero Rush TCG — App v0.2
+// UI binding. v0.2 highlights:
+//   - new battle-mat layout (時間線 + side zones)
+//   - 4 種行動按鈕: 基地部署 / 號召(手牌) / 戰基移動 / 攻擊
+//   - 攻擊目標 = 角色 或 破綻（空戰區）
+//   - COUNTER·ACTI prompt on player-defender
 // =============================================================
-
 (function () {
   "use strict";
 
@@ -11,17 +13,18 @@
   const AI = window.MHR_AI;
   const DATA = window.MHR_DATA;
 
-  // ---- Global state ----
-  let state = null;          // engine state
+  let state = null;
   let view = {
     selectedHandIdx: null,
-    attackerUid: null,       // when in attack-mode
-    pendingCall: null,       // { handIdx, retreatUids:Set }
-    isPlayerTurn: true,
+    pendingCall: null,      // { handIdx, retreatUids:Set }
+    pendingSetDeploy: null, // { handIdx }
+    attackerUid: null,
+    moveFromUid: null,      // when in move mode
+    pendingCounter: null,   // { attackerUid }
     aiTimer: null,
   };
 
-  // ---- Setup screen ----
+  // ---- Setup ----
   function renderDeckPicker() {
     const root = document.getElementById("deck-picker");
     root.innerHTML = "";
@@ -29,7 +32,6 @@
     const colorLabels = { Red: "紅", Yellow: "黃", Blue: "藍", Green: "綠" };
     decks.forEach((dk, i) => {
       const arr = DATA.DECKS[dk];
-      // Determine colors used
       const cols = new Set(arr.map(c => c.attribute));
       const colStr = [...cols].map(c => `<span class="color-chip ${c}">${colorLabels[c] || c}</span>`).join("");
       const card = document.createElement("div");
@@ -56,44 +58,55 @@
     const aiDeck = others[Math.floor(Math.random() * others.length)];
 
     state = E.initGame(deck, aiDeck);
+    // initGame 設 phase=DRAW 抽 2 張 → ACTION
+    E.startTurn(state);
     view.selectedHandIdx = null;
     view.attackerUid = null;
     view.pendingCall = null;
-    view.isPlayerTurn = true;
+    view.pendingSetDeploy = null;
+    view.moveFromUid = null;
+    view.pendingCounter = null;
 
     document.getElementById("setup-screen").classList.remove("visible");
     document.getElementById("battle-screen").classList.add("visible");
 
     render();
-    // engine already moved to PHASE CALL after setup
   }
-
   document.getElementById("btn-start").addEventListener("click", startBattle);
 
-  // ---- Render: topbar HUD ----
+  // ---- Top bar HUD ----
   function renderHud() {
-    const p = state.players.P;
-    const a = state.players.A;
-    document.getElementById("rp-fill-p").style.width = (p.rushPoints / E.RUSH_TO_WIN * 100) + "%";
-    document.getElementById("rp-fill-a").style.width = (a.rushPoints / E.RUSH_TO_WIN * 100) + "%";
-    document.getElementById("rp-text-p").textContent = `${p.rushPoints} / ${E.RUSH_TO_WIN}`;
-    document.getElementById("rp-text-a").textContent = `${a.rushPoints} / ${E.RUSH_TO_WIN}`;
+    const p = state.players.P, a = state.players.A;
+    document.getElementById("rp-fill-p").style.width = (p.timeline.length / E.RUSH_TO_WIN * 100) + "%";
+    document.getElementById("rp-fill-a").style.width = (a.timeline.length / E.RUSH_TO_WIN * 100) + "%";
+    document.getElementById("rp-text-p").textContent = `${p.timeline.length} / ${E.RUSH_TO_WIN}`;
+    document.getElementById("rp-text-a").textContent = `${a.timeline.length} / ${E.RUSH_TO_WIN}`;
     document.getElementById("turn-num").textContent = `回合 ${state.turn}`;
     document.getElementById("phase-label").textContent = state.phase;
+    document.getElementById("phase-pill").textContent = state.phase;
     document.getElementById("active-side").textContent =
       state.activeSide === "P" ? "Player 行動" : "AI 思考中…";
-
     const tb = document.querySelector(".battle-topbar");
     tb.classList.toggle("ai-turn", state.activeSide === "A");
     tb.classList.toggle("player-turn", state.activeSide === "P");
-
     document.getElementById("hud-meta-p").textContent = `🎴 ${p.deckLabel}`;
     document.getElementById("hud-meta-a").textContent = `🎴 ${a.deckLabel}`;
+
+    // phase help
+    const ph = document.getElementById("phase-help");
+    if (state.phase === "DRAW") ph.textContent = "抽 2 張（自動）";
+    else if (state.phase === "ACTION") {
+      const f = state.turnFlags.P || {};
+      ph.textContent = `行動階段 — 基地部署 1/${f.setDeployUsed ? 1 : 0} · 號召 ${f.callCount}/${E.maxCallCount(state,"P")}`;
+    }
+    else if (state.phase === "BATTLE") ph.textContent = "戰鬥階段：調整 → 攻擊（按先鋒→側翼→後衛順序）";
+    else if (state.phase === "RESPOND") ph.textContent = "應對階段：輪流選擇 應對號召 / COUNTER / 不行動";
+    else if (state.phase === "END") ph.textContent = "回合結束：手牌 >9 棄至 9";
   }
 
-  function renderBench() {
-    const p = state.players.P;
-    const a = state.players.A;
+  // ---- Counters & zones ----
+  function renderCounters() {
+    const p = state.players.P, a = state.players.A;
     document.getElementById("deck-cnt-p").textContent = p.deck.length;
     document.getElementById("deck-cnt-a").textContent = a.deck.length;
     document.getElementById("retreat-cnt-p").textContent = p.retreat.length;
@@ -102,36 +115,113 @@
     document.getElementById("void-cnt-a").textContent = a.voidZone.length;
     document.getElementById("hand-cnt-p").textContent = p.hand.length;
     document.getElementById("hand-cnt-a").textContent = a.hand.length;
+    document.getElementById("rushdeck-cnt-p").textContent = p.rushDeck.length;
+    document.getElementById("rushdeck-cnt-a").textContent = a.rushDeck.length;
   }
 
-  function renderField() {
-    ["P", "A"].forEach(side => {
+  function renderTimelines() {
+    for (const side of ["P", "A"]) {
+      const root = document.getElementById("timeline-" + side);
+      root.innerHTML = "";
+      for (let i = 0; i < E.RUSH_TO_WIN; i++) {
+        const cell = document.createElement("div");
+        cell.className = "timeline-cell";
+        if (state.players[side].timeline[i]) {
+          cell.classList.add("filled");
+          cell.textContent = "★";
+        }
+        root.appendChild(cell);
+      }
+    }
+  }
+
+  function renderBattleZones() {
+    for (const side of ["P", "A"]) {
       const player = state.players[side];
-      ["front", "back", "wing1", "wing2"].forEach(slot => {
-        const zoneEl = document.querySelector(`.field-${side === "P" ? "p" : "ai"} [data-slot="${slot}"]`);
+      const slots = [
+        { slot: "front", card: player.battle.front },
+        { slot: "wing1", card: player.battle.wing[0] },
+        { slot: "wing2", card: player.battle.wing[1] },
+        { slot: "back", card: player.battle.back },
+      ];
+      slots.forEach(({ slot, card }) => {
+        const zoneEl = document.querySelector(`.mat-${side === "A" ? "ai" : "p"} [data-slot="${slot}"]`);
         if (!zoneEl) return;
-        zoneEl.innerHTML = `<span class="zone-label">${slot.toUpperCase()}</span>`;
-        let card = null;
-        if (slot === "front") card = player.battle.front;
-        else if (slot === "back") card = player.battle.back;
-        else if (slot === "wing1") card = player.battle.wing[0];
-        else if (slot === "wing2") card = player.battle.wing[1];
+        // wipe children
+        [...zoneEl.querySelectorAll(".mini-card")].forEach(n => n.remove());
+        zoneEl.classList.remove("has-card", "is-source", "is-target", "is-weakness");
+        zoneEl.onclick = null;      // clear any leftover weakness handler
+        zoneEl.style.cursor = "";
         if (card) {
           zoneEl.classList.add("has-card");
           zoneEl.appendChild(buildMiniCard(card, side, slot));
-          // Highlight target zones when in attack mode
-          if (side !== state.activeSide && view.attackerUid && isAttackable(state, side, slot, card)) {
-            zoneEl.classList.add("is-target");
-          }
-          // Highlight source when chosen as attacker
-          if (side === state.activeSide && view.attackerUid === card._uid) {
-            zoneEl.classList.add("is-source");
-          }
+          if (side === state.activeSide && view.attackerUid === card._uid) zoneEl.classList.add("is-source");
         } else {
-          zoneEl.classList.remove("has-card", "is-target", "is-source");
+          // Weakness highlight when in attack mode
+          if (side !== state.activeSide && view.attackerUid) {
+            const targets = E.attackableTargets(state, state.activeSide, view.attackerUid);
+            if (targets.some(t => t.kind === "weakness" && t.slot === slot)) {
+              zoneEl.classList.add("is-weakness");
+              if (state.activeSide === "P") zoneEl.classList.add("is-target");
+              // BUGFIX: empty zone (破綻) had NO click handler, so the
+              // player could never attack a weakness. Bind the zone click
+              // to resolve the attack against the weakness slot.
+              // Use .onclick (not addEventListener) — render() runs every
+              // state change, so addEventListener would stack duplicate
+              // handlers and fire the attack multiple times.
+              zoneEl.style.cursor = "pointer";
+              zoneEl.onclick = (e) => {
+                e.stopPropagation();
+                if (state.activeSide !== "P" || state.phase !== "BATTLE" || !view.attackerUid) return;
+                const t = E.attackableTargets(state, "P", view.attackerUid)
+                  .find(x => x.kind === "weakness" && x.slot === slot);
+                if (!t) return;
+                const r = E.attack(state, "P", view.attackerUid, t);
+                if (!r.ok) console.warn(r.err);
+                view.attackerUid = null;
+                render();
+              };
+            }
+          }
         }
       });
-    });
+    }
+  }
+
+  function renderBase() {
+    for (const side of ["P", "A"]) {
+      const root = document.getElementById("base-" + side);
+      root.innerHTML = "";
+      const base = state.players[side].base.faceDown;
+      // 6 slots; fill with set cards
+      for (let i = 0; i < E.BASE_SIZE_MAX; i++) {
+        const slot = document.createElement("div");
+        slot.className = "set-card";
+        slot.style.flex = "1";
+        if (base[i]) {
+          slot.textContent = "蓋";
+          slot.title = E.shortName(base[i]) + "（蓋卡）";
+          if (state.activeSide === side) {
+            slot.addEventListener("click", () => onSetCardClick(side, base[i]));
+          }
+        } else {
+          slot.style.opacity = "0.25";
+          slot.style.cursor = "default";
+        }
+        root.appendChild(slot);
+      }
+    }
+  }
+
+  function onSetCardClick(side, card) {
+    if (state.activeSide !== side || state.phase !== "ACTION") return;
+    if (view.moveFromUid === card._uid) {
+      view.moveFromUid = null;
+      render();
+      return;
+    }
+    view.moveFromUid = card._uid;
+    render();
   }
 
   function buildMiniCard(card, side, slot) {
@@ -140,8 +230,7 @@
     div.dataset.uid = card._uid;
     div.dataset.attr = card.attribute;
     const pow = E.cardEffectivePower(state, side, card);
-    const implemented = isEffectImplemented(card);
-    if (!implemented) div.classList.add("unimplemented");
+    if (!isEffectImplemented(card)) div.classList.add("unimplemented");
 
     const img = document.createElement("img");
     img.src = DATA.artPath(card);
@@ -159,18 +248,11 @@
     stats.innerHTML = `<span class="lv">Lv${card.level}</span><span class="pw">P${pow}</span><span class="rg">R${DATA.numRange(card.attackRange)}</span>`;
     div.appendChild(stats);
 
-    // Click handler
     div.addEventListener("click", (e) => {
       e.stopPropagation();
       onZoneCardClick(side, slot, card);
     });
     return div;
-  }
-
-  function isAttackable(state, defSide, slot, defCard) {
-    // For simplicity: any opponent battle char is attackable if
-    // their FRONT/BACK is set, and our FRONT is set.
-    return state.activeSide !== defSide && state.players[state.activeSide].battle.front;
   }
 
   // ---- Hand render ----
@@ -183,13 +265,11 @@
       div.className = "hand-card";
       div.dataset.uid = c._uid;
       div.dataset.attr = c.attribute;
-      div.style.position = "relative";
-      const canCall = !state.players.P.battle.front;
+      const f = state.turnFlags.P || {};
+      const canCall = f.callCount < E.maxCallCount(state, "P");
       if (!canCall) div.classList.add("unplayable");
       if (view.selectedHandIdx === i) div.classList.add("selected");
-
-      const implemented = isEffectImplemented(c);
-      if (!implemented) div.classList.add("unimplemented");
+      if (!isEffectImplemented(c)) div.classList.add("unimplemented");
 
       const img = document.createElement("img");
       img.src = DATA.artPath(c);
@@ -212,8 +292,6 @@
     });
   }
 
-  // Track which card effects are at least partially implemented
-  // (used to dim unhandled ones).
   const implementedCache = new WeakMap();
   function isEffectImplemented(card) {
     if (implementedCache.has(card)) return implementedCache.get(card);
@@ -224,7 +302,7 @@
     const patterns = [
       /TRIG【VOID】/, /TRIG【RETREAT】/, /TRIG【HAND】:When your \w+ character is in Both Lose/,
       /UNIQUE\(/, /second chance to attack/i, /Double Attack/,
-      /BATTLE Move/, /attach/i, /cover/i,
+      /BATTLE Move/i, /attach/i, /cover/i,
       /place .* face down/i, /place the top \d+ cards of your deck face down/,
       /swap .* and .*/, /move .* from BATTLE to .* BASE/, /move .* from .* BASE/,
       /acti.*BATTLE\/ONCE PER TURN/i, /acti.*HAND】:You prune/i,
@@ -241,106 +319,404 @@
     return ok;
   }
 
-  // ---- Action buttons ----
+  // ---- Action buttons state ----
   function renderActions() {
-    const atk = document.getElementById("btn-attack");
-    const end = document.getElementById("btn-end-turn");
+    const setBtn = document.getElementById("btn-set-deploy");
+    const moveBtn = document.getElementById("btn-battle-move");
+    const atkBtn = document.getElementById("btn-attack");
+    const endBtn = document.getElementById("btn-end-turn");
     const hint = document.getElementById("action-hint");
     if (state.winner) {
-      atk.disabled = true; end.disabled = true;
-      hint.textContent = `遊戲結束`;
+      [setBtn, moveBtn, atkBtn, endBtn].forEach(b => b.disabled = true);
+      hint.textContent = "遊戲結束";
       showWinOverlay();
       return;
     }
     if (state.activeSide !== "P") {
-      atk.disabled = true; end.disabled = true;
+      [setBtn, moveBtn, atkBtn, endBtn].forEach(b => b.disabled = true);
       hint.textContent = "等緊 AI 行動…";
       return;
     }
-    // Player turn
-    const hasFront = !!state.players.P.battle.front;
-    const oppFront = !!state.players[state.activeSide === "P" ? "A" : "P"].battle.front;
-    atk.disabled = !(hasFront && oppFront);
-    end.disabled = false;
-    if (view.attackerUid) {
-      hint.textContent = "點擊對手場上角色作目標，或再點自己 FRONT 取消攻擊模式";
+    if (state.phase === "BATTLE") {
+      // Action buttons off; only attack + end enabled
+      setBtn.disabled = true; moveBtn.disabled = true;
+      const f = state.turnFlags.P || {};
+      const anyUnattacked = E.battleChars(state.players.P).some(({ card }) => !f.attackedUids[card._uid]);
+      atkBtn.disabled = !anyUnattacked;
+      endBtn.disabled = false;
+      if (view.attackerUid) hint.textContent = "揀攻擊目標（角色 / 破綻），或再撳自己取消";
+      else hint.textContent = "戰鬥階段：撳 ⚔ 進入攻擊模式，撳先鋒/側翼/後衛揀攻擊者";
+      return;
+    }
+    if (state.phase !== "ACTION") {
+      // respond / end — just let end be active
+      setBtn.disabled = true; moveBtn.disabled = true;
+      atkBtn.disabled = true;
+      endBtn.disabled = false;
+      hint.textContent = "撳 結束回合";
+      return;
+    }
+    // ACTION phase
+    const f = state.turnFlags.P || {};
+    setBtn.disabled = !!f.setDeployUsed;
+    const canCall = f.callCount < E.maxCallCount(state, "P");
+    // SetDeploy needs hand card
+    setBtn.disabled = !!f.setDeployUsed || state.players.P.hand.length === 0 || state.players.P.base.faceDown.length >= E.BASE_SIZE_MAX;
+    moveBtn.disabled = !canMoveAnyone();
+    atkBtn.disabled = true; // not in battle phase
+    endBtn.disabled = false;
+    if (view.moveFromUid) {
+      hint.textContent = "戰基移動已揀角色，撳先鋒或基地以完成";
     } else if (view.selectedHandIdx !== null) {
-      hint.textContent = "已選擇手牌，確認後叫出到 FRONT";
-    } else if (!hasFront) {
-      hint.textContent = "FRONT 位空置：選擇一張手牌叫出";
+      hint.textContent = "已揀手牌：撳手牌再次取消 / 等彈 modal";
     } else {
-      hint.textContent = "選擇動作：攻擊 / 結束回合";
+      hint.textContent = `行動：撳手牌叫出 / 撳 基地部署 蓋 1 張 / 撳 ↔ 戰基移動 / 撳 結束回合 → 戰鬥`;
     }
   }
 
+  function canMoveAnyone() {
+    const p = state.players.P;
+    const f = state.turnFlags.P || {};
+    // Base → front
+    if (!p.battle.front && p.base.faceDown.length > 0) return true;
+    // Front/base → other: any character in battle not placed this turn
+    const placed = p._placedThisTurn || {};
+    for (const { card } of E.battleChars(p)) {
+      if (!placed[card._uid] && !f.movedUids[card._uid] && p.base.faceDown.length < E.BASE_SIZE_MAX) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // ---- Button handlers ----
+  document.getElementById("btn-set-deploy").addEventListener("click", () => {
+    if (state.activeSide !== "P" || state.phase !== "ACTION") return;
+    showSetDeployPicker();
+  });
+  document.getElementById("btn-battle-move").addEventListener("click", () => {
+    if (state.activeSide !== "P" || state.phase !== "ACTION") return;
+    if (view.moveFromUid) { view.moveFromUid = null; render(); return; }
+    showMovePicker();
+  });
   document.getElementById("btn-attack").addEventListener("click", () => {
-    if (!state.players.P.battle.front) return;
-    view.attackerUid = state.players.P.battle.front._uid;
-    render();
+    if (state.activeSide !== "P" || state.phase !== "BATTLE") return;
+    if (view.attackerUid) { view.attackerUid = null; render(); return; }
+    showAttackerPicker();
   });
   document.getElementById("btn-end-turn").addEventListener("click", () => {
     if (state.activeSide !== "P") return;
+    // Skip BATTLE if first turn first player
+    if (state.phase === "ACTION") {
+      if (E.isFirstTurnBattleSkipped(state, "P")) {
+        // Skip directly to respond
+        state.phase = "RESPOND";
+        render();
+        return;
+      }
+      state.phase = "BATTLE";
+      view.attackerUid = null;
+      render();
+      return;
+    }
+    if (state.phase === "BATTLE") {
+      state.phase = "RESPOND";
+      view.attackerUid = null;
+      render();
+      return;
+    }
+    if (state.phase === "RESPOND") {
+      // End of player's turn
+      view.attackerUid = null;
+      view.moveFromUid = null;
+      view.selectedHandIdx = null;
+      E.endTurn(state);
+      render();
+      if (state.activeSide === "A" && !state.winner) scheduleAI();
+      return;
+    }
+  });
+
+  // ---- Modal: set deploy ----
+  function showSetDeployPicker() {
+    const p = state.players.P;
+    const modal = document.getElementById("modal");
+    document.getElementById("modal-title").textContent = "基地部署（蓋 1 張手牌進基地 → 抽 1 張）";
+    const body = document.getElementById("modal-body");
+    body.innerHTML = `<p>揀 1 張手牌蓋入基地（最多 6 張）：</p>`;
+    p.hand.forEach((c, i) => {
+      const opt = document.createElement("label");
+      opt.className = "retreat-option";
+      opt.innerHTML = `<input type="radio" name="set" value="${i}"> Lv${c.level} ${E.shortName(c)}`;
+      opt.querySelector("input").addEventListener("change", () => {
+        view.pendingSetDeploy = { handIdx: parseInt(opt.querySelector("input").value, 10) };
+        document.getElementById("modal-confirm").disabled = false;
+      });
+      body.appendChild(opt);
+    });
+    document.getElementById("modal-confirm").disabled = true;
+    document.getElementById("modal-confirm").textContent = "蓋放";
+    document.getElementById("modal").classList.remove("hidden");
+  }
+
+  // ---- Modal: move picker ----
+  function showMovePicker() {
+    const p = state.players.P;
+    const modal = document.getElementById("modal");
+    document.getElementById("modal-title").textContent = "戰基移動（戰區 ↔ 基地，每角色 1 次/回合）";
+    const body = document.getElementById("modal-body");
+    body.innerHTML = `<p>揀 1 個角色：</p>`;
+    const placed = p._placedThisTurn || {};
+    const flags = state.turnFlags.P || {};
+    // battle → base
+    for (const { card, slot } of E.battleChars(p)) {
+      if (placed[card._uid]) continue;
+      if (flags.movedUids[card._uid]) continue;
+      if (p.base.faceDown.length >= E.BASE_SIZE_MAX) continue;
+      const opt = document.createElement("label");
+      opt.className = "retreat-option";
+      opt.innerHTML = `<input type="radio" name="mv" value="toBase:${card._uid}"> ${slot} → 基地：Lv${card.level} ${E.shortName(card)}`;
+      opt.querySelector("input").addEventListener("change", () => {
+        view.moveFromUid = card._uid;
+        view._moveToBase = true;
+        document.getElementById("modal-confirm").disabled = false;
+      });
+      body.appendChild(opt);
+    }
+    // base → battle
+    if (!p.battle.front) {
+      for (const c of p.base.faceDown) {
+        if (flags.movedUids[c._uid]) continue;
+        const opt = document.createElement("label");
+        opt.className = "retreat-option";
+        opt.innerHTML = `<input type="radio" name="mv" value="toBattle:${c._uid}"> 基地 → 先鋒：${E.shortName(c)}（蓋卡）`;
+        opt.querySelector("input").addEventListener("change", () => {
+          view.moveFromUid = c._uid;
+          view._moveToBase = false;
+          document.getElementById("modal-confirm").disabled = false;
+        });
+        body.appendChild(opt);
+      }
+    }
+    document.getElementById("modal-confirm").disabled = true;
+    document.getElementById("modal-confirm").textContent = "確認";
+    document.getElementById("modal").classList.remove("hidden");
+  }
+
+  // ---- Modal: attacker picker (battle phase) ----
+  function showAttackerPicker() {
+    const p = state.players.P;
+    const modal = document.getElementById("modal");
+    document.getElementById("modal-title").textContent = "戰鬥：揀 1 個戰區角色作攻擊者";
+    const body = document.getElementById("modal-body");
+    body.innerHTML = `<p>順序：先鋒 → 側翼 → 後衛。每角色每回合 1 次攻擊。</p>`;
+    const f = state.turnFlags.P || {};
+    const order = ["front", "wing1", "wing2", "back"];
+    for (const slot of order) {
+      const c = p.battle[slot] || (slot === "wing1" ? p.battle.wing[0] : slot === "wing2" ? p.battle.wing[1] : null);
+      if (!c) continue;
+      if (f.attackedUids[c._uid] && !f.doubleAttackUids[c._uid]) continue;
+      const opt = document.createElement("label");
+      opt.className = "retreat-option";
+      const range = DATA.numRange(c.attackRange);
+      opt.innerHTML = `<input type="radio" name="atk" value="${c._uid}"> ${slot}：Lv${c.level} R${range} ${E.shortName(c)}`;
+      opt.querySelector("input").addEventListener("change", () => {
+        view.attackerUid = c._uid;
+        document.getElementById("modal-confirm").disabled = false;
+      });
+      body.appendChild(opt);
+    }
+    document.getElementById("modal-confirm").disabled = true;
+    document.getElementById("modal-confirm").textContent = "揀攻擊者";
+    document.getElementById("modal").classList.remove("hidden");
+  }
+
+  document.getElementById("modal-cancel").addEventListener("click", () => {
+    document.getElementById("modal").classList.add("hidden");
+    view.pendingCall = null;
+    view.pendingSetDeploy = null;
+    view.moveFromUid = null;
+    view._moveToBase = null;
     view.attackerUid = null;
-    view.selectedHandIdx = null;
-    E.endTurn(state);
-    render();
-    if (state.activeSide === "A" && !state.winner) scheduleAI();
+  });
+
+  document.getElementById("modal-confirm").addEventListener("click", () => {
+    const modal = document.getElementById("modal");
+    if (view.pendingCall) {
+      const { handIdx, retreatUids } = view.pendingCall;
+      const r = E.callCard(state, "P", handIdx, retreatUids);
+      if (!r.ok) console.warn(r.err);
+      modal.classList.add("hidden");
+      view.pendingCall = null;
+      view.selectedHandIdx = null;
+      render();
+      return;
+    }
+    if (view.pendingSetDeploy) {
+      const r = E.setDeploy(state, "P", view.pendingSetDeploy.handIdx);
+      if (!r.ok) console.warn(r.err);
+      modal.classList.add("hidden");
+      view.pendingSetDeploy = null;
+      render();
+      return;
+    }
+    if (view.moveFromUid) {
+      const r = E.battleBaseMove(state, "P", view.moveFromUid, !!view._moveToBase);
+      if (!r.ok) console.warn(r.err);
+      modal.classList.add("hidden");
+      view.moveFromUid = null;
+      view._moveToBase = null;
+      render();
+      return;
+    }
+    if (view.attackerUid && state.phase === "BATTLE") {
+      modal.classList.add("hidden");
+      render();
+      return;
+    }
   });
 
   // ---- Hand click ----
   function onHandClick(idx) {
-    if (state.activeSide !== "P") return;
+    if (state.activeSide !== "P" || state.phase !== "ACTION") return;
     const handCard = state.players.P.hand[idx];
     if (!handCard) return;
+    if (view.selectedHandIdx === idx) {
+      // cancel
+      view.selectedHandIdx = null;
+      render();
+      return;
+    }
+    view.selectedHandIdx = idx;
     if (handCard.level >= 4) {
-      // Lv4+: show retreat cost modal FIRST (needs field cards as cost,
-      // including the card currently in FRONT — so the empty-FRONT guard
-      // must NOT block this path).
-      view.selectedHandIdx = idx;
       showRetreatModal(idx, handCard);
-      return;
-    }
-    if (state.players.P.battle.front) return; // Lv1-3: FRONT must be empty (simplified)
-    // Lv1-3: call directly
-    const r = E.callCard(state, "P", idx, []);
-    if (!r.ok) console.warn(r.err);
-    view.selectedHandIdx = null;
-    render();
-  }
-
-  // ---- Zone card click ----
-  function onZoneCardClick(side, slot, card) {
-    if (state.activeSide !== "P") return;
-    if (state.winner) return;
-
-    // Attack mode: clicking target
-    if (view.attackerUid && side !== "P") {
-      const r = E.attack(state, "P", view.attackerUid, card._uid);
+    } else {
+      // direct call (Lv1-3)
+      const r = E.callCard(state, "P", idx, []);
       if (!r.ok) console.warn(r.err);
-      view.attackerUid = null;
+      view.selectedHandIdx = null;
       render();
+    }
+  }
+
+  // ---- Zone card click (during action or battle) ----
+  function onZoneCardClick(side, slot, card) {
+    if (state.activeSide !== "P" || state.winner) return;
+
+    // Attack mode: clicked target
+    if (state.phase === "BATTLE" && view.attackerUid && side !== "P") {
+      // Defender: offer COUNTER first
+      offerCounterThenResolve(side, card);
       return;
     }
 
-    // Cancel attack
-    if (side === "P" && view.attackerUid === card._uid) {
+    // Cancel attack by clicking own
+    if (state.phase === "BATTLE" && view.attackerUid && side === "P") {
+      if (card._uid === view.attackerUid) {
+        view.attackerUid = null;
+        render();
+      }
+      return;
+    }
+
+    // Move mode: clicked own battle slot to move to base
+    if (state.phase === "ACTION" && view.moveFromUid && side === "P") {
+      // already handled in onSetCardClick (from base) — clicking a battle card here just cancels
+      if (isInBattleSlot(state.players.P, view.moveFromUid)) {
+        // came from battle, send to base
+        const r = E.battleBaseMove(state, "P", view.moveFromUid, true);
+        if (!r.ok) console.warn(r.err);
+      }
+      view.moveFromUid = null;
+      view._moveToBase = null;
+      render();
+    }
+  }
+
+  function isInBattleSlot(p, uid) {
+    return E.isInBattle(p, { _uid: uid });
+  }
+
+  // Defender offers COUNTER step then resolves attack
+  function offerCounterThenResolve(targetSide, targetCard) {
+    // targetSide is the defender; for P-attacks-A, defender is A (AI)
+    // For now: AI always auto-resolves; human defender would prompt here
+    if (targetSide === "A") {
+      // Already auto-handled inside attack() for AI
+    }
+    // Find target descriptor
+    const defP = state.players[targetSide];
+    const targets = E.attackableTargets(state, state.activeSide, view.attackerUid);
+    const t = targets.find(x => (x.kind === "card" && x.card._uid === targetCard._uid) || (x.kind === "weakness" && x.slot === slotOf(defP, targetCard)));
+    if (!t) return;
+    // COUNTER for human defender
+    if (targetSide === "P") {
+      // offer to use a COUNTER·ACTI from hand
+      offerCounterPrompt(view.attackerUid, t);
+    } else {
+      E.attack(state, state.activeSide, view.attackerUid, t);
       view.attackerUid = null;
       render();
     }
   }
 
-  // ---- Retreat modal ----
-  function showRetreatModal(handIdx, handCard) {
+  function slotOf(p, card) {
+    if (p.battle.front === card) return "front";
+    if (p.battle.back === card) return "back";
+    if (p.battle.wing[0] === card) return "wing1";
+    if (p.battle.wing[1] === card) return "wing2";
+    return null;
+  }
+
+  function offerCounterPrompt(attackerUid, target) {
+    const p = state.players.P;
+    const counters = p.hand.map((c, i) => ({ c, i })).filter(x => /COUNTER·ACTI/i.test(x.c.effect || ""));
+    if (counters.length === 0) {
+      E.attack(state, "P", attackerUid, target);
+      view.attackerUid = null;
+      render();
+      return;
+    }
     const modal = document.getElementById("modal");
-    const title = document.getElementById("modal-title");
+    document.getElementById("modal-title").textContent = "應對步驟：用 COUNTER·ACTI 牌？";
     const body = document.getElementById("modal-body");
-    title.textContent = `叫出 Lv${handCard.level} ${E.shortName(handCard)} — 需要 retreat 總 Lv = ${handCard.level}`;
-    body.innerHTML = `<p>選擇要 retreat 嘅場上角色（合計 Lv = ${handCard.level}）：</p>`;
-    const sources = E.battleChars(state.players.P);
-    sources.forEach(({ card }) => {
+    body.innerHTML = `<p>對手攻擊中，你有以下 COUNTER·ACTI 手牌（棄牌 → 減攻擊者 Power）。可以選擇不行動：</p>`;
+    counters.forEach(({ c, i }) => {
       const opt = document.createElement("label");
       opt.className = "retreat-option";
-      opt.innerHTML = `<input type="checkbox" value="${card._uid}"> Lv${card.level} ${E.shortName(card)}`;
+      const m = c.effect.match(/Power-(\d+)/);
+      const amt = m ? m[1] : "?";
+      opt.innerHTML = `<input type="radio" name="cnt" value="${i}"> Lv${c.level} ${E.shortName(c)}（-${amt}）`;
+      opt.querySelector("input").addEventListener("change", () => {
+        view.pendingCounter = { attackerUid, target, handIdx: i };
+        document.getElementById("modal-confirm").disabled = false;
+      });
+      body.appendChild(opt);
+    });
+    const skip = document.createElement("label");
+    skip.className = "retreat-option";
+    skip.innerHTML = `<input type="radio" name="cnt" value="-1" checked> 不行動 → 進入結算`;
+    body.appendChild(skip);
+    document.getElementById("modal-confirm").disabled = false;
+    document.getElementById("modal-confirm").textContent = "確認";
+    modal.classList.remove("hidden");
+    // hijack confirm to handle counter
+    view._counterMode = true;
+  }
+
+  // ---- Retreat modal (for Lv4+ call) ----
+  function showRetreatModal(handIdx, handCard) {
+    const p = state.players.P;
+    const modal = document.getElementById("modal");
+    document.getElementById("modal-title").textContent = `號召 Lv${handCard.level} ${E.shortName(handCard)} — 揀 retreat 角色（合計 Lv = ${handCard.level}，蓋卡當 Lv1）`;
+    const body = document.getElementById("modal-body");
+    body.innerHTML = `<p>揀要 retreat 嘅場上角色（或基地蓋卡）。</p>`;
+    const sources = [...E.battleChars(p).map(({ card, slot }) => ({ card, slot, lv: card.level })),
+                     ...p.base.faceDown.map(c => ({ card: c, slot: "基地", lv: 1 }))];
+    sources.forEach(({ card, slot, lv }) => {
+      const opt = document.createElement("label");
+      opt.className = "retreat-option";
+      opt.innerHTML = `<input type="checkbox" value="${card._uid}"> ${slot} Lv${lv} ${E.shortName(card)}`;
       opt.querySelector("input").addEventListener("change", updateSum);
       body.appendChild(opt);
     });
@@ -348,37 +724,21 @@
     sumLabel.id = "retreat-sum";
     sumLabel.style.marginTop = "8px";
     sumLabel.style.color = "var(--muted)";
-    sumLabel.textContent = "已選 0 / 需要 " + handCard.level;
     body.appendChild(sumLabel);
     function updateSum() {
-      // NOTE: _uid is a string ("c1","c2",...) — must NOT coerce with +,
-      // that turns it into NaN and the lookup below never matches.
       const checked = [...body.querySelectorAll("input:checked")].map(i => i.value);
       const sum = checked.reduce((s, uid) => {
         const c = sources.find(x => x.card._uid === uid);
-        return s + (c ? c.card.level : 0);
+        return s + (c ? c.lv : 0);
       }, 0);
-      sumLabel.textContent = `已選合計 Lv=${sum} / 需要 ${handCard.level}` + (sum === handCard.level ? " ✓" : "");
+      sumLabel.textContent = `合計 Lv=${sum} / 需要 ${handCard.level}` + (sum === handCard.level ? " ✓" : "");
       document.getElementById("modal-confirm").disabled = sum !== handCard.level;
       view.pendingCall = { handIdx, retreatUids: checked };
     }
-    document.getElementById("modal-confirm").disabled = true;
+    updateSum();
+    document.getElementById("modal-confirm").textContent = "確認";
     modal.classList.remove("hidden");
   }
-  document.getElementById("modal-cancel").addEventListener("click", () => {
-    document.getElementById("modal").classList.add("hidden");
-    view.pendingCall = null;
-  });
-  document.getElementById("modal-confirm").addEventListener("click", () => {
-    if (!view.pendingCall) return;
-    const { handIdx, retreatUids } = view.pendingCall;
-    const r = E.callCard(state, "P", handIdx, retreatUids);
-    if (!r.ok) console.warn(r.err);
-    document.getElementById("modal").classList.add("hidden");
-    view.pendingCall = null;
-    view.selectedHandIdx = null;
-    render();
-  });
 
   // ---- Win overlay ----
   function showWinOverlay() {
@@ -388,14 +748,13 @@
     if (state.winner === "P") {
       title.textContent = "VICTORY";
       title.style.color = "var(--cyan)";
-      detail.textContent = `Player 達到 9 Rush Point`;
+      detail.textContent = `時間線滿 ${E.RUSH_TO_WIN} 張衝擊卡（or 對方牌組耗盡）`;
     } else if (state.winner === "A") {
       title.textContent = "DEFEAT";
       title.style.color = "var(--marvel-red)";
-      detail.textContent = `AI 達到 9 Rush Point`;
+      detail.textContent = `AI 時間線滿 ${E.RUSH_TO_WIN}`;
     } else {
       title.textContent = "DRAW";
-      detail.textContent = "";
     }
     ov.classList.remove("hidden");
   }
@@ -409,7 +768,6 @@
   // ---- AI turn ----
   function scheduleAI() {
     view.aiTimer = setTimeout(() => {
-      // Run one AI turn
       while (state.activeSide === "A" && !state.winner) {
         AI.aiTurn(state);
         render();
@@ -418,7 +776,7 @@
     }, 600);
   }
 
-  // ---- Log render ----
+  // ---- Log ----
   function renderLog() {
     const root = document.getElementById("log-list");
     root.innerHTML = "";
@@ -430,19 +788,20 @@
       if (entry.msg.startsWith("===") || entry.msg.includes("開始") || entry.msg.includes("結束")) div.classList.add("log-system");
       if (entry.msg.startsWith("[效果]")) div.classList.add("log-effect");
       if (entry.msg.startsWith("[效果未實裝]")) div.classList.add("log-stub");
-      if (entry.msg.includes("攻擊")) div.classList.add("log-battle");
-      if (entry.msg.includes("Rush Point")) div.classList.add("log-rp");
+      if (entry.msg.includes("攻") || entry.msg.includes("號召") || entry.msg.includes("戰基")) div.classList.add("log-battle");
+      if (entry.msg.includes("Rush Point") || entry.msg.includes("時間線")) div.classList.add("log-rp");
       div.textContent = entry.msg;
       root.appendChild(div);
     });
     root.scrollTop = root.scrollHeight;
   }
 
-  // ---- Master render ----
   function render() {
     renderHud();
-    renderBench();
-    renderField();
+    renderCounters();
+    renderTimelines();
+    renderBase();
+    renderBattleZones();
     renderHand();
     renderActions();
     renderLog();
