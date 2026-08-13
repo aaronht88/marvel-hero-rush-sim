@@ -1,11 +1,10 @@
 // =============================================================
-// Marvel Hero Rush TCG — App v3.0
-// UI binding + visual polish + audio cues + RP burst
-//   - full-bleed card art in all zones (front/back/wing/base/hand)
-//   - AI face-down card backs (★)
-//   - RP burst animation + sound on weakness attack
-//   - phase label flash on phase change
-//   - audio.js loaded before this script; window.MHR_AUDIO.play()
+// Marvel Hero Rush TCG — App v3.2
+//   - full-bleed card art, AI face-down backs (★), RP burst
+//   - phase label flash, audio.js cues
+//   - v3.2: drag-drop hand→zone, card-detail modal on click,
+//           deck import via base64 share code, fly-card animation,
+//           action counters in HUD phase help
 // =============================================================
 (function () {
   "use strict";
@@ -95,15 +94,20 @@
     const tb = document.querySelector(".battle-topbar");
     tb.classList.toggle("ai-turn", state.activeSide === "A");
     tb.classList.toggle("player-turn", state.activeSide === "P");
-    document.getElementById("hud-meta-p").textContent = `🎴 ${p.deckLabel}`;
-    document.getElementById("hud-meta-a").textContent = `🎴 ${a.deckLabel}`;
+    document.getElementById("hud-meta-p").innerHTML = `<span class="meta-chip">🎴 ${p.deckLabel}</span>`;
+    document.getElementById("hud-meta-a").innerHTML = `<span class="meta-chip">🎴 ${a.deckLabel}</span>`;
 
-    // phase help
+    // phase help + v3.2 action counters
     const ph = document.getElementById("phase-help");
     if (state.phase === "DRAW") ph.textContent = "抽 2 張（自動）";
     else if (state.phase === "ACTION") {
       const f = state.turnFlags.P || {};
-      ph.textContent = `行動階段 — 基地部署 1/${f.setDeployUsed ? 1 : 0} · 號召 ${f.callCount}/${E.maxCallCount(state,"P")}`;
+      const maxCall = E.maxCallCount(state, "P");
+      const usedSet = !!f.setDeployUsed;
+      ph.innerHTML = `<span class="action-counter">
+        <span class="pill ${usedSet ? 'flash' : ''}">基地部署 ${usedSet ? '1/1' : '0/1'}</span>
+        <span class="pill">號召 ${f.callCount}/${maxCall}</span>
+      </span>`;
     }
     else if (state.phase === "BATTLE") ph.textContent = "戰鬥階段：調整 → 攻擊（按先鋒→側翼→後衛順序）";
     else if (state.phase === "RESPOND") ph.textContent = "應對階段：輪流選擇 應對號召 / COUNTER / 不行動";
@@ -158,6 +162,22 @@
         zoneEl.classList.remove("has-card", "is-source", "is-target", "is-weakness");
         zoneEl.onclick = null;      // clear any leftover weakness handler
         zoneEl.style.cursor = "";
+        // v3.2: drag-drop handlers (own side, ACTION phase, empty slot → call target)
+        zoneEl.ondragover = (e) => {
+          if (state.activeSide !== "P" || state.phase !== "ACTION" || side !== "P" || card) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+          zoneEl.classList.add("drag-target");
+        };
+        zoneEl.ondragleave = () => zoneEl.classList.remove("drag-target");
+        zoneEl.ondrop = (e) => {
+          e.preventDefault();
+          zoneEl.classList.remove("drag-target");
+          if (state.activeSide !== "P" || state.phase !== "ACTION" || side !== "P" || card) return;
+          const handIdx = parseInt(e.dataTransfer.getData("text/plain"), 10);
+          if (isNaN(handIdx)) return;
+          onHandCallDirect(handIdx);
+        };
         if (card) {
           zoneEl.classList.add("has-card");
           zoneEl.appendChild(buildMiniCard(card, side, slot));
@@ -169,12 +189,6 @@
             if (targets.some(t => t.kind === "weakness" && t.slot === slot)) {
               zoneEl.classList.add("is-weakness");
               if (state.activeSide === "P") zoneEl.classList.add("is-target");
-              // BUGFIX: empty zone (破綻) had NO click handler, so the
-              // player could never attack a weakness. Bind the zone click
-              // to resolve the attack against the weakness slot.
-              // Use .onclick (not addEventListener) — render() runs every
-              // state change, so addEventListener would stack duplicate
-              // handlers and fire the attack multiple times.
               zoneEl.style.cursor = "pointer";
               zoneEl.onclick = (e) => {
                 e.stopPropagation();
@@ -182,11 +196,16 @@
                 const t = E.attackableTargets(state, "P", view.attackerUid)
                   .find(x => x.kind === "weakness" && x.slot === slot);
                 if (!t) return;
-                const r = E.attack(state, "P", view.attackerUid, t);
-                if (!r.ok) console.warn(r.err);
-                SFX && SFX.play("attack"); // weakness attack — RP burst sound follows via checkRushPointBurst
-                view.attackerUid = null;
-                render();
+                // Animate: fly attack from attacker to target
+                const atkEl = document.querySelector(`.mat-p .mini-card[data-uid="${view.attackerUid}"]`);
+                if (atkEl) flyCard(atkEl, zoneEl);
+                setTimeout(() => {
+                  const r = E.attack(state, "P", view.attackerUid, t);
+                  if (!r.ok) console.warn(r.err);
+                  SFX && SFX.play("attack");
+                  view.attackerUid = null;
+                  render();
+                }, 280);
               };
             }
           }
@@ -304,7 +323,170 @@
     setTimeout(() => el.remove(), 1100);
   }
 
-  // ---- Hand render ----
+  // ---- v3.2: Fly card animation (from source el to target el) ----
+  function flyCard(fromEl, toEl) {
+    if (!fromEl || !toEl) return;
+    const fr = fromEl.getBoundingClientRect();
+    const tr = toEl.getBoundingClientRect();
+    const ghost = document.createElement("div");
+    ghost.className = "fly-card";
+    ghost.style.left = fr.left + "px";
+    ghost.style.top = fr.top + "px";
+    ghost.style.width = fr.width + "px";
+    ghost.style.height = fr.height + "px";
+    ghost.style.backgroundImage = window.getComputedStyle(fromEl.querySelector(".mc-art, .hc-art") || fromEl).backgroundImage;
+    ghost.style.backgroundSize = "100% 100%";
+    document.body.appendChild(ghost);
+    // Force reflow then animate via CSS (animation-name fly-to-target)
+    void ghost.offsetWidth;
+    ghost.style.left = (tr.left + tr.width / 2 - fr.width / 2) + "px";
+    ghost.style.top = (tr.top + tr.height / 2 - fr.height / 2) + "px";
+    setTimeout(() => ghost.remove(), 420);
+  }
+
+  // ---- v3.2: Card detail modal ----
+  function showCardDetail(card, handIdx) {
+    const modal = document.getElementById("card-detail");
+    modal.dataset.cardUid = card._uid;
+    modal.dataset.handIdx = handIdx != null ? String(handIdx) : "";
+    document.getElementById("detail-art").style.backgroundImage = `url("${DATA.artPath(card)}")`;
+    document.getElementById("detail-name").textContent = card.name || E.shortName(card);
+    const stats = document.getElementById("detail-stats");
+    const lv = card.level;
+    const pw = E.cardEffectivePower ? E.cardEffectivePower(state, "P", card) : DATA.numPower(card.power);
+    stats.innerHTML =
+      `<span class="detail-stat lv">Lv${lv}</span>` +
+      `<span class="detail-stat pw">P${pw}</span>` +
+      `<span class="detail-stat rg">R${DATA.numRange(card.attackRange)}</span>` +
+      `<span class="detail-stat attr-${card.attribute}">${card.attribute}</span>` +
+      `<span class="detail-stat">${card.rarity || "—"}</span>` +
+      `<span class="detail-stat">${card.feature || "—"}</span>`;
+    document.getElementById("detail-effect").textContent = card.effect || "";
+    // Hide action buttons when viewing non-hand cards
+    const callBtn = document.getElementById("detail-call");
+    const deployBtn = document.getElementById("detail-base-deploy");
+    if (handIdx != null) {
+      callBtn.style.display = "";
+      deployBtn.style.display = "";
+      const f = state.turnFlags.P || {};
+      const canCall = f.callCount < E.maxCallCount(state, "P");
+      callBtn.disabled = !canCall || state.phase !== "ACTION";
+      deployBtn.disabled = !canCall || state.phase !== "ACTION" || !!f.setDeployUsed;
+    } else {
+      callBtn.style.display = "none";
+      deployBtn.style.display = "none";
+    }
+    const moveBtn = document.getElementById("detail-battle-move");
+    moveBtn.style.display = "none"; // future: implement move picker from detail modal
+    modal.classList.remove("hidden");
+  }
+  function hideCardDetail() {
+    document.getElementById("card-detail").classList.add("hidden");
+  }
+  document.getElementById("detail-close").addEventListener("click", hideCardDetail);
+  document.getElementById("detail-ok").addEventListener("click", hideCardDetail);
+  document.getElementById("detail-call").addEventListener("click", () => {
+    const idx = parseInt(document.getElementById("card-detail").dataset.handIdx || "-1", 10);
+    if (idx < 0) return;
+    hideCardDetail();
+    onHandCallDirect(idx);
+  });
+  document.getElementById("detail-base-deploy").addEventListener("click", () => {
+    const idx = parseInt(document.getElementById("card-detail").dataset.handIdx || "-1", 10);
+    if (idx < 0) return;
+    hideCardDetail();
+    // Animate then call setDeploy
+    const handEl = document.querySelector(`.hand-card[data-uid="${state.players.P.hand[idx]?._uid}"]`);
+    const baseZone = document.querySelector('.mat-p .zone-base');
+    if (handEl && baseZone) flyCard(handEl, baseZone);
+    setTimeout(() => {
+      const r = E.setDeploy(state, "P", idx);
+      if (!r.ok) console.warn(r.err);
+      SFX && SFX.play("deploy");
+      render();
+    }, 320);
+  });
+
+  // ---- v3.2: Deck import via base64 share code ----
+  function showImportOverlay() {
+    document.getElementById("import-code").value = "";
+    document.getElementById("import-status").textContent = "";
+    document.getElementById("import-status").className = "import-status";
+    document.getElementById("import-overlay").classList.remove("hidden");
+  }
+  function hideImportOverlay() {
+    document.getElementById("import-overlay").classList.add("hidden");
+  }
+  function loadImportedDeck(code) {
+    try {
+      const json = decodeURIComponent(escape(atob(code.trim())));
+      const pairs = JSON.parse(json);
+      if (!Array.isArray(pairs)) throw new Error("格式錯誤");
+      // Validate shape [[card_no, qty], ...]
+      let total = 0;
+      const cardList = pairs.map(([cn, q]) => {
+        if (typeof cn !== "string" || typeof q !== "number") throw new Error("card entry 格式錯誤");
+        total += q;
+        return DATA.CARDS_BY_NO[cn] || DATA.CARDS_BY_NO[cn.replace(/-V\d+$/, "")];
+      });
+      // Check all resolved
+      const missing = pairs.filter(([cn], i) => !cardList[i]);
+      if (missing.length > 0) {
+        const status = document.getElementById("import-status");
+        status.textContent = `❌ 找不到咗 ${missing.length} 張卡：${missing.slice(0, 5).map(([cn]) => cn).join(", ")}${missing.length > 5 ? "..." : ""}`;
+        status.className = "import-status bad";
+        return false;
+      }
+      // Validate rules (50 cards, max 3 same name)
+      if (total !== 50) {
+        const status = document.getElementById("import-status");
+        status.textContent = `❌ Deck 大小不正確：${total} 張（需要 50 張）`;
+        status.className = "import-status bad";
+        return false;
+      }
+      // Register as deck
+      const deckName = "Imported_" + Date.now().toString(36);
+      DATA.DECKS[deckName] = pairs.map(([cn, q]) => [cn, q]);
+      // Build deck label
+      const p = state.players.P;
+      const colorSet = new Set();
+      pairs.forEach(([cn]) => {
+        const c = DATA.cardsByNo[cn];
+        if (c) colorSet.add(c.attribute);
+      });
+      const colorLabels = { Red: "紅", Yellow: "黃", Blue: "藍", Green: "綠" };
+      const colStr = [...colorSet].map(c => `<span class="color-chip ${c}">${colorLabels[c] || c}</span>`).join("");
+      const status = document.getElementById("import-status");
+      status.innerHTML = `✅ 匯入成功！${total} 張卡 · ${colStr} · 對戰開始！`;
+      status.className = "import-status ok";
+      // Auto-start with imported deck
+      setTimeout(() => {
+        hideImportOverlay();
+        view._chosenDeck = deckName;
+        startBattle();
+      }, 1200);
+      return true;
+    } catch (e) {
+      const status = document.getElementById("import-status");
+      status.textContent = `❌ 解碼失敗：${e.message}`;
+      status.className = "import-status bad";
+      return false;
+    }
+  }
+  document.getElementById("btn-import").addEventListener("click", showImportOverlay);
+  document.getElementById("import-cancel").addEventListener("click", hideImportOverlay);
+  document.getElementById("import-load").addEventListener("click", () => {
+    const code = document.getElementById("import-code").value;
+    if (!code.trim()) {
+      const status = document.getElementById("import-status");
+      status.textContent = "請貼上 share code";
+      status.className = "import-status bad";
+      return;
+    }
+    loadImportedDeck(code);
+  });
+
+  // ---- Hand render (v3.2: draggable + click for detail) ----
   function renderHand() {
     const root = document.getElementById("hand-list");
     root.innerHTML = "";
@@ -314,6 +496,7 @@
       div.className = "hand-card";
       div.dataset.uid = c._uid;
       div.dataset.attr = c.attribute;
+      div.draggable = true;  // v3.2: enable HTML5 drag-drop
       const f = state.turnFlags.P || {};
       const canCall = f.callCount < E.maxCallCount(state, "P");
       if (!canCall) div.classList.add("unplayable");
@@ -337,9 +520,57 @@
       name.textContent = E.shortName(c);
       div.appendChild(name);
 
-      div.addEventListener("click", () => onHandClick(i));
+      // v3.2: drag/drop
+      div.addEventListener("dragstart", (e) => {
+        e.dataTransfer.setData("text/plain", String(i));
+        e.dataTransfer.effectAllowed = "move";
+        div.classList.add("dragging");
+        SFX && SFX.play("click");
+      });
+      div.addEventListener("dragend", () => {
+        div.classList.remove("dragging");
+        document.querySelectorAll(".zone.drag-target").forEach(z => z.classList.remove("drag-target"));
+      });
+
+      // v3.2: click → open card detail modal (single click only when turn active)
+      div.addEventListener("click", () => {
+        if (state.activeSide !== "P") return;
+        if (state.phase === "ACTION" && canCall) {
+          // ACTION phase: single click opens detail (use double-click or detail modal button to actually call)
+          showCardDetail(c, i);
+        } else {
+          showCardDetail(c, i);
+        }
+      });
+
+      // v3.2: double-click on hand card → directly call (Lv1-3) or open retreat modal (Lv4+)
+      div.addEventListener("dblclick", (e) => {
+        e.preventDefault();
+        if (state.activeSide !== "P" || state.phase !== "ACTION" || !canCall) return;
+        onHandCallDirect(i);
+      });
+
       root.appendChild(div);
     });
+  }
+
+  // v3.2: direct call from hand (used by double-click + detail modal button)
+  function onHandCallDirect(idx) {
+    const handCard = state.players.P.hand[idx];
+    if (!handCard) return;
+    if (handCard.level >= 4) {
+      showRetreatModal(idx, handCard);
+    } else {
+      // Animate: fly card from hand position to target zone
+      const handEl = document.querySelector(`.hand-card[data-uid="${handCard._uid}"]`);
+      const targetZone = document.querySelector('.mat-p [data-slot="front"]');
+      if (handEl && targetZone) flyCard(handEl, targetZone);
+      const r = E.callCard(state, "P", idx, []);
+      if (!r.ok) console.warn(r.err);
+      SFX && SFX.play("call", handCard.level);
+      view.selectedHandIdx = null;
+      render();
+    }
   }
 
   const implementedCache = new WeakMap();

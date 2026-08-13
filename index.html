@@ -2,12 +2,12 @@
 <html lang="zh-HK">
 <head>
 <meta charset="UTF-8">
-<title>Marvel Hero Rush TCG — Battle Simulator v3.1</title>
+<title>Marvel Hero Rush TCG — Battle Simulator v3.2</title>
 <meta name="viewport" content="width=1480">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=3.1">
+<link rel="stylesheet" href="css/styles.css?v=3.2">
 <!-- Card data is committed locally (js/cards.js) so the sim is
      self-contained and works under any GitHub Pages subpath. -->
 <script src="js/cards.js"></script>
@@ -22,9 +22,9 @@
       <div class="logo-mark">★</div>
       <div>
         <h1>MARVEL HERO RUSH <small>Battle Sim</small></h1>
-        <p class="subtitle">Marvel Hero Rush TCG · 模擬對戰 · v3.1 (官方規則對齊 · 遊戲級 UI · 正確對戰墊 layout)</p>
+        <p class="subtitle">Marvel Hero Rush TCG · 模擬對戰 · v3.2 (drag-drop · deck import · card detail · action anim)</p>
       </div>
-      <span class="version-badge">v3.1</span>
+      <span class="version-badge">v3.2</span>
       <button id="btn-sound-toggle" class="sound-toggle" title="音效切換">音效</button>
     </div>
   </header>
@@ -34,6 +34,7 @@
     <div id="deck-picker" class="deck-picker"></div>
     <div class="setup-actions">
       <button id="btn-start" class="btn-primary" disabled>開始對戰</button>
+      <button id="btn-import" class="btn-action">📥 匯入 Deck</button>
       <a class="link-muted" href="README.md" target="_blank">README / 規則假設</a>
     </div>
   </main>
@@ -212,6 +213,45 @@
     </div>
   </div>
 
+  <!-- v3.2: Card detail modal (click any card to view stats/effect) -->
+  <div id="card-detail" class="modal hidden" data-card-uid="">
+    <div class="modal-card detail-card">
+      <button class="modal-close" id="detail-close">×</button>
+      <div class="detail-layout">
+        <div class="detail-art" id="detail-art"></div>
+        <div class="detail-info">
+          <div class="detail-name" id="detail-name"></div>
+          <div class="detail-stats" id="detail-stats"></div>
+          <div class="detail-effect" id="detail-effect"></div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-action" id="detail-call">號召到場</button>
+        <button class="btn-action" id="detail-base-deploy">基地部署</button>
+        <button class="btn-action" id="detail-battle-move">戰基移動</button>
+        <button class="btn-primary" id="detail-ok">關閉</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- v3.2: Deck import overlay -->
+  <div id="import-overlay" class="modal hidden">
+    <div class="modal-card import-card">
+      <div class="modal-title">匯入 Deck (Deck Builder share code)</div>
+      <div class="modal-body">
+        <p style="margin:0 0 10px;color:var(--muted);font-size:12px">
+          喺 Deck Builder 入面揀 deck → Copy Share Code → paste 落下面。Base64 解碼後載入 50 張 deck。
+        </p>
+        <textarea id="import-code" class="import-textarea" placeholder="e.g. W3siY2FyZF9ubyI6IkJQMDEtMDAxIiwicSI6M30s..."></textarea>
+        <div id="import-status" class="import-status"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-action" id="import-cancel">取消</button>
+        <button class="btn-primary" id="import-load">匯入並對戰</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Win overlay -->
   <div id="win-overlay" class="win-overlay hidden">
     <div class="win-card">
@@ -227,7 +267,7 @@
 <script src="js/engine.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/ai.js"></script>
-<script src="js/app.js?v=3.1"></script>
+<script src="js/app.js?v=3.2"></script>
 <script>
   // Wire sound toggle after DOM ready
   document.getElementById("btn-sound-toggle").addEventListener("click", () => {
