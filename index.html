@@ -2,9 +2,12 @@
 <html lang="zh-HK">
 <head>
 <meta charset="UTF-8">
-<title>Marvel Hero Rush TCG — Battle Simulator v0.2</title>
+<title>Marvel Hero Rush TCG — Battle Simulator v3.0</title>
 <meta name="viewport" content="width=1480">
-<link rel="stylesheet" href="css/styles.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css?v=3.0">
 <!-- Card data is committed locally (js/cards.js) so the sim is
      self-contained and works under any GitHub Pages subpath. -->
 <script src="js/cards.js"></script>
@@ -16,8 +19,13 @@
 <section id="setup-screen" class="screen visible">
   <header class="topbar">
     <div class="brand">
-      <h1>MARVEL HERO RUSH <small>Battle Sim</small></h1>
-      <p class="subtitle">Marvel Hero Rush TCG · 模擬對戰 · v0.2 (官方規則對齊)</p>
+      <div class="logo-mark">★</div>
+      <div>
+        <h1>MARVEL HERO RUSH <small>Battle Sim</small></h1>
+        <p class="subtitle">Marvel Hero Rush TCG · 模擬對戰 · v3.0 (官方規則對齊 · 遊戲級 UI)</p>
+      </div>
+      <span class="version-badge">v3.0</span>
+      <button id="btn-sound-toggle" class="sound-toggle" title="音效切換">音效</button>
     </div>
   </header>
   <main class="setup-main">
@@ -42,7 +50,7 @@
     <div class="turn-indicator">
       <div id="turn-num">回合 1</div>
       <div id="phase-label" class="phase-label">DRAW</div>
-      <div id="active-side" class="active-side">Player</div>
+      <div class="active-side"><span class="blink"></span><span id="active-side">Player</span></div>
     </div>
     <div class="hud hud-a">
       <span class="hud-label">AI</span>
@@ -53,7 +61,6 @@
 
   <!-- =============== AI half of the mat (top, faces down) =============== -->
   <div class="mat mat-ai" id="mat-ai">
-    <!-- For AI: 時間線 + 卡組 strip runs ABOVE the wing+back+front+base column -->
     <div class="mat-topstrip mat-topstrip-ai">
       <div class="zone zone-timeline" data-side="A" data-zone="timeline">
         <span class="zone-label">時間線 ⑦</span>
@@ -78,10 +85,7 @@
     </div>
 
     <div class="mat-body mat-body-ai">
-      <!-- Left column: 衝擊卡組 9 card face -->
-      <div class="mat-sidecol mat-sidecol-l">
-        <!-- (visually: 衝擊卡組 is to the left of BASE; for AI it's the leftmost column above the 3 battle zones) -->
-      </div>
+      <div class="mat-sidecol mat-sidecol-l"></div>
       <div class="mat-battlecol">
         <div class="battle-stack">
           <div class="zone zone-front" data-side="A" data-slot="front"><span class="zone-label">先鋒 ①</span></div>
@@ -107,20 +111,34 @@
 
   <!-- =============== Center: phase strip + log + action panel =============== -->
   <div class="center-strip">
-    <div class="phase-banner">
-      <span class="phase-pill" id="phase-pill">DRAW</span>
-      <span id="phase-help">回合開始：抽 2 張</span>
-    </div>
-    <div class="log-panel">
-      <div class="log-header">Battle Log</div>
-      <div id="log-list" class="log-list"></div>
+    <div>
+      <div class="phase-banner">
+        <span class="phase-pill" id="phase-pill">DRAW</span>
+        <span id="phase-help">回合開始：抽 2 張</span>
+      </div>
+      <div class="log-panel">
+        <div class="log-header">Battle Log</div>
+        <div id="log-list" class="log-list"></div>
+      </div>
     </div>
     <div class="action-panel" id="action-panel">
       <div class="action-row">
-        <button id="btn-set-deploy" class="btn-action" disabled>🃏 基地部署</button>
-        <button id="btn-battle-move" class="btn-action" disabled>↔ 戰基移動</button>
-        <button id="btn-attack" class="btn-action" disabled>⚔ 攻擊</button>
-        <button id="btn-end-turn" class="btn-action btn-end" disabled>結束回合 ▶</button>
+        <button id="btn-set-deploy" class="btn-action" disabled>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+          基地部署
+        </button>
+        <button id="btn-battle-move" class="btn-action" disabled>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8h12l-3-3M20 16H8l3 3"/></svg>
+          戰基移動
+        </button>
+        <button id="btn-attack" class="btn-action" disabled>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 4l6 6-10 10H4v-6z"/><path d="M13 5l6 6"/></svg>
+          攻擊
+        </button>
+        <button id="btn-end-turn" class="btn-action btn-end" disabled>
+          結束回合
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4l14 8-14 8z"/></svg>
+        </button>
       </div>
       <div class="action-hint" id="action-hint">…</div>
     </div>
@@ -207,7 +225,16 @@
 <!-- Order matters: data → engine → ai → app -->
 <script src="js/data.js"></script>
 <script src="js/engine.js"></script>
+<script src="js/audio.js"></script>
 <script src="js/ai.js"></script>
-<script src="js/app.js"></script>
+<script src="js/app.js?v=3.0"></script>
+<script>
+  // Wire sound toggle after DOM ready
+  document.getElementById("btn-sound-toggle").addEventListener("click", () => {
+    window.MHR_AUDIO.toggle();
+    window.MHR_AUDIO.refreshToggleUI();
+  });
+  window.MHR_AUDIO.refreshToggleUI();
+</script>
 </body>
 </html>

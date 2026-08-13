@@ -1,8 +1,12 @@
 /* =============================================================
-   Marvel Hero Rush TCG — Battle Simulator v0.2
-   Layout aligned to the official 對戰區域 (battle mat) from the
-   rulebook page 6: each player has 先鋒/側翼/後衛/基地 stacked
-   vertically, with 時間線/虛空/撤退/卡組/衝擊卡組 along the side.
+   Marvel Hero Rush TCG — Battle Simulator v3.0
+   Game-standard visual pass (2026-08-13, Aaron)
+   - Full-bleed card art in all zones (front/back/wing/base/hand)
+   - Polished emil-design motion: cubic-bezier eases, hover lift,
+     :active scale, reduced-motion guard, staggered fade-in
+   - SVG-rendered icons (no emoji), weakness pulse, range overlay,
+     Rush Point star-burst, attack fly-to-target
+   - Dark Sci-Fi / Tactical HUD theme carried from deck builder
    ============================================================= */
 :root {
   --bg: #050b14;
@@ -13,12 +17,16 @@
   --panel-3: #18294a;
   --border: #1e3354;
   --border-soft: #16273f;
+  --border-glow: #2a4d80;
   --text: #e9eff8;
   --muted: #8fa3bf;
+  --muted-2: #5a708a;
   --cyan: #00e5ff;
   --cyan-dim: rgba(0, 229, 255, .35);
   --marvel-red: #ec1d24;
+  --red-soft: rgba(236, 29, 36, .35);
   --gold: #fbbf24;
+  --gold-soft: rgba(251, 191, 36, .35);
   --ok: #3ddc84;
   --warn: #f5b82e;
   --bad: #ff5c5c;
@@ -26,14 +34,24 @@
   --yellow: #f0c000;
   --blue: #3d8bff;
   --green: #35c96a;
-  --slot-w: 110px;
-  --slot-h: 150px;
+
+  /* Sizing — card art larger than v0.2 for true game feel */
+  --slot-w: 128px;
+  --slot-h: 176px;
   --base-w: 110px;
-  --base-h: 78px;
-  --hand-w: 78px;
-  --hand-h: 110px;
-  --side-w: 84px;
-  --timeline-cell: 32px;
+  --base-h: 150px;
+  --hand-w: 102px;
+  --hand-h: 142px;
+  --side-w: 96px;
+  --timeline-cell: 36px;
+
+  /* Motion (emil-design) */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --t-fast: 140ms;
+  --t-base: 220ms;
+  --t-slow: 360ms;
 }
 
 * { box-sizing: border-box; }
@@ -47,6 +65,7 @@ body {
   color: var(--text);
   min-height: 100vh;
   position: relative;
+  overflow-x: hidden;
 }
 body::before {
   content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
@@ -55,8 +74,11 @@ body::before {
     linear-gradient(90deg, rgba(0, 229, 255, .045) 1px, transparent 1px);
   background-size: 44px 44px;
 }
+body::after {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.55) 100%);
+}
 
-/* ---------- Screen switcher ---------- */
 .screen { display: none; }
 .screen.visible { display: block; position: relative; z-index: 1; }
 
@@ -64,11 +86,22 @@ body::before {
 .topbar, .battle-topbar {
   position: relative; z-index: 2;
   display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 20px;
-  background: linear-gradient(180deg, rgba(14, 24, 44, .95), rgba(8, 15, 28, .92));
-  border-bottom: 1px solid var(--border);
-  box-shadow: 0 2px 24px rgba(0, 0, 0, .45), inset 0 -1px 0 rgba(0, 229, 255, .14);
+  padding: 10px 22px;
+  background: linear-gradient(180deg, rgba(14, 24, 44, .96), rgba(8, 15, 28, .94));
+  border-bottom: 1px solid var(--border-glow);
+  box-shadow: 0 2px 24px rgba(0, 0, 0, .55), inset 0 -1px 0 rgba(0, 229, 255, .18);
   gap: 12px;
+}
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand .logo-mark {
+  width: 38px; height: 38px;
+  background:
+    radial-gradient(circle at 30% 30%, #ffd44d 0%, #fbbf24 30%, #c2811a 100%);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: "Russo One", sans-serif;
+  color: #1a1a1a; font-size: 22px;
+  box-shadow: 0 0 16px rgba(251,191,36,.45), inset 0 -2px 4px rgba(0,0,0,.4);
 }
 .brand h1 {
   font-family: "Russo One", "Arial Black", sans-serif;
@@ -77,33 +110,92 @@ body::before {
 }
 .brand h1 small { color: var(--cyan); font-weight: 400; font-size: 12px; letter-spacing: 2.5px; margin-left: 6px; }
 .subtitle { margin: 3px 0 0; font-size: 11px; color: var(--muted); letter-spacing: .3px; }
+.version-badge {
+  font-family: "Russo One", sans-serif; font-size: 10px;
+  letter-spacing: 1px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(0,229,255,.15), rgba(0,229,255,.05));
+  border: 1px solid var(--cyan-dim);
+  color: var(--cyan);
+}
+.sound-toggle {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: "Russo One", sans-serif; font-size: 11px;
+  letter-spacing: 1px;
+  padding: 6px 12px;
+  border-radius: 16px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  cursor: pointer;
+  transition: border-color var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out);
+}
+.sound-toggle:hover { border-color: var(--cyan); color: var(--cyan); }
+.sound-toggle.muted { color: var(--muted-2); }
+.sound-toggle.muted::before { content: "🔇"; }
+.sound-toggle:not(.muted)::before { content: "🔊"; font-size: 12px; }
 
 /* ---------- Setup screen ---------- */
 .setup-main {
-  max-width: 880px; margin: 60px auto 0;
-  padding: 28px 32px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  max-width: 920px; margin: 60px auto 0;
+  padding: 32px 36px;
+  background: linear-gradient(180deg, var(--panel), rgba(8,15,28,.92));
+  border: 1px solid var(--border-glow);
+  border-radius: 10px;
   position: relative; z-index: 1;
+  box-shadow: 0 12px 48px rgba(0,0,0,.45), 0 0 0 1px rgba(0,229,255,.05) inset;
 }
-.setup-main h2 { margin: 0 0 6px; font-family: "Russo One", sans-serif; letter-spacing: 1px; }
+.setup-main::before {
+  content: ""; position: absolute; top: -1px; left: 20px; right: 20px; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  border-radius: 2px;
+}
+.setup-main h2 {
+  margin: 0 0 6px; font-family: "Russo One", sans-serif;
+  letter-spacing: 1px;
+  display: flex; align-items: center; gap: 10px;
+}
+.setup-main h2::before {
+  content: ""; width: 4px; height: 18px;
+  background: var(--cyan);
+  border-radius: 2px;
+}
 .muted { color: var(--muted); }
 .deck-picker {
   display: grid; grid-template-columns: repeat(2, 1fr);
   gap: 14px; margin: 22px 0;
 }
 .deck-card {
-  background: var(--panel-2);
+  background: linear-gradient(180deg, var(--panel-2), rgba(18,32,54,.7));
   border: 1px solid var(--border);
-  border-radius: 5px;
-  padding: 18px;
+  border-radius: 6px;
+  padding: 18px 20px;
   cursor: pointer;
-  transition: border-color .15s, transform .15s;
+  transition: border-color var(--t-fast) var(--ease-out),
+              transform var(--t-fast) var(--ease-out),
+              box-shadow var(--t-fast) var(--ease-out);
   position: relative;
+  overflow: hidden;
 }
-.deck-card:hover { border-color: var(--cyan); transform: translateY(-2px); }
-.deck-card.selected { border-color: var(--cyan); box-shadow: 0 0 12px var(--cyan-dim); }
+.deck-card::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(0,229,255,.06), transparent);
+  transform: translateX(-100%);
+  transition: transform var(--t-base) var(--ease-out);
+}
+.deck-card:hover {
+  border-color: var(--cyan);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,.4), 0 0 16px rgba(0,229,255,.15);
+}
+.deck-card:hover::before { transform: translateX(100%); }
+.deck-card:active { transform: scale(.98); transition-duration: 80ms; }
+.deck-card.selected {
+  border-color: var(--cyan);
+  box-shadow: 0 0 20px var(--cyan-dim), inset 0 0 0 1px var(--cyan);
+  background: linear-gradient(180deg, rgba(0,229,255,.06), var(--panel-2));
+}
 .deck-card .deck-title {
   font-family: "Russo One", sans-serif; font-size: 16px;
   letter-spacing: .5px; margin-bottom: 4px;
@@ -111,153 +203,244 @@ body::before {
 .deck-card .deck-meta { font-size: 11px; color: var(--muted); }
 .deck-card .deck-colors { margin-top: 10px; display: flex; gap: 6px; }
 .color-chip {
-  display: inline-block; padding: 2px 8px; border-radius: 3px;
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 9px; border-radius: 12px;
   font-size: 10px; letter-spacing: 1px; font-weight: 700;
   border: 1px solid currentColor;
+  background: rgba(0,0,0,.25);
 }
 .color-chip.Red { color: var(--red); }
 .color-chip.Yellow { color: var(--yellow); }
 .color-chip.Blue { color: var(--blue); }
 .color-chip.Green { color: var(--green); }
-.setup-actions { display: flex; gap: 12px; align-items: center; }
-.link-muted { color: var(--muted); font-size: 12px; }
+.color-chip::before {
+  content: ""; width: 6px; height: 6px; border-radius: 50%;
+  background: currentColor; box-shadow: 0 0 6px currentColor;
+}
+.setup-actions { display: flex; gap: 12px; align-items: center; margin-top: 4px; }
+.link-muted { color: var(--muted); font-size: 12px; text-decoration: none; border-bottom: 1px dotted var(--muted); }
+.link-muted:hover { color: var(--cyan); border-color: var(--cyan); }
 
 /* ---------- Battle HUD ---------- */
-.battle-topbar { gap: 24px; padding: 10px 24px; }
+.battle-topbar { gap: 16px; padding: 12px 22px; }
 .hud {
-  flex: 1; display: flex; align-items: center; gap: 12px;
-  padding: 8px 14px;
-  background: var(--panel-2);
+  flex: 1; display: flex; align-items: center; gap: 14px;
+  padding: 10px 16px;
+  background: linear-gradient(180deg, var(--panel-2), rgba(18,32,54,.7));
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 6px;
+  transition: border-color var(--t-base) var(--ease-out),
+              box-shadow var(--t-base) var(--ease-out);
+  position: relative;
+  overflow: hidden;
+}
+.hud::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0;
+  width: 3px; background: var(--cyan);
+  transition: background var(--t-base) var(--ease-out);
 }
 .hud.hud-a { flex-direction: row-reverse; }
+.hud.hud-a::before { left: auto; right: 0; background: var(--marvel-red); }
 .hud-label {
   font-family: "Russo One", sans-serif;
-  font-size: 12px; letter-spacing: 2px;
+  font-size: 12px; letter-spacing: 2.5px;
   color: var(--cyan);
 }
 .hud.hud-a .hud-label { color: var(--marvel-red); }
-.rp-bar {
-  position: relative; flex: 1; max-width: 220px;
-  height: 22px; background: var(--panel);
-  border: 1px solid var(--border);
+.hud-deck-tag {
+  font-family: "Russo One", sans-serif;
+  font-size: 10px; letter-spacing: 1.2px;
+  color: var(--muted);
+  padding: 3px 8px;
   border-radius: 3px;
+  background: rgba(0,0,0,.3);
+  border: 1px solid var(--border-soft);
+}
+.rp-bar {
+  position: relative; flex: 1; max-width: 240px;
+  height: 26px;
+  background: linear-gradient(180deg, rgba(0,0,0,.5), rgba(0,0,0,.25));
+  border: 1px solid var(--border-glow);
+  border-radius: 14px;
   overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.5);
 }
 .rp-fill {
   position: absolute; left: 0; top: 0; bottom: 0;
-  background: linear-gradient(90deg, var(--cyan-dim), var(--cyan));
-  transition: width .4s ease-out;
+  background: linear-gradient(90deg, var(--cyan), #00a8c4);
+  transition: width var(--t-slow) var(--ease-out);
   width: 0%;
+  box-shadow: 0 0 12px var(--cyan-dim);
 }
 .hud.hud-a .rp-fill {
-  background: linear-gradient(90deg, rgba(236,29,36,.35), var(--marvel-red));
+  background: linear-gradient(90deg, var(--marvel-red), #8a0d12);
+  box-shadow: 0 0 12px var(--red-soft);
 }
 .rp-text {
   position: absolute; inset: 0;
   display: flex; align-items: center; justify-content: center;
   font-family: "Russo One", sans-serif; font-size: 13px;
-  letter-spacing: 1px;
-  text-shadow: 0 0 6px rgba(0,0,0,.8);
+  letter-spacing: 1.5px;
+  text-shadow: 0 0 6px rgba(0,0,0,.9), 0 1px 2px rgba(0,0,0,.9);
 }
-.hud-meta { font-size: 11px; color: var(--muted); }
+.hud-meta {
+  font-family: "Russo One", sans-serif;
+  font-size: 10px; letter-spacing: 1.2px;
+  color: var(--muted);
+  display: flex; gap: 10px;
+  align-items: center;
+}
+.hud-meta .meta-chip {
+  padding: 3px 8px;
+  border-radius: 3px;
+  background: rgba(0,0,0,.35);
+  border: 1px solid var(--border-soft);
+}
 .turn-indicator {
-  display: flex; flex-direction: column; align-items: center;
-  padding: 0 20px;
-  min-width: 140px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 6px 22px;
+  min-width: 180px;
+  background: linear-gradient(180deg, rgba(251,191,36,.08), transparent);
+  border-top: 1px solid var(--gold-soft);
+  border-bottom: 1px solid var(--gold-soft);
 }
 .turn-indicator #turn-num {
-  font-family: "Russo One", sans-serif; font-size: 12px;
-  color: var(--muted); letter-spacing: 1px;
+  font-family: "Russo One", sans-serif; font-size: 11px;
+  color: var(--muted); letter-spacing: 2px;
+  text-transform: uppercase;
 }
 .phase-label {
-  font-family: "Russo One", sans-serif; font-size: 18px;
-  color: var(--gold); letter-spacing: 2px;
-  text-shadow: 0 0 12px rgba(251,191,36,.4);
+  font-family: "Russo One", sans-serif; font-size: 22px;
+  color: var(--gold); letter-spacing: 3px;
+  text-shadow: 0 0 12px rgba(251,191,36,.55);
+  transition: text-shadow var(--t-base) var(--ease-out);
+}
+.phase-label.flash { animation: phase-flash var(--t-slow) var(--ease-pop); }
+@keyframes phase-flash {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.18); text-shadow: 0 0 24px rgba(251,191,36,.85); }
+  100% { transform: scale(1); }
 }
 .active-side {
-  font-size: 11px; color: var(--cyan); letter-spacing: 2px;
+  font-family: "Russo One", sans-serif; font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
 }
-.battle-topbar.ai-turn .hud.hud-a { border-color: var(--cyan); box-shadow: 0 0 12px var(--cyan-dim); }
-.battle-topbar.player-turn .hud.hud-p { border-color: var(--cyan); box-shadow: 0 0 12px var(--cyan-dim); }
+.active-side .blink {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  margin-right: 6px;
+  box-shadow: 0 0 6px currentColor;
+  animation: blink 1.2s ease-in-out infinite;
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .25; }
+}
+.battle-topbar.ai-turn .hud.hud-a {
+  border-color: var(--marvel-red);
+  box-shadow: 0 0 16px var(--red-soft);
+}
+.battle-topbar.ai-turn .hud.hud-a::before { background: var(--marvel-red); box-shadow: 0 0 8px var(--marvel-red); }
+.battle-topbar.player-turn .hud.hud-p {
+  border-color: var(--cyan);
+  box-shadow: 0 0 16px var(--cyan-dim);
+}
+.battle-topbar.player-turn .hud.hud-p::before { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
 
 /* ============================================================
-   Battle mat layout (official 對戰區域)
-   ------------------------------------------------------------
-   .mat         = one player's half of the play surface
-     .mat-topstrip  = horizontal strip: 時間線 / 虛空 / 撤退 / 卡組 / 衝擊卡組
-     .mat-body      = vertical column: 3 battle zones (top→bottom)
-                      + base (under battle zones)
+   Battle mat layout (official 對戰區域) v3.0
    ============================================================ */
 .mat {
   position: relative; z-index: 1;
-  max-width: 1320px;
-  margin: 12px auto 0;
-  padding: 0 20px;
+  max-width: 1340px;
+  margin: 14px auto 0;
+  padding: 0 22px;
   display: flex; flex-direction: column;
   gap: 8px;
 }
 .mat-body {
   display: grid;
   grid-template-columns: var(--side-w) auto var(--side-w);
-  gap: 8px;
-  align-items: start;
+  gap: 10px;
+  align-items: stretch;
 }
 .mat-sidecol {
-  display: flex; flex-direction: column; gap: 6px;
+  display: flex; flex-direction: column; gap: 8px;
   min-height: 100%;
 }
 .mat-battlecol {
-  display: flex; flex-direction: column; gap: 8px;
+  display: flex; flex-direction: column; gap: 10px;
   min-width: 0;
 }
 
 .battle-stack {
-  display: flex; flex-direction: column; gap: 6px;
-  background: var(--panel);
+  display: flex; flex-direction: column; gap: 8px;
+  background: linear-gradient(180deg, var(--panel), rgba(8,15,28,.85));
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 8px;
+  border-radius: 8px;
+  padding: 10px;
+  position: relative;
 }
+.battle-stack::before, .battle-stack::after {
+  content: ""; position: absolute; width: 8px; height: 8px;
+  border: 1px solid var(--cyan-dim);
+}
+.battle-stack::before { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+.battle-stack::after { bottom: -1px; right: -1px; border-left: none; border-top: none; }
+
 .zone-wing-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px;
+  gap: 8px;
 }
 
-/* Top strip: 時間線 / 虛空 / 撤退 / 卡組 / 衝擊卡組 */
 .mat-topstrip {
   display: grid;
-  grid-template-columns: minmax(340px, 2fr) var(--side-w) var(--side-w) var(--side-w) var(--side-w);
-  gap: 6px;
+  grid-template-columns: minmax(360px, 2fr) var(--side-w) var(--side-w) var(--side-w) var(--side-w);
+  gap: 8px;
 }
 
-/* Battle mat zones (通用的 .zone) */
+/* ---- Zone base (shared) ---- */
 .zone {
   position: relative;
-  background: var(--panel-2);
+  background: linear-gradient(180deg, var(--panel-2), rgba(18,32,54,.5));
   border: 1px dashed var(--border-soft);
-  border-radius: 5px;
+  border-radius: 6px;
   padding: 6px;
   display: flex; align-items: center; justify-content: center;
-  transition: border-color .15s, box-shadow .15s;
+  transition: border-color var(--t-fast) var(--ease-out),
+              box-shadow var(--t-fast) var(--ease-out),
+              background var(--t-fast) var(--ease-out),
+              transform var(--t-fast) var(--ease-out);
 }
 .zone-label {
-  position: absolute; top: 3px; left: 5px;
-  font-size: 9px; color: var(--muted); letter-spacing: 1px;
+  position: absolute; top: 4px; left: 6px;
+  font-family: "Russo One", sans-serif;
+  font-size: 9px; color: var(--muted-2);
+  letter-spacing: 1.5px;
   pointer-events: none;
   text-transform: uppercase;
+  display: flex; align-items: center; gap: 4px;
+}
+.zone-label::before {
+  content: ""; width: 8px; height: 8px;
+  border: 1px solid var(--muted-2);
+  border-radius: 2px;
+  display: inline-block;
 }
 .zone-count {
-  font-family: "Russo One", sans-serif; font-size: 16px;
+  font-family: "Russo One", sans-serif; font-size: 18px;
   color: var(--text);
 }
 
-/* Battle zones sized as card cells */
+/* ---- Battle zones sized as card cells ---- */
 .zone-front, .zone-back {
   height: var(--slot-h);
-  min-width: calc(var(--slot-w) * 2 + 8px);
+  min-width: calc(var(--slot-w) * 2 + 12px);
 }
 .zone-wing {
   height: var(--slot-h);
@@ -265,79 +448,170 @@ body::before {
 }
 .zone-base {
   height: var(--base-h);
-  min-width: calc(var(--slot-w) * 2 + 8px);
+  min-width: calc(var(--slot-w) * 2 + 12px);
   display: flex; flex-direction: column; gap: 4px;
-  background: var(--panel-3);
+  background: linear-gradient(180deg, var(--panel-3), rgba(24,41,74,.6));
   border: 1px solid var(--border);
 }
 .base-slots {
   display: flex; flex-direction: row; gap: 4px;
   flex: 1;
-  padding: 4px 6px 0;
+  padding: 6px 8px 8px;
   overflow: hidden;
 }
 
-/* Side zones (手牌/撤退/虛空) — 數字 cell */
+/* ---- Side zones (deck counts) ---- */
 .zone-side {
-  height: 56px;
+  height: 64px;
   display: flex; flex-direction: column; gap: 2px;
   align-items: center; justify-content: center;
 }
 .zone-deck, .zone-rushdeck {
-  height: 56px;
+  height: 64px;
   display: flex; flex-direction: column; gap: 2px;
   align-items: center; justify-content: center;
+  position: relative;
 }
+.zone-deck::before, .zone-rushdeck::before {
+  content: ""; position: absolute; inset: 4px;
+  background-image:
+    repeating-linear-gradient(45deg,
+      transparent 0 4px,
+      rgba(0,229,255,.08) 4px 5px);
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+/* ---- Timeline (Rush Point track) — STAR BURST v3 ---- */
 .zone-timeline {
-  height: 80px;
+  height: 86px;
   display: flex; flex-direction: column;
   align-items: stretch; gap: 4px;
-  padding: 18px 8px 4px;
-  background: linear-gradient(180deg, rgba(251,191,36,.06), var(--panel-2));
-  border-color: rgba(251,191,36,.3);
+  padding: 18px 8px 6px;
+  background: linear-gradient(180deg, rgba(251,191,36,.10), var(--panel-2));
+  border-color: rgba(251,191,36,.35);
+  position: relative;
+}
+.zone-timeline::after {
+  content: "RUSH POINT"; position: absolute;
+  top: 4px; right: 6px;
+  font-family: "Russo One", sans-serif;
+  font-size: 8px; letter-spacing: 1.5px;
+  color: var(--gold-soft);
+  pointer-events: none;
 }
 .timeline-grid {
   display: grid;
   grid-template-columns: repeat(9, 1fr);
-  gap: 2px;
+  gap: 4px;
   flex: 1;
 }
 .timeline-cell {
+  position: relative;
   border: 1px dashed var(--border-soft);
-  border-radius: 2px;
-  background: rgba(0,0,0,.25);
+  border-radius: 4px;
+  background: rgba(0,0,0,.4);
   display: flex; align-items: center; justify-content: center;
   font-size: 10px;
   color: var(--muted);
+  overflow: hidden;
+  transition: border-color var(--t-fast) var(--ease-out),
+              transform var(--t-fast) var(--ease-pop);
 }
 .timeline-cell.filled {
-  background: linear-gradient(180deg, var(--gold), #b6811c);
+  background: radial-gradient(circle at 50% 50%, #ffe082 0%, var(--gold) 50%, #c2811a 100%);
   border: 1px solid var(--gold);
   color: #1a1a1a;
   font-weight: 700;
-  box-shadow: 0 0 6px rgba(251,191,36,.6);
+  box-shadow: 0 0 10px rgba(251,191,36,.7), inset 0 0 6px rgba(255,255,255,.4);
+  animation: star-pop var(--t-slow) var(--ease-pop);
+}
+.timeline-cell.filled::before {
+  content: "★"; font-size: 16px;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,.4));
+}
+@keyframes star-pop {
+  0%   { transform: scale(.2) rotate(-30deg); opacity: 0; }
+  60%  { transform: scale(1.3) rotate(8deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
 }
 
-/* Highlight target zones when in attack mode */
+/* ---- Range overlay (R visualization on zones) ---- */
+.zone.range-overlay::before {
+  content: "";
+  position: absolute; inset: 0;
+  border: 1px solid var(--cyan);
+  border-radius: 6px;
+  pointer-events: none;
+  box-shadow: 0 0 12px var(--cyan-dim), inset 0 0 8px rgba(0,229,255,.15);
+  animation: range-pulse 1.6s ease-in-out infinite;
+}
+.zone.range-overlay::after {
+  content: "R";
+  position: absolute;
+  top: 2px; right: 4px;
+  font-family: "Russo One", sans-serif;
+  font-size: 8px;
+  color: var(--cyan);
+  background: rgba(0,0,0,.7);
+  padding: 1px 4px;
+  border-radius: 2px;
+  letter-spacing: 1px;
+}
+@keyframes range-pulse {
+  0%, 100% { opacity: .55; }
+  50% { opacity: 1; }
+}
+
+/* ---- Zone highlight states ---- */
 .zone.is-target {
   border-color: var(--gold) !important;
-  box-shadow: 0 0 12px rgba(251,191,36,.4);
+  box-shadow: 0 0 14px rgba(251,191,36,.5), inset 0 0 12px rgba(251,191,36,.1);
   cursor: pointer;
   border-style: solid;
+  animation: target-pulse 1.2s ease-in-out infinite;
+}
+@keyframes target-pulse {
+  0%, 100% { box-shadow: 0 0 14px rgba(251,191,36,.5), inset 0 0 12px rgba(251,191,36,.1); }
+  50%      { box-shadow: 0 0 22px rgba(251,191,36,.75), inset 0 0 18px rgba(251,191,36,.2); }
 }
 .zone.is-source {
   border-color: var(--cyan) !important;
-  box-shadow: 0 0 12px var(--cyan-dim);
+  box-shadow: 0 0 14px var(--cyan-dim), inset 0 0 10px rgba(0,229,255,.1);
   border-style: solid;
 }
 .zone.is-weakness {
-  border-color: var(--marvel-red) !important;
+  border-color: rgba(236, 29, 36, .55) !important;
   border-style: dashed;
-  background: rgba(236,29,36,.05);
+  background:
+    radial-gradient(circle at center, rgba(236,29,36,.10), transparent 70%),
+    linear-gradient(180deg, var(--panel-2), rgba(18,32,54,.5));
   cursor: pointer;
+  animation: weakness-pulse 1.4s ease-in-out infinite;
 }
-.zone.is-weakness.is-target {
-  box-shadow: 0 0 14px rgba(236,29,36,.5);
+.zone.is-weakness::before {
+  content: "破綻"; /* 弱點 / weakness */
+  position: absolute;
+  bottom: 4px; left: 50%;
+  transform: translateX(-50%);
+  font-family: "Russo One", sans-serif;
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  color: rgba(236,29,36,.85);
+  background: rgba(0,0,0,.6);
+  padding: 2px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(236,29,36,.45);
+  pointer-events: none;
+}
+.zone.is-weakness.is-target::before {
+  color: var(--gold);
+  border-color: var(--gold);
+  background: rgba(0,0,0,.85);
+}
+@keyframes weakness-pulse {
+  0%, 100% { border-color: rgba(236,29,36,.45); box-shadow: 0 0 8px rgba(236,29,36,.2); }
+  50%      { border-color: rgba(236,29,36,.85); box-shadow: 0 0 18px rgba(236,29,36,.55); }
 }
 .zone.has-card {
   border-style: solid;
@@ -345,266 +619,556 @@ body::before {
   background: var(--panel-3);
 }
 
-/* Set-card (蓋卡) representation in base */
+/* ---- Set-card (蓋卡) in base ---- */
 .set-card {
-  width: 36px; height: 56px;
+  width: 42px; height: 64px;
   background:
-    repeating-linear-gradient(45deg, var(--panel) 0 6px, var(--panel-2) 6px 12px);
-  border: 1px solid var(--border-soft);
-  border-radius: 3px;
+    linear-gradient(135deg, rgba(0,229,255,.05) 25%, transparent 25%) -8px 0,
+    linear-gradient(225deg, rgba(0,229,255,.05) 25%, transparent 25%) -8px 0,
+    linear-gradient(315deg, rgba(0,229,255,.05) 25%, transparent 25%),
+    linear-gradient(45deg,  rgba(0,229,255,.05) 25%, transparent 25%),
+    repeating-linear-gradient(45deg, var(--panel) 0 4px, var(--panel-2) 4px 8px);
+  border: 1px solid var(--border);
+  border-radius: 4px;
   position: relative;
   display: flex; align-items: center; justify-content: center;
-  font-size: 10px; color: var(--muted);
+  font-family: "Russo One", sans-serif;
+  font-size: 9px; color: var(--cyan);
   cursor: pointer;
+  letter-spacing: 1px;
+  transition: border-color var(--t-fast) var(--ease-out),
+              transform var(--t-fast) var(--ease-out);
 }
-.set-card:hover { border-color: var(--cyan); }
+.set-card::before {
+  content: ""; position: absolute; inset: 3px;
+  border: 1px solid var(--border-soft);
+  border-radius: 2px;
+}
+.set-card:hover { border-color: var(--cyan); transform: translateY(-2px); }
+.set-card:active { transform: scale(.95); }
 
-/* Mini card (in battle zones) */
+/* ============================================================
+   Card (battle field mini-card) v3.0 — FULL-BLEED ART
+   ============================================================ */
 .mini-card {
   width: 100%; height: 100%;
   display: flex; flex-direction: column;
-  align-items: center; gap: 2px;
-  font-size: 10px;
-  text-align: center;
-  cursor: pointer;
   position: relative;
-}
-.mini-card img {
-  width: calc(var(--slot-w) - 24px);
-  height: calc(var(--slot-h) - 56px);
-  max-height: 95px;
-  object-fit: cover; border-radius: 3px;
+  cursor: pointer;
+  border-radius: 5px;
+  overflow: hidden;
+  transition: transform var(--t-fast) var(--ease-out),
+              box-shadow var(--t-fast) var(--ease-out);
+  background: var(--panel-3);
   border: 2px solid transparent;
+  animation: card-enter var(--t-base) var(--ease-pop);
 }
-.mini-card[data-attr="Red"] img { border-color: var(--red); }
-.mini-card[data-attr="Yellow"] img { border-color: var(--yellow); }
-.mini-card[data-attr="Blue"] img { border-color: var(--blue); }
-.mini-card[data-attr="Green"] img { border-color: var(--green); }
-.mini-card .mc-name {
-  font-family: "Russo One", sans-serif; font-size: 9px;
-  letter-spacing: .5px; color: var(--text);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  max-width: 100%;
+@keyframes card-enter {
+  0%   { transform: scale(.5) translateY(-20px); opacity: 0; }
+  60%  { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
 }
-.mini-card .mc-stats {
-  display: flex; gap: 4px; font-size: 9px;
-  color: var(--muted);
+.mini-card[data-attr="Red"]   { border-color: var(--red);   box-shadow: 0 0 12px rgba(226,54,54,.45); }
+.mini-card[data-attr="Yellow"]{ border-color: var(--yellow); box-shadow: 0 0 12px rgba(240,192,0,.45); }
+.mini-card[data-attr="Blue"]  { border-color: var(--blue);  box-shadow: 0 0 12px rgba(61,139,255,.45); }
+.mini-card[data-attr="Green"] { border-color: var(--green); box-shadow: 0 0 12px rgba(53,201,106,.45); }
+.mini-card:hover {
+  transform: translateY(-4px) scale(1.04);
+  z-index: 5;
 }
-.mini-card .mc-stats .lv { color: var(--gold); font-weight: 700; }
-.mini-card .mc-stats .pw { color: var(--cyan); font-weight: 700; }
-.mini-card.unimplemented { filter: grayscale(.4) brightness(.85); }
-.mini-card.unimplemented::after {
-  content: "效果未實裝";
-  position: absolute; bottom: -8px; right: 0;
-  font-size: 7px; padding: 1px 3px;
-  background: rgba(245,184,46,.15); color: var(--warn);
-  border: 1px solid var(--warn); border-radius: 2px;
+.mini-card:hover::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(180deg, transparent 40%, rgba(0,0,0,.55));
   pointer-events: none;
 }
+.mini-card.unimplemented { filter: grayscale(.4) brightness(.85); }
+.mini-card.unimplemented::before {
+  content: "效果未實裝";
+  position: absolute; bottom: 18px; right: 4px;
+  font-family: "Russo One", sans-serif;
+  font-size: 7px; padding: 2px 4px;
+  background: rgba(245,184,46,.85); color: #1a1a1a;
+  border-radius: 2px; letter-spacing: .5px;
+  z-index: 4;
+}
+.mini-card .mc-art {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: center top;
+  background-color: var(--panel-3);
+  z-index: 1;
+}
+.mini-card .mc-art::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0) 50%, rgba(0,0,0,.85) 100%);
+}
+.mini-card .mc-stats-overlay {
+  position: absolute; top: 4px; left: 4px; right: 4px;
+  display: flex; justify-content: space-between;
+  z-index: 3;
+  pointer-events: none;
+}
+.mini-card .mc-stat {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 24px; height: 24px;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-family: "Russo One", sans-serif;
+  font-size: 11px;
+  background: rgba(0,0,0,.78);
+  border: 1px solid rgba(255,255,255,.2);
+  letter-spacing: .5px;
+}
+.mc-stat.lv { color: var(--gold); border-color: var(--gold-soft); }
+.mc-stat.pw { color: var(--cyan); border-color: var(--cyan-dim); }
+.mc-stat.rg { color: var(--text); }
+.mini-card .mc-info {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 4px 6px 5px;
+  z-index: 3;
+  display: flex; flex-direction: column; gap: 1px;
+}
+.mini-card .mc-name {
+  font-family: "Russo One", sans-serif;
+  font-size: 9px;
+  letter-spacing: .4px;
+  color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-shadow: 0 1px 2px rgba(0,0,0,.95);
+}
+
+/* ---- AI face-down (back card) ---- */
+.mini-card.face-down {
+  border-color: var(--border);
+  box-shadow: 0 4px 14px rgba(0,0,0,.6);
+}
+.mini-card.face-down .mc-art {
+  background:
+    linear-gradient(135deg, var(--marvel-red) 0%, #6e0d12 100%);
+}
+.mini-card.face-down .mc-art::before {
+  content: ""; position: absolute; inset: 6px;
+  background:
+    radial-gradient(circle at center, #ffd44d 0%, var(--gold) 35%, transparent 70%);
+  opacity: .85;
+  border-radius: 50%;
+}
+.mini-card.face-down .mc-art::after {
+  content: "★"; position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 36px;
+  color: #1a1a1a;
+  z-index: 2;
+  filter: drop-shadow(0 0 8px rgba(255,255,255,.5));
+}
+.mini-card.face-down .mc-stats-overlay,
+.mini-card.face-down .mc-info { display: none; }
 
 /* ============================================================
    Center strip: phase + log + action panel
    ============================================================ */
 .center-strip {
   display: grid;
-  grid-template-columns: 1fr 360px;
+  grid-template-columns: 1fr 380px;
   gap: 14px;
-  max-width: 1320px;
-  margin: 12px auto;
-  padding: 0 20px;
+  max-width: 1340px;
+  margin: 14px auto;
+  padding: 0 22px;
   position: relative; z-index: 1;
 }
 .phase-banner {
-  display: flex; gap: 12px; align-items: center;
-  margin-bottom: 8px;
+  display: flex; gap: 14px; align-items: center;
+  margin-bottom: 10px;
+  padding: 8px 14px;
+  background: linear-gradient(180deg, var(--panel), rgba(8,15,28,.7));
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  position: relative;
+  overflow: hidden;
+}
+.phase-banner::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0;
+  width: 3px; background: var(--gold);
+  box-shadow: 0 0 8px var(--gold);
 }
 .phase-pill {
-  display: inline-block;
-  padding: 6px 14px;
-  font-family: "Russo One", sans-serif; font-size: 12px;
-  letter-spacing: 1.5px;
-  color: var(--bg);
-  background: var(--gold);
-  border-radius: 3px;
+  display: inline-flex; align-items: center;
+  padding: 6px 16px;
+  font-family: "Russo One", sans-serif; font-size: 13px;
+  letter-spacing: 2px;
+  color: #1a1a1a;
+  background: linear-gradient(180deg, var(--gold), #c2811a);
+  border-radius: 14px;
+  box-shadow: 0 0 12px var(--gold-soft);
 }
 #phase-help { font-size: 12px; color: var(--muted); }
 
 .log-panel {
-  background: var(--panel);
+  background: linear-gradient(180deg, var(--panel), rgba(8,15,28,.85));
   border: 1px solid var(--border);
   border-radius: 6px;
   display: flex; flex-direction: column;
   overflow: hidden;
-  min-height: 220px;
-  max-height: 320px;
+  min-height: 240px;
+  max-height: 340px;
+  position: relative;
 }
 .log-header {
-  padding: 8px 14px;
+  padding: 10px 16px;
   background: var(--panel-2);
   border-bottom: 1px solid var(--border);
   font-family: "Russo One", sans-serif; font-size: 12px;
-  letter-spacing: 1.5px; color: var(--cyan);
+  letter-spacing: 2px; color: var(--cyan);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.log-header::before {
+  content: "▣"; margin-right: 8px; opacity: .6;
 }
 .log-list {
   flex: 1; overflow-y: auto;
-  padding: 8px 14px;
-  font-size: 11px; line-height: 1.5;
+  padding: 10px 16px;
+  font-size: 11px; line-height: 1.6;
   font-family: "Consolas", "Menlo", monospace;
   color: var(--text);
+  scroll-behavior: smooth;
 }
-.log-list .log-line { padding: 1px 0; }
-.log-list .log-line.side-P::before { content: "▶ "; color: var(--cyan); }
-.log-list .log-line.side-A::before { content: "▶ "; color: var(--marvel-red); }
+.log-list .log-line {
+  padding: 2px 0;
+  border-bottom: 1px dotted rgba(255,255,255,.04);
+  animation: log-fade var(--t-base) var(--ease-out);
+}
+@keyframes log-fade {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.log-list .log-line.side-P { color: var(--cyan); }
+.log-list .log-line.side-A { color: #ff8a8a; }
+.log-list .log-line.side-P::before { content: "▶ "; opacity: .7; }
+.log-list .log-line.side-A::before { content: "▶ "; opacity: .7; }
 .log-list .log-line.log-system { color: var(--muted); font-style: italic; }
 .log-list .log-line.log-effect { color: var(--gold); }
 .log-list .log-line.log-stub { color: var(--warn); }
 .log-list .log-line.log-battle { color: var(--cyan); font-weight: 700; }
-.log-list .log-line.log-rp { color: var(--gold); font-weight: 700; }
+.log-list .log-line.log-rp {
+  color: var(--gold); font-weight: 700;
+  background: linear-gradient(90deg, rgba(251,191,36,.12), transparent);
+  margin: 4px -8px; padding: 4px 8px;
+  border-radius: 4px;
+  border-left: 2px solid var(--gold);
+}
 
 .action-panel {
-  background: var(--panel);
+  background: linear-gradient(180deg, var(--panel), rgba(8,15,28,.85));
   border: 1px solid var(--border);
   border-radius: 6px;
-  padding: 14px;
-  display: flex; flex-direction: column; gap: 10px;
+  padding: 16px;
+  display: flex; flex-direction: column; gap: 12px;
+  position: relative;
+}
+.action-panel::before {
+  content: ""; position: absolute;
+  top: -1px; right: 14px; width: 80px; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  border-radius: 2px;
 }
 .action-row { display: flex; gap: 8px; flex-wrap: wrap; }
-.action-hint { font-size: 11px; color: var(--muted); }
+.action-hint {
+  font-size: 11px; color: var(--muted);
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-soft);
+  letter-spacing: .2px;
+}
 
-/* ---------- Hand ---------- */
+/* ============================================================
+   Hand v3.0 — bigger cards, hover preview, range-aware selection
+   ============================================================ */
 .hand-area {
-  background: var(--panel);
+  background: linear-gradient(180deg, var(--panel), rgba(8,15,28,.92));
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 10px 14px;
-  max-width: 1320px;
-  margin: 0 auto 20px;
+  border-radius: 8px;
+  padding: 14px 18px;
+  max-width: 1340px;
+  margin: 0 auto 24px;
+  position: relative;
+}
+.hand-area::before {
+  content: ""; position: absolute;
+  top: -1px; left: 24px; width: 120px; height: 2px;
+  background: linear-gradient(90deg, var(--cyan), transparent);
+  border-radius: 2px;
 }
 .hand-label {
   font-family: "Russo One", sans-serif; font-size: 11px;
-  letter-spacing: 1.5px; color: var(--cyan);
-  margin-bottom: 6px;
+  letter-spacing: 2.5px; color: var(--cyan);
+  margin-bottom: 10px;
+  display: flex; align-items: center; gap: 8px;
 }
-.hand-list { display: flex; flex-wrap: wrap; gap: 8px; min-height: calc(var(--hand-h) + 8px); }
+.hand-label::before {
+  content: "▼"; color: var(--cyan-dim);
+  font-size: 10px;
+}
+.hand-list { display: flex; flex-wrap: wrap; gap: 10px; min-height: calc(var(--hand-h) + 12px); }
 .hand-card {
   width: var(--hand-w);
   background: var(--panel-2);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 4px;
-  cursor: pointer;
-  transition: transform .12s, border-color .12s;
-  display: flex; flex-direction: column; align-items: center; gap: 3px;
-}
-.hand-card:hover { transform: translateY(-4px); border-color: var(--cyan); }
-.hand-card.selected { border-color: var(--gold); box-shadow: 0 0 12px rgba(251,191,36,.4); }
-.hand-card.unplayable { opacity: .55; cursor: not-allowed; }
-.hand-card img {
-  width: calc(var(--hand-w) - 10px);
-  height: calc(var(--hand-h) - 36px);
-  object-fit: cover; border-radius: 2px;
   border: 2px solid transparent;
+  border-radius: 6px;
+  padding: 0;
+  cursor: pointer;
+  transition: transform var(--t-fast) var(--ease-out),
+              border-color var(--t-fast) var(--ease-out),
+              box-shadow var(--t-fast) var(--ease-out);
+  display: flex; flex-direction: column; align-items: stretch;
+  overflow: hidden;
+  position: relative;
 }
-.hand-card[data-attr="Red"] img { border-color: var(--red); }
-.hand-card[data-attr="Yellow"] img { border-color: var(--yellow); }
-.hand-card[data-attr="Blue"] img { border-color: var(--blue); }
-.hand-card[data-attr="Green"] img { border-color: var(--green); }
+.hand-card:hover {
+  transform: translateY(-8px);
+  z-index: 5;
+}
+.hand-card:active { transform: translateY(-3px) scale(.97); transition-duration: 80ms; }
+.hand-card[data-attr="Red"]   { border-color: var(--red); }
+.hand-card[data-attr="Yellow"]{ border-color: var(--yellow); }
+.hand-card[data-attr="Blue"]  { border-color: var(--blue); }
+.hand-card[data-attr="Green"] { border-color: var(--green); }
+.hand-card.selected {
+  border-color: var(--gold) !important;
+  box-shadow: 0 0 18px var(--gold-soft), 0 8px 24px rgba(0,0,0,.5);
+  transform: translateY(-12px);
+}
+.hand-card.unplayable { opacity: .45; cursor: not-allowed; filter: grayscale(.3); }
+.hand-card .hc-art {
+  width: 100%;
+  height: calc(var(--hand-h) - 38px);
+  background-size: cover; background-position: center top;
+  background-color: var(--panel-3);
+  position: relative;
+}
+.hand-card .hc-art::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(180deg, transparent 50%, rgba(0,0,0,.6));
+}
+.hand-card .hc-stats-overlay {
+  position: absolute; top: 4px; left: 4px;
+  display: flex; gap: 4px;
+  z-index: 3;
+}
 .hand-card .hc-name {
-  font-size: 9px; color: var(--text); text-align: center;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  max-width: 100%;
   font-family: "Russo One", sans-serif;
+  font-size: 9px;
+  padding: 4px 6px 5px;
+  text-align: center;
+  color: var(--text);
+  background: var(--panel-2);
+  letter-spacing: .3px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.hand-card .hc-stats {
-  display: flex; gap: 4px; font-size: 9px;
-  color: var(--muted);
-}
-.hand-card .hc-stats .lv { color: var(--gold); }
-.hand-card .hc-stats .pw { color: var(--cyan); }
 
-/* ---------- Buttons ---------- */
+/* ============================================================
+   Buttons
+   ============================================================ */
 .btn-primary, .btn-action {
   font-family: "Russo One", sans-serif; font-size: 12px;
   letter-spacing: 1.5px;
-  padding: 9px 14px;
-  border-radius: 4px;
+  padding: 10px 16px;
+  border-radius: 5px;
   border: 1px solid var(--border);
   cursor: pointer;
-  transition: background .12s, border-color .12s, transform .12s;
+  transition: background var(--t-fast) var(--ease-out),
+              border-color var(--t-fast) var(--ease-out),
+              transform var(--t-fast) var(--ease-out),
+              box-shadow var(--t-fast) var(--ease-out);
+  display: inline-flex; align-items: center; gap: 8px;
+  position: relative;
+  overflow: hidden;
 }
 .btn-primary {
   background: linear-gradient(180deg, var(--cyan), #0091a8);
   color: #00141a;
   border-color: var(--cyan);
+  font-size: 13px;
+  padding: 12px 24px;
 }
+.btn-primary::before {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.25), transparent);
+  transform: translateX(-100%);
+  transition: transform var(--t-base) var(--ease-out);
+}
+.btn-primary:hover:not(:disabled)::before { transform: translateX(100%); }
 .btn-primary:disabled {
   background: var(--panel-2); color: var(--muted);
   border-color: var(--border); cursor: not-allowed;
 }
-.btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 14px var(--cyan-dim); }
+.btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 20px var(--cyan-dim); }
+.btn-primary:active:not(:disabled) { transform: scale(.97); }
 
 .btn-action {
   background: var(--panel-2); color: var(--text);
   flex: 1;
-  min-width: 96px;
+  min-width: 110px;
+  justify-content: center;
 }
+.btn-action .icon { width: 18px; height: 18px; flex-shrink: 0; }
 .btn-action:disabled { opacity: .4; cursor: not-allowed; }
-.btn-action:hover:not(:disabled) { background: var(--panel-3); border-color: var(--cyan); }
-.btn-action.btn-end { background: linear-gradient(180deg, var(--marvel-red), #8a0d12); border-color: var(--marvel-red); color: #fff; }
-.btn-action.btn-end:hover:not(:disabled) { box-shadow: 0 4px 14px rgba(236,29,36,.4); }
+.btn-action:hover:not(:disabled) {
+  background: var(--panel-3);
+  border-color: var(--cyan);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,.3);
+}
+.btn-action:active:not(:disabled) { transform: scale(.96); transition-duration: 80ms; }
+.btn-action.btn-end {
+  background: linear-gradient(180deg, var(--marvel-red), #8a0d12);
+  border-color: var(--marvel-red); color: #fff;
+}
+.btn-action.btn-end:hover:not(:disabled) { box-shadow: 0 6px 16px rgba(236,29,36,.45); }
 
-/* ---------- Modal ---------- */
+/* ============================================================
+   Modal
+   ============================================================ */
 .modal {
   position: fixed; inset: 0;
-  background: rgba(0,0,0,.7);
+  background: rgba(0,0,0,.78);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   display: flex; align-items: center; justify-content: center;
   z-index: 100;
+  animation: modal-overlay-in var(--t-base) var(--ease-out);
+}
+@keyframes modal-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 .modal.hidden { display: none; }
 .modal-card {
-  background: var(--panel);
+  background: linear-gradient(180deg, var(--panel), rgba(8,15,28,.95));
   border: 1px solid var(--cyan);
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 24px;
-  min-width: 380px;
-  max-width: 520px;
-  box-shadow: 0 0 24px var(--cyan-dim);
+  min-width: 400px;
+  max-width: 560px;
+  box-shadow: 0 24px 60px rgba(0,0,0,.7), 0 0 30px var(--cyan-dim);
+  position: relative;
+  animation: modal-card-in var(--t-base) var(--ease-pop);
 }
-.modal-title { font-family: "Russo One", sans-serif; font-size: 16px; margin-bottom: 12px; color: var(--cyan); }
-.modal-body { font-size: 13px; line-height: 1.6; margin-bottom: 16px; }
+@keyframes modal-card-in {
+  from { transform: scale(.92) translateY(10px); opacity: 0; }
+  to   { transform: scale(1) translateY(0); opacity: 1; }
+}
+.modal-card::before, .modal-card::after {
+  content: ""; position: absolute; width: 12px; height: 12px;
+  border: 2px solid var(--cyan);
+}
+.modal-card::before { top: -2px; left: -2px; border-right: none; border-bottom: none; }
+.modal-card::after { bottom: -2px; right: -2px; border-left: none; border-top: none; }
+.modal-title {
+  font-family: "Russo One", sans-serif; font-size: 16px;
+  margin-bottom: 14px; color: var(--cyan);
+  display: flex; align-items: center; gap: 8px;
+}
+.modal-title::before {
+  content: ""; width: 4px; height: 16px;
+  background: var(--cyan);
+  border-radius: 2px;
+  box-shadow: 0 0 8px var(--cyan);
+}
+.modal-body { font-size: 13px; line-height: 1.6; margin-bottom: 18px; }
 .modal-body .retreat-option {
-  display: block; padding: 8px 10px; margin: 4px 0;
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px; margin: 5px 0;
   background: var(--panel-2); border: 1px solid var(--border);
-  border-radius: 4px; cursor: pointer;
+  border-radius: 5px; cursor: pointer;
+  transition: border-color var(--t-fast) var(--ease-out),
+              background var(--t-fast) var(--ease-out);
 }
-.modal-body .retreat-option:hover { border-color: var(--cyan); }
+.modal-body .retreat-option:hover { border-color: var(--cyan); background: var(--panel-3); }
 .modal-body .retreat-option.selected { border-color: var(--gold); background: var(--panel-3); }
 .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
 
-/* ---------- Win overlay ---------- */
+/* ============================================================
+   Win overlay
+   ============================================================ */
 .win-overlay {
   position: fixed; inset: 0;
-  background: rgba(0,0,0,.85);
+  background: radial-gradient(ellipse at center, rgba(0,0,0,.5), rgba(0,0,0,.92));
   display: flex; align-items: center; justify-content: center;
   z-index: 200;
+  animation: modal-overlay-in var(--t-slow) var(--ease-out);
 }
 .win-overlay.hidden { display: none; }
 .win-card {
-  background: var(--panel);
+  background: linear-gradient(180deg, var(--panel), rgba(8,15,28,.98));
   border: 2px solid var(--gold);
-  border-radius: 8px;
-  padding: 40px 60px;
+  border-radius: 12px;
+  padding: 48px 80px;
   text-align: center;
-  box-shadow: 0 0 48px rgba(251,191,36,.4);
+  box-shadow: 0 0 80px var(--gold-soft), 0 24px 60px rgba(0,0,0,.7);
+  animation: win-card-in var(--t-slow) var(--ease-pop);
+  position: relative;
 }
+@keyframes win-card-in {
+  from { transform: scale(.7); opacity: 0; }
+  60%  { transform: scale(1.08); opacity: 1; }
+  to   { transform: scale(1); opacity: 1; }
+}
+.win-card::before, .win-card::after {
+  content: ""; position: absolute; width: 24px; height: 24px;
+  border: 3px solid var(--gold);
+}
+.win-card::before { top: -3px; left: -3px; border-right: none; border-bottom: none; }
+.win-card::after { bottom: -3px; right: -3px; border-left: none; border-top: none; }
 .win-title {
-  font-family: "Russo One", sans-serif; font-size: 32px;
-  letter-spacing: 3px; color: var(--gold);
-  margin-bottom: 12px;
+  font-family: "Russo One", sans-serif; font-size: 42px;
+  letter-spacing: 6px; color: var(--gold);
+  margin-bottom: 14px;
+  text-shadow: 0 0 24px var(--gold-soft);
 }
-.win-detail { font-size: 14px; color: var(--muted); margin-bottom: 24px; }
+.win-detail { font-size: 14px; color: var(--muted); margin-bottom: 28px; }
 
-/* ---------- Scrollbar ---------- */
+/* ============================================================
+   Rush Point burst (overlay element added by app.js)
+   ============================================================ */
+.rp-burst {
+  position: fixed;
+  pointer-events: none;
+  font-family: "Russo One", sans-serif;
+  font-size: 48px;
+  color: var(--gold);
+  text-shadow: 0 0 24px var(--gold), 0 0 48px rgba(251,191,36,.6);
+  z-index: 150;
+  animation: rp-burst-anim 1s var(--ease-pop) forwards;
+}
+@keyframes rp-burst-anim {
+  0%   { transform: scale(.3) translateY(0); opacity: 0; }
+  40%  { transform: scale(1.4) translateY(-30px); opacity: 1; }
+  100% { transform: scale(1.8) translateY(-100px); opacity: 0; }
+}
+
+/* ============================================================
+   Scrollbar
+   ============================================================ */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-glow); }
 ::-webkit-scrollbar-track { background: var(--panel-2); }
+
+/* ============================================================
+   Reduced motion + hover gating
+   ============================================================ */
+@media (hover: hover) and (pointer: fine) {
+  .deck-card:hover, .hand-card:hover, .mini-card:hover, .btn-action:hover:not(:disabled),
+  .btn-primary:hover:not(:disabled), .set-card:hover {
+    /* hover effects already above; this gate just keeps touch devices flat */
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+  .mini-card { animation: none; }
+  .timeline-cell.filled { animation: none; }
+  .zone.is-weakness, .zone.is-target { animation: none; }
+}

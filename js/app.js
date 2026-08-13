@@ -1,10 +1,11 @@
 // =============================================================
-// Marvel Hero Rush TCG — App v0.2
-// UI binding. v0.2 highlights:
-//   - new battle-mat layout (時間線 + side zones)
-//   - 4 種行動按鈕: 基地部署 / 號召(手牌) / 戰基移動 / 攻擊
-//   - 攻擊目標 = 角色 或 破綻（空戰區）
-//   - COUNTER·ACTI prompt on player-defender
+// Marvel Hero Rush TCG — App v3.0
+// UI binding + visual polish + audio cues + RP burst
+//   - full-bleed card art in all zones (front/back/wing/base/hand)
+//   - AI face-down card backs (★)
+//   - RP burst animation + sound on weakness attack
+//   - phase label flash on phase change
+//   - audio.js loaded before this script; window.MHR_AUDIO.play()
 // =============================================================
 (function () {
   "use strict";
@@ -12,6 +13,7 @@
   const E = window.MHR_ENGINE;
   const AI = window.MHR_AI;
   const DATA = window.MHR_DATA;
+  const SFX = window.MHR_AUDIO;
 
   let state = null;
   let view = {
@@ -60,12 +62,16 @@
     state = E.initGame(deck, aiDeck);
     // initGame 設 phase=DRAW 抽 2 張 → ACTION
     E.startTurn(state);
+    SFX && SFX.play("draw"); // v3.0: opening draw cue
     view.selectedHandIdx = null;
     view.attackerUid = null;
     view.pendingCall = null;
     view.pendingSetDeploy = null;
     view.moveFromUid = null;
     view.pendingCounter = null;
+    _lastPhase = null;
+    _lastWinner = null;
+    _lastRpCount = { P: 0, A: 0 };
 
     document.getElementById("setup-screen").classList.remove("visible");
     document.getElementById("battle-screen").classList.add("visible");
@@ -178,6 +184,7 @@
                 if (!t) return;
                 const r = E.attack(state, "P", view.attackerUid, t);
                 if (!r.ok) console.warn(r.err);
+                SFX && SFX.play("attack"); // weakness attack — RP burst sound follows via checkRushPointBurst
                 view.attackerUid = null;
                 render();
               };
@@ -232,27 +239,69 @@
     const pow = E.cardEffectivePower(state, side, card);
     if (!isEffectImplemented(card)) div.classList.add("unimplemented");
 
-    const img = document.createElement("img");
-    img.src = DATA.artPath(card);
-    img.alt = card.name;
-    img.onerror = () => { img.style.background = "#222"; img.alt = "🎴"; };
-    div.appendChild(img);
+    // Face-down for AI side
+    if (side === "A") {
+      div.classList.add("face-down");
+    } else {
+      const art = document.createElement("div");
+      art.className = "mc-art";
+      const artUrl = DATA.artPath(card);
+      art.style.backgroundImage = `url("${artUrl}")`;
+      div.appendChild(art);
 
-    const name = document.createElement("div");
-    name.className = "mc-name";
-    name.textContent = E.shortName(card);
-    div.appendChild(name);
+      const statsOverlay = document.createElement("div");
+      statsOverlay.className = "mc-stats-overlay";
+      statsOverlay.innerHTML =
+        `<span class="mc-stat lv">Lv${card.level}</span>` +
+        `<span class="mc-stat pw">P${pow}</span>` +
+        `<span class="mc-stat rg">R${DATA.numRange(card.attackRange)}</span>`;
+      div.appendChild(statsOverlay);
 
-    const stats = document.createElement("div");
-    stats.className = "mc-stats";
-    stats.innerHTML = `<span class="lv">Lv${card.level}</span><span class="pw">P${pow}</span><span class="rg">R${DATA.numRange(card.attackRange)}</span>`;
-    div.appendChild(stats);
+      const info = document.createElement("div");
+      info.className = "mc-info";
+      const name = document.createElement("div");
+      name.className = "mc-name";
+      name.textContent = E.shortName(card);
+      info.appendChild(name);
+      div.appendChild(info);
+    }
 
     div.addEventListener("click", (e) => {
       e.stopPropagation();
       onZoneCardClick(side, slot, card);
     });
     return div;
+  }
+
+  // ---- Rush Point burst ----
+  let _lastRpCount = { P: 0, A: 0 };
+  function checkRushPointBurst(side) {
+    const tl = state.players[side].timeline.length;
+    if (tl > _lastRpCount[side]) {
+      // Burst at the timeline cell
+      const timelineEl = document.getElementById("timeline-" + side);
+      if (timelineEl) {
+        const cell = timelineEl.children[tl - 1];
+        if (cell) {
+          const rect = cell.getBoundingClientRect();
+          burstAt(rect.left + rect.width / 2, rect.top + rect.height / 2,
+                  side === "P" ? "+1 RUSH POINT" : "AI +1 RP",
+                  side === "P" ? "#fbbf24" : "#ff8a8a");
+        }
+      }
+      SFX && SFX.play("weakness");
+    }
+    _lastRpCount[side] = tl;
+  }
+  function burstAt(x, y, text, color) {
+    const el = document.createElement("div");
+    el.className = "rp-burst";
+    el.textContent = text;
+    if (color) el.style.color = color;
+    el.style.left = (x - 60) + "px";
+    el.style.top = (y - 30) + "px";
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1100);
   }
 
   // ---- Hand render ----
@@ -271,21 +320,22 @@
       if (view.selectedHandIdx === i) div.classList.add("selected");
       if (!isEffectImplemented(c)) div.classList.add("unimplemented");
 
-      const img = document.createElement("img");
-      img.src = DATA.artPath(c);
-      img.alt = c.name;
-      img.onerror = () => { img.style.background = "#222"; img.alt = "🎴"; };
-      div.appendChild(img);
+      const art = document.createElement("div");
+      art.className = "hc-art";
+      art.style.backgroundImage = `url("${DATA.artPath(c)}")`;
+      div.appendChild(art);
+
+      const statsOverlay = document.createElement("div");
+      statsOverlay.className = "hc-stats-overlay";
+      statsOverlay.innerHTML =
+        `<span class="mc-stat lv">Lv${c.level}</span>` +
+        `<span class="mc-stat pw">P${DATA.numPower(c.power)}</span>`;
+      div.appendChild(statsOverlay);
 
       const name = document.createElement("div");
       name.className = "hc-name";
       name.textContent = E.shortName(c);
       div.appendChild(name);
-
-      const stats = document.createElement("div");
-      stats.className = "hc-stats";
-      stats.innerHTML = `<span class="lv">Lv${c.level}</span><span class="pw">P${DATA.numPower(c.power)}</span>`;
-      div.appendChild(stats);
 
       div.addEventListener("click", () => onHandClick(i));
       root.appendChild(div);
@@ -392,6 +442,7 @@
   // ---- Button handlers ----
   document.getElementById("btn-set-deploy").addEventListener("click", () => {
     if (state.activeSide !== "P" || state.phase !== "ACTION") return;
+    SFX && SFX.play("click");
     showSetDeployPicker();
   });
   document.getElementById("btn-battle-move").addEventListener("click", () => {
@@ -544,8 +595,11 @@
     const modal = document.getElementById("modal");
     if (view.pendingCall) {
       const { handIdx, retreatUids } = view.pendingCall;
+      const handCard = state.players.P.hand[handIdx];
+      const lv = handCard ? handCard.level : 1;
       const r = E.callCard(state, "P", handIdx, retreatUids);
       if (!r.ok) console.warn(r.err);
+      SFX && SFX.play("call", lv);
       modal.classList.add("hidden");
       view.pendingCall = null;
       view.selectedHandIdx = null;
@@ -555,6 +609,7 @@
     if (view.pendingSetDeploy) {
       const r = E.setDeploy(state, "P", view.pendingSetDeploy.handIdx);
       if (!r.ok) console.warn(r.err);
+      SFX && SFX.play("deploy");
       modal.classList.add("hidden");
       view.pendingSetDeploy = null;
       render();
@@ -563,6 +618,7 @@
     if (view.moveFromUid) {
       const r = E.battleBaseMove(state, "P", view.moveFromUid, !!view._moveToBase);
       if (!r.ok) console.warn(r.err);
+      SFX && SFX.play("click");
       modal.classList.add("hidden");
       view.moveFromUid = null;
       view._moveToBase = null;
@@ -570,6 +626,7 @@
       return;
     }
     if (view.attackerUid && state.phase === "BATTLE") {
+      SFX && SFX.play("click");
       modal.classList.add("hidden");
       render();
       return;
@@ -594,6 +651,7 @@
       // direct call (Lv1-3)
       const r = E.callCard(state, "P", idx, []);
       if (!r.ok) console.warn(r.err);
+      SFX && SFX.play("call", handCard.level); // v3.0
       view.selectedHandIdx = null;
       render();
     }
@@ -655,6 +713,12 @@
       offerCounterPrompt(view.attackerUid, t);
     } else {
       E.attack(state, state.activeSide, view.attackerUid, t);
+      // v3.0: attack SFX
+      if (t.kind === "weakness") {
+        SFX && SFX.play("attack"); // RP burst sound triggers separately via checkRushPointBurst
+      } else {
+        SFX && SFX.play("hit");
+      }
       view.attackerUid = null;
       render();
     }
@@ -769,6 +833,8 @@
   function scheduleAI() {
     view.aiTimer = setTimeout(() => {
       while (state.activeSide === "A" && !state.winner) {
+        // v3.0: opening-draw sound when AI's turn starts (state.phase becomes DRAW at start)
+        const prevPhase = state.phase;
         AI.aiTurn(state);
         render();
         if (state.winner) break;
@@ -805,6 +871,39 @@
     renderHand();
     renderActions();
     renderLog();
+    // v3.0: side-effects
+    if (state) {
+      checkRushPointBurst("P");
+      checkRushPointBurst("A");
+      checkPhaseFlash();
+      checkWinLossAudio();
+    }
+  }
+
+  // ---- Phase label flash on phase change ----
+  let _lastPhase = null;
+  function checkPhaseFlash() {
+    if (!state || _lastPhase === state.phase) return;
+    const el = document.getElementById("phase-label");
+    if (el && _lastPhase !== null) {
+      el.classList.remove("flash");
+      void el.offsetWidth; // reflow to restart animation
+      el.classList.add("flash");
+      SFX && SFX.play("click");
+    }
+    _lastPhase = state.phase;
+  }
+
+  // ---- Win/loss audio ----
+  let _lastWinner = null;
+  function checkWinLossAudio() {
+    if (!state) return;
+    if (state.winner && state.winner !== _lastWinner) {
+      SFX && SFX.play(state.winner === "P" ? "win" : "lose");
+      _lastWinner = state.winner;
+    } else if (!state.winner) {
+      _lastWinner = null;
+    }
   }
 
   // ---- Bootstrap ----

@@ -1,6 +1,16 @@
-# Marvel Hero Rush TCG — Battle Simulator
+# Marvel Hero Rush TCG — Battle Simulator v3.0
 
 Marvel Hero Rush TCG 模擬對戰遊戲（可玩網頁版）。喺瀏覽器入面揀一副 50 張 deck，對住 AI 打，打到分出勝負（9 個 Rush Point 或對方牌庫耗盡）。
+
+**🎮 v3.0 — 遊戲級 UI 全面升級 (2026-08-13)**
+- ✅ **Full-bleed card art** 喺所有 battle zones / hand / base — 真・card game feel
+- ✅ **AI face-down card backs**（Marvel 紅+金 ★ 主視覺）
+- ✅ **Rush Point 星爆 timeline** — 9 格金色 gradient + ★ icon + glow
+- ✅ **WebAudio 音效引擎**（無 deps）：draw / deploy / call / attack / hit / weakness / retreat / win / lose，topbar 切換掣
+- ✅ **Polished HUD**：cyan/red 對稱、RP bar rounded、turn indicator 金邊、blinking active-side dot
+- ✅ **SVG-rendered icons**（基地部署/戰基移動/攻擊/結束回合）— 唔再用 emoji
+- ✅ **Emil Kowalski motion**：cubic-bezier eases、hover lift、:active scale、reduced-motion guard
+- ✅ **Range overlay + R-target pulse + weakness pulse + "破綻" label**
 
 ## 點樣玩
 
@@ -26,6 +36,8 @@ Marvel Hero Rush TCG 模擬對戰遊戲（可玩網頁版）。喺瀏覽器入�
 - `js/engine.js` — 遊戲引擎（區域狀態、基地部署、號召/retreat、攻擊/破綻、Rush Point、回合流程、效果系統）
 - `js/ai.js` — AI heuristic（基地部署、號召 Lv1-4、攻擊破綻優先、基本 counter）
 - `js/app.js` — UI 綁定、玩家操作、battle log
+- `js/audio.js` — **v3.0** WebAudio 合成音效引擎（draw/deploy/call/attack/hit/weakness/retreat/win/lose）
+- `css/styles.css` — **v3.0** Dark Sci-Fi / Tactical HUD theme（39KB，emil-design motion polish）
 - `img/cards/` — 4 副預設 deck 用嘅 101 張卡圖（由 deck builder repo 複製）
 
 ## 實裝狀態
