@@ -364,8 +364,9 @@ body::after {
 }
 .mat-body {
   display: grid;
-  grid-template-columns: var(--side-w) auto var(--side-w);
+  grid-template-columns: var(--side-w) max-content var(--side-w);  /* v3.1: max-content — was auto which forced middle column to fill remaining space, stretching battle-stack */
   gap: 10px;
+  justify-content: center;  /* v3.1: center the whole mat within the page max-width */
   align-items: start;  /* v3.1: was stretch — caused battle-stack to stretch to sidecol height, making zones too tall */
 }
 .mat-sidecol {
