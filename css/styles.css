@@ -366,7 +366,7 @@ body::after {
   display: grid;
   grid-template-columns: var(--side-w) auto var(--side-w);
   gap: 10px;
-  align-items: stretch;
+  align-items: start;  /* v3.1: was stretch — caused battle-stack to stretch to sidecol height, making zones too tall */
 }
 .mat-sidecol {
   display: flex; flex-direction: column; gap: 8px;
@@ -384,6 +384,10 @@ body::after {
   border-radius: 8px;
   padding: 10px;
   position: relative;
+  /* v3.1: fixed width = exactly 2 wing slots side-by-side + gap + padding */
+  width: calc(var(--slot-w) * 2 + 8px + 20px);
+  align-self: center;
+  flex: 0 0 auto;
 }
 .battle-stack::before, .battle-stack::after {
   content: ""; position: absolute; width: 8px; height: 8px;
@@ -437,21 +441,32 @@ body::after {
   color: var(--text);
 }
 
-/* ---- Battle zones sized as card cells ---- */
+/* ---- Battle zones sized as card cells (v3.1 official mat) ----
+   Per rulebook: each battle slot is 1 card wide. Front=1, Wing=1 each,
+   Back=1. So:
+     - .zone-front, .zone-back: 1 slot wide
+     - .zone-wing-row: 2 slots side by side (the widest row in battle-stack)
+     - battle-stack width = 2 slots wide, front/back centered inside
+*/
 .zone-front, .zone-back {
   height: var(--slot-h);
-  min-width: calc(var(--slot-w) * 2 + 12px);
+  width: var(--slot-w);       /* v3.1: 1 slot — was wrongly 2 slots */
+  flex: 0 0 auto;
+  align-self: center;          /* center 1-slot zone inside 2-slot-wide stack */
 }
 .zone-wing {
   height: var(--slot-h);
-  min-width: var(--slot-w);
+  width: var(--slot-w);
+  flex: 0 0 auto;
 }
 .zone-base {
   height: var(--base-h);
-  min-width: calc(var(--slot-w) * 2 + 12px);
+  width: calc(var(--slot-w) * 2 + 8px + 20px);  /* v3.1: same width as battle-stack */
   display: flex; flex-direction: column; gap: 4px;
   background: linear-gradient(180deg, var(--panel-3), rgba(24,41,74,.6));
   border: 1px solid var(--border);
+  align-self: center;          /* center inside 2-slot-wide mat-battlecol */
+  flex: 0 0 auto;
 }
 .base-slots {
   display: flex; flex-direction: row; gap: 4px;
@@ -648,7 +663,9 @@ body::after {
 .set-card:active { transform: scale(.95); }
 
 /* ============================================================
-   Card (battle field mini-card) v3.0 — FULL-BLEED ART
+   Card (battle field mini-card) v3.1 — FULL-BLEED ART, FIXED ASPECT
+   - aspect-ratio locked to 5/7 (real TCG ratio 0.714)
+   - height is exactly = --slot-h; card fits inside exactly, no stretching
    ============================================================ */
 .mini-card {
   width: 100%; height: 100%;
@@ -693,7 +710,9 @@ body::after {
 }
 .mini-card .mc-art {
   position: absolute; inset: 0;
-  background-size: cover; background-position: center top;
+  background-size: 100% 100%;  /* v3.1: was cover — cover stretches art in non-matching aspect; 100% 100% fills exactly */
+  background-position: center top;
+  background-repeat: no-repeat;
   background-color: var(--panel-3);
   z-index: 1;
 }
