@@ -47,6 +47,18 @@
   const RUSH_DECK_SIZE = 9;       // 衝擊卡組 9 張
   const BATTLE_SIZE = 4;          // 先鋒 + 後衛 + 2 側翼
 
+  // ---- Real Rush Point token pool (synced from MHR_DATA 2026-08-15) ----
+  // Each set (BP01, SD01..SD04) provides its own RP token art. A player's
+  // rush deck is built from the same set as their main deck so the token
+  // art matches the box art in their hand.
+  const ALL_CARDS = (global.MHR_DATA && global.MHR_DATA.CARDS) || global.CARDS || [];
+  const RUSH_POOL_BY_SET = {};
+  ALL_CARDS.forEach(c => {
+    if (c.type === "impact") {
+      (RUSH_POOL_BY_SET[c.set] = RUSH_POOL_BY_SET[c.set] || []).push(c);
+    }
+  });
+
   // ---- Event bus ----
   const EVT = {
     LOG: "log",
@@ -76,6 +88,44 @@
   // =============================================================
   // 0. SETUP — per official page 9
   // =============================================================
+
+  // Build a 9-card rush deck. Strategy: pool tokens from the main deck's
+  // own set first (visually matches the box art in the player's hand).
+  // If that pool is smaller than 9 (e.g. SD01..SD04 only ship 1 token each),
+  // top up from BP01 (which has 30 unique tokens). Final fallback to random
+  // uid if no real RP cards available at all.
+  function buildRushDeck(deckArr) {
+    const setName = (deckArr[0] && deckArr[0].set) || "BP01";
+    const ownPool = RUSH_POOL_BY_SET[setName] || [];
+    const bpPool = RUSH_POOL_BY_SET.BP01 || [];
+    if (ownPool.length + bpPool.length === 0) {
+      return Array.from({ length: RUSH_DECK_SIZE }, () => ({ _uid: "rp" + Math.random().toString(36).slice(2, 8) }));
+    }
+    // Shuffle each pool independently.
+    const shuffle = arr => {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    };
+    const ownShuffled = shuffle(ownPool);
+    const bpShuffled = shuffle(bpPool);
+    const out = [];
+    // First, take own-pool tokens (with replacement if pool < ownShuffled).
+    while (out.length < Math.min(RUSH_DECK_SIZE, ownShuffled.length)) {
+      out.push(Object.assign({}, ownShuffled[out.length % ownShuffled.length], { _uid: "rp" + Math.random().toString(36).slice(2, 8) }));
+    }
+    // Top up from BP01 if we still need more.
+    let bi = 0;
+    while (out.length < RUSH_DECK_SIZE) {
+      out.push(Object.assign({}, bpShuffled[bi % bpShuffled.length], { _uid: "rp" + Math.random().toString(36).slice(2, 8) }));
+      bi++;
+    }
+    return out;
+  }
+
   function newPlayer(name, deckArr, deckLabel) {
     const deck = deckArr.map(cloneCard);
     // Shuffle (Fisher-Yates)
@@ -92,8 +142,8 @@
       voidZone: [],
       battle: { front: null, back: null, wing: [null, null] },
       base: { faceDown: [] },
-      // 衝擊卡組 (9 張 game tokens, not in CARDS array)
-      rushDeck: Array.from({ length: RUSH_DECK_SIZE }, () => ({ _uid: "rp" + Math.random().toString(36).slice(2, 8) })),
+      // 衝擊卡組 — real tokens from same set as main deck (2026-08-15)
+      rushDeck: buildRushDeck(deck),
       // 時間線 (placed rush cards, = 玩家勝利步伐)
       timeline: [],
       rushPoints: 0,        // 同步 = timeline.length
