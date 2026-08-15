@@ -90,12 +90,19 @@
   // =============================================================
 
   // Build a 9-card rush deck. Strategy: pool tokens from the main deck's
-  // own set first (visually matches the box art in the player's hand).
-  // If that pool is smaller than 9 (e.g. SD01..SD04 only ship 1 token each),
-  // top up from BP01 (which has 30 unique tokens). Final fallback to random
-  // uid if no real RP cards available at all.
+  // *dominant* set first (visually matches the box art in the player's
+  // hand — the set they have the most cards from). If that pool is
+  // smaller than 9 (e.g. SD01..SD04 only ship 1 token each), top up from
+  // BP01 (which has 30 unique tokens). Final fallback to random uid if
+  // no real RP cards available at all.
   function buildRushDeck(deckArr) {
-    const setName = (deckArr[0] && deckArr[0].set) || "BP01";
+    // Tally set distribution in the deck so the RP tokens match the
+    // set the player has the most cards from (BP01 deck → BP01 tokens).
+    const setTally = Object.create(null);
+    deckArr.forEach(c => { if (c && c.set) setTally[c.set] = (setTally[c.set] || 0) + 1; });
+    const dominantSet = Object.entries(setTally).sort((a, b) => b[1] - a[1])[0];
+    const setName = (dominantSet && dominantSet[0]) || "BP01";
+
     const ownPool = RUSH_POOL_BY_SET[setName] || [];
     const bpPool = RUSH_POOL_BY_SET.BP01 || [];
     if (ownPool.length + bpPool.length === 0) {

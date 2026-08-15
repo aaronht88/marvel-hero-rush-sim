@@ -138,7 +138,19 @@
         cell.className = "timeline-cell";
         if (state.players[side].timeline[i]) {
           cell.classList.add("filled");
-          cell.textContent = "★";
+          const rp = state.players[side].timeline[i];
+          if (rp && rp.art) {
+            cell.classList.add("filled", "has-art");
+            cell.textContent = "";
+            const img = document.createElement("img");
+            img.src = rp.art;
+            img.alt = "RUSH POINT";
+            img.className = "timeline-art";
+            cell.appendChild(img);
+          } else {
+            cell.classList.add("filled");
+            cell.textContent = "★";
+          }
         }
         root.appendChild(cell);
       }
