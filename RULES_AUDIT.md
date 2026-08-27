@@ -58,6 +58,7 @@ Deckbuilder 已有 34 張 RP 卡資料（BP01-121~150 + SDxx-019），圖鑑 tab
 優先度：最高（最大工程）
 **2026-08-27 進展：** 全量 267 卡效果文本分類完成（TRIG 135 / AUTO 89 / COUNTER 27 / ACTI 25 / COUNTER·ACTI 23；~14 core ops 覆蓋全部；34 張 X 變數卡），
 DSL descriptor 規格見 **`EFFECTS_DESCRIPTOR.md`**（interpreter 對接文件）。
+**S3 v1（同日）：** `js/effects-data.js` 自動生成 6 卡號（BP01-001/004/060/071 + SD02-017/SD03-004）+ M1 demo Thor = 7 張行 DSL；r_mod/lv_mod op 實裝；AUTO phase_change refresh（防累積）；X vars 解析；node 17/17 + 瀏覽器零錯誤。剩餘 ~216 張 manual 卡 reason 分類喺 `/opt/data/cache/effects_data.json`（S3b 逐 reason 擴充）。
 
 ### #6 能力 keyword 完整化 — 官方 P15
 官方 5 個能力：應對 / 攔截 / 連擊 / 強襲 / 空襲 / 唯一。

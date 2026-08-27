@@ -29,9 +29,21 @@
       case "opp_field":   return battleAll(opp);
       case "my_battle":   return battleChars(me);
       case "opp_battle":  return battleChars(opp);
+      case "my_front":    return me.battle.front ? [me.battle.front] : [];
+      case "opp_front":   return opp.battle.front ? [opp.battle.front] : [];
+      case "my_back":     return me.battle.back ? [me.battle.back] : [];
+      case "opp_back":    return opp.battle.back ? [opp.battle.back] : [];
+      case "my_wing":     return me.battle.wing.filter(Boolean);
+      case "opp_wing":    return opp.battle.wing.filter(Boolean);
       case "my_base":     return me.base.faceDown.slice();
+      case "opp_base":    return opp.base.faceDown.slice();
       case "my_hand":     return me.hand.slice();
       case "opp_hand":    return opp.hand.slice();
+      case "my_retreat":  return me.retreat.slice();
+      case "opp_retreat": return opp.retreat.slice();
+      case "my_void":     return me.voidZone.slice();
+      case "opp_void":    return opp.voidZone.slice();
+      case "my_deck_top": return me.deck.slice(0, 1);
       case "chosen":      return []; // 需 UI pending prompt（M2+）
       default:            return [];
     }
@@ -90,6 +102,8 @@
 
   // ---- X vars resolution (M1 stub — Thor demo 唔需要，保留 hook) ----
   function resolveVar(state, side, varName, ctx) {
+    // descriptor vars 已由 runEffects 解入 ctx（如 ctx.X = count_opp_battle）→ 優先
+    if (ctx && ctx[varName] != null) return ctx[varName];
     switch (varName) {
       case "count_opp_battle":   return battleChars(state.players[side === "P" ? "A" : "P"]).length;
       case "count_my_field":     return battleChars(state.players[side]).length;
@@ -215,6 +229,40 @@
     return { ok: false };
   }
 
+  // R±（S3: AUTO 卡如 BP01-071 WING / SD03-004 BACK）
+  function opRMod(state, side, opDef, ctx) {
+    let amt = 0;
+    if (typeof opDef.amount === "number") amt = opDef.amount;
+    else if (opDef.amount && opDef.amount.var) {
+      const base = resolveVar(state, side, opDef.amount.var, ctx);
+      amt = base * (opDef.amount.scale || 1);
+    }
+    const targets = collectTargets(state, side, opDef.target, ctx);
+    if (!targets.length) return { ok: false };
+    targets.forEach(card => {
+      card._rMod = (card._rMod || 0) + amt;
+      emitLog(state, `[效果] ${shortName(card)} R ${amt >= 0 ? "+" : ""}${amt}`, side);
+    });
+    return { ok: true };
+  }
+
+  // Lv±（S3: BP01-004 Hulk / SD03-004 BASE）
+  function opLvMod(state, side, opDef, ctx) {
+    let amt = 0;
+    if (typeof opDef.amount === "number") amt = opDef.amount;
+    else if (opDef.amount && opDef.amount.var) {
+      const base = resolveVar(state, side, opDef.amount.var, ctx);
+      amt = base * (opDef.amount.scale || 1);
+    }
+    const targets = collectTargets(state, side, opDef.target, ctx);
+    if (!targets.length) return { ok: false };
+    targets.forEach(card => {
+      card._lvMod = (card._lvMod || 0) + amt;
+      emitLog(state, `[效果] ${shortName(card)} Lv ${amt >= 0 ? "+" : ""}${amt}`, side);
+    });
+    return { ok: true };
+  }
+
   // ---- stub ops（other 9 from §3 vocabulary）----
   function opStub(state, side, opDef, ctx) {
     emitLog(state, `[效果未實裝] op:${opDef.op}（M2+ 補齊）`, side);
@@ -226,14 +274,14 @@
     retreat: opRetreat,
     prune: opPrune,
     attack_bonus: opAttackBonus,
+    r_mod: opRMod,
+    lv_mod: opLvMod,
     // stubs
     move: opStub,
     discard: opStub,
     attach: opStub,
-    r_mod: opStub,
     face_down: opStub,
     show: opStub,
-    lv_mod: opStub,
     return_to_hand: opStub,
     rush_point: opStub,
   };
@@ -305,7 +353,7 @@
       const effects = card.effects;
       if (!Array.isArray(effects)) return;
       effects.forEach((eff, idx) => {
-        if (!matchTrigger(eff, event)) return;
+        if (!matchTrigger(eff, event, card, p)) return;
         // ONCE PER TURN gate
         if (eff.once && flags.oncePerTurnUids[card._uid + "::" + idx]) return;
         candidates.push({ card, idx, eff });
@@ -313,6 +361,13 @@
     });
 
     if (!candidates.length) return;
+
+    // AUTO refresh（S3）：phase_change 時先清空 mods 再重算，避免跨回合累積
+    if (event.kind === "phase_change") {
+      battleChars(p).forEach(card => {
+        card._powerMod = 0; card._rMod = 0; card._lvMod = 0;
+      });
+    }
 
     // 排序 — active player first (caller 已是 active)，再按 timestamp（M1：hand 順序）
     // （多卡同時觸發排序留 M2）
@@ -327,6 +382,12 @@
         byCalling: !!(event && event.kind === "enter_field" && event.byCalling),
         retreatCount: event && event.retreatCount != null ? event.retreatCount : 0,
       };
+      // S3: 解析 descriptor 級 vars（{X: "count_opp_battle"} → ctx.X = N）供 ops/filters 用
+      if (eff.vars) {
+        for (const vk of Object.keys(eff.vars)) {
+          ctx[vk] = resolveVar(state, side, eff.vars[vk], ctx);
+        }
+      }
       if (!evalCond(state, side, eff.cond, ctx)) continue;
 
       // 2) cost — M1: 簡單 discard_self_from_hand（BP01-002 用）
@@ -353,19 +414,38 @@
     refreshAutos(state);
   }
 
-  function matchTrigger(eff, event) {
+  function matchTrigger(eff, event, card, p) {
     if (!event || !event.kind) return false;
     const trig = eff.trig;
     const slot = eff.slot;
 
     // TRIG【FIELD】 by enter_field
     if (trig === "TRIG" && slot === "FIELD" && event.kind === "enter_field") return true;
-    // AUTO【FIELD】 by phase/field events
-    if (trig === "AUTO" && slot === "FIELD" && (event.kind === "phase_change" || event.kind === "state_change")) return true;
+    // AUTO【FIELD/FRONT/WING/BACK/BASE...】 by phase/field events（S3：slot 佔位檢查）
+    if (trig === "AUTO" && (event.kind === "phase_change" || event.kind === "state_change")) {
+      return cardOccupies(p, card, slot);
+    }
     // COUNTER_ACTI【HAND】 by counter
     if (trig === "COUNTER_ACTI" && slot === "HAND" && event.kind === "counter") return true;
 
     return false;
+  }
+
+  // AUTO slot 佔位檢查：卡要實際喺該位置先至生效（FRONT/WING/BACK/BASE/HAND...）
+  function cardOccupies(p, card, slot) {
+    if (!card) return false;
+    switch (slot) {
+      case "FIELD":
+      case "BATTLE": return battleChars(p).includes(card);
+      case "FRONT":  return p.battle.front === card;
+      case "BACK":   return p.battle.back === card;
+      case "WING":   return p.battle.wing.includes(card);
+      case "BASE":   return p.base.faceDown.includes(card);
+      case "HAND":   return p.hand.includes(card);
+      case "RETREAT": return p.retreat.includes(card);
+      case "VOID":   return p.voidZone.includes(card);
+      default:       return true;
+    }
   }
 
   function resolveCost(state, side, costArr, ctx) {

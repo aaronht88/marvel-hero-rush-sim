@@ -144,10 +144,13 @@ event fired → collect matching effects (trig×slot) →
 | 階段 | 內容 | 負責 |
 |---|---|---|
 | S1 | 本規格定稿 + AUTO refresh 機制設計 | JARVIS ✅（本文件） |
-| S2 | interpreter 核心（event → match → cond → cost → ops → stack）+ 5 個 sample op | Senku（M1） |
-| S3 | js/effects.js 生成：簡單卡（無 X、單效果塊）自動 parse，~60% 覆蓋；X 卡 + 多行卡 manual | JARVIS+Senku |
-| S4 | 全量對齊：逐張驗證 descriptor ↔ 官方文本（diff 工具） | 共同（M4） |
-| S5 | useCounter / triggerEnter 舊 regex 路徑刪除 | Senku |
+| S2 | interpreter 核心（event → match → cond → cost → ops → stack）+ 5 個 sample op | Senku ✅（M1，2026-08-27） |
+| S3 | js/effects-data.js 生成：規則式 parser（mhr_desc_generate.py）安全 parse 簡單卡；r_mod/lv_mod op 實裝；AUTO slot 佔位檢查 + phase_change refresh + vars 解析 | JARVIS ✅ v1（2026-08-27：6 卡號自動 + Thor demo，node 17/17 + 瀏覽器零錯誤） |
+| S3b | 擴充 parser 規則 + cond library（解鎖 ~216 張 manual 卡：`if you do`/`1 of your`/X 變數等） | JARVIS+Senku ⏳ |
+| S4 | 全量對齊：逐張驗證 descriptor ↔ 官方文本（diff 工具） | 共同 ⏳ |
+| S5 | useCounter / triggerEnter 舊 regex 路徑刪除 | Senku ⏳ |
+
+> 2026-08-27 實測結論：**auto-parse 覆蓋率比草案預期低**——官方文本 ~61% 有 `if` 條件、38 張多效果塊，安全自動 parse 只有 ~9/233 實例（6 唯一卡號）。與其出 partial descriptor 錯誤觸發，不如保守 subset + 逐張人工過目。216 張 manual 卡嘅 reason 分類存喺 `/opt/data/cache/effects_data.json`（主要：`if you do` 23、`unresolved_X` 19、`no_ops_matched` 94、`multi_block` 46、`1 of your` 6……）——下一批擴充就係逐個 reason 加規則/cond。
 
 ## 8. 參考
 
