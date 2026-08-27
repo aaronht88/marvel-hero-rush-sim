@@ -138,8 +138,8 @@
 
   // M1.5: AI 調整起始手牌 — 簡單 heuristic：Lv >= 5 嘅高費牌放返（最多 2 張），
   // 其餘保留（早期抽到高費牌會卡手，等於官方「調整」嘅合理用法）。
-  function aiMulligan(state) {
-    const me = state.players.A;
+  function aiMulligan(state, side) {
+    const me = state.players[side || "A"];
     const idxs = [];
     me.hand.forEach((c, i) => {
       if ((c.level || 0) >= 5 && idxs.length < 2) idxs.push(i);
@@ -147,5 +147,43 @@
     return idxs;
   }
 
-  global.MHR_AI = { aiTurn, aiTurnFor, aiMulligan };
+  // =============================================================
+  // M4.5: 自動模擬對戰 — 匯入/揀選 deck 後，AI 打 AI 全自動跑 N 局
+  // 回傳 [{ opponent, winner, turns, rpP, rpA, log:[msg,...] }, ...]
+  // 純邏輯無 DOM → app.js 負責渲染結果。
+  // =============================================================
+  function runAutoSim(pDeckName, opts) {
+    const o = opts || {};
+    const allDecks = Object.keys(global.MHR_DATA.DECKS);
+    const opponents = o.opponents && o.opponents.length
+      ? o.opponents
+      : allDecks.filter(k => k !== pDeckName);
+    const perOpp = o.perOpp || 3;       // 每對手局數
+    const maxTurns = o.maxTurns || 80;
+    const results = [];
+    for (const aDeck of opponents) {
+      for (let i = 0; i < perOpp; i++) {
+        const s = E.initGame(pDeckName, aDeck);
+        E.mulligan(s, "P", aiMulligan(s, "P"));
+        E.mulligan(s, "A", aiMulligan(s, "A"));
+        E.startTurn(s);
+        let guard = 0;
+        while (!s.winner && guard < maxTurns) {
+          aiTurnFor(s, s.activeSide);
+          guard++;
+        }
+        results.push({
+          opponent: aDeck,
+          winner: s.winner || "timeout",
+          turns: s.turn,
+          rpP: s.players.P.rushPoints,
+          rpA: s.players.A.rushPoints,
+          log: s.log.map(e => e.msg),
+        });
+      }
+    }
+    return results;
+  }
+
+  global.MHR_AI = { aiTurn, aiTurnFor, aiMulligan, runAutoSim };
 })(window);

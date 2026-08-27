@@ -1475,3 +1475,18 @@ body::after {
 .r-card.selected { border-color: var(--cyan, #22d3ee); box-shadow: 0 0 12px rgba(34, 211, 238, .5); }
 .r-card-art { width: 100%; aspect-ratio: 5 / 7; background-size: cover; background-position: center; border-radius: 7px; }
 .import-status { margin-top: 10px; font-size: 12px; color: var(--muted); text-align: center; min-height: 16px; }
+
+/* ================= v3.5: 自動模擬對戰 ================= */
+.autosim-card { width: 720px; max-width: 94vw; }
+.autosim-summary { text-align: center; margin-bottom: 12px; }
+.autosim-rate { font-size: 18px; }
+.autosim-rate b { color: var(--cyan, #22d3ee); font-size: 30px; margin: 0 4px; }
+.autosim-sub { font-size: 12px; color: var(--muted); margin-left: 8px; }
+.autosim-table { margin-bottom: 12px; }
+.autosim-table table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.autosim-table th, .autosim-table td { border: 1px solid rgba(255, 255, 255, .12); padding: 5px 8px; text-align: center; }
+.autosim-table th { background: rgba(255, 255, 255, .06); color: var(--cyan, #22d3ee); }
+.autosim-log-head { font-size: 12px; color: var(--muted); margin: 8px 0 4px; }
+.autosim-log { max-height: 260px; overflow-y: auto; border: 1px solid rgba(255, 255, 255, .12); border-radius: 6px; padding: 8px; font-size: 11px; line-height: 1.5; background: rgba(0, 0, 0, .35); }
+.autosim-line.fx { color: #7dd3fc; }
+.autosim-line.stub { color: #f59e0b; }

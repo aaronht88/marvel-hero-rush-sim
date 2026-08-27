@@ -456,6 +456,9 @@
 
       // 4) once-per-turn
       if (eff.once) flags.oncePerTurnUids[card._uid + "::" + idx] = true;
+
+      // M4: 應對步驟（counter 事件）每次只用 1 張 counter 卡（官方規則）
+      if (event.kind === "counter") break;
     }
 
     // 5) AUTO refresh — 若事件改變場上 power/lv/r 狀態，統一 recompute

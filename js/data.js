@@ -83,6 +83,7 @@
     CARDS_BY_NO: byNo,
     DECKS,
     getCard,
+    expandDeck,   // v3.5: 匯入/分享 deck 註冊時展開 raw pairs → 50 卡 array（bugfix）
     numPower,
     numRange,
     artPath,

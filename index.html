@@ -2,16 +2,16 @@
 <html lang="zh-HK">
 <head>
 <meta charset="UTF-8">
-<title>Marvel Hero Rush TCG — Battle Simulator v3.4</title>
+<title>Marvel Hero Rush TCG — Battle Simulator v3.5</title>
 <meta name="viewport" content="width=1480">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=3.4">
+<link rel="stylesheet" href="css/styles.css?v=3.5">
 <!-- Card data is committed locally (js/cards.js) so the sim is
      self-contained and works under any GitHub Pages subpath. -->
-<script src="js/cards.js"></script>
-<script src="js/mhr-decks.js"></script>
+<script src="js/cards.js?v=3.5"></script>
+<script src="js/mhr-decks.js?v=3.5"></script>
 </head>
 <body>
 
@@ -22,9 +22,9 @@
       <div class="logo-mark">★</div>
       <div>
         <h1>MARVEL HERO RUSH <small>Battle Sim</small></h1>
-        <p class="subtitle">Marvel Hero Rush TCG · 模擬對戰 · v3.4 (Mulligan · 自選衝擊卡組 · rules audit)</p>
+        <p class="subtitle">Marvel Hero Rush TCG · 模擬對戰 · v3.5 (自動模擬對戰 · Mulligan · DSL effects)</p>
       </div>
-      <span class="version-badge">v3.4</span>
+      <span class="version-badge">v3.5</span>
       <button id="btn-sound-toggle" class="sound-toggle" title="音效切換">音效</button>
     </div>
   </header>
@@ -34,6 +34,7 @@
     <div id="deck-picker" class="deck-picker"></div>
     <div class="setup-actions">
       <button id="btn-start" class="btn-primary" disabled>開始對戰</button>
+      <button id="btn-autosim" class="btn-action" disabled>🤖 自動模擬對戰</button>
       <button id="btn-import" class="btn-action">📥 匯入 Deck</button>
       <button id="btn-rush-picker" class="btn-action">⚡ 衝擊卡組（自選 9）</button>
       <a class="link-muted" href="README.md" target="_blank">README / 規則假設</a>
@@ -141,6 +142,7 @@
           結束回合
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4l14 8-14 8z"/></svg>
         </button>
+        <button id="btn-takeover" class="btn-action" hidden title="停止自動播放，改為手動操作">✋ 接管</button>
       </div>
       <div class="action-hint" id="action-hint">…</div>
     </div>
@@ -253,6 +255,23 @@
     </div>
   </div>
 
+  <!-- v3.5: 自動模擬結果 overlay（匯入/揀 deck → AI 打 AI → 勝率戰報） -->
+  <div id="autosim-overlay" class="modal hidden">
+    <div class="modal-card autosim-card">
+      <div class="modal-title">🤖 自動模擬結果</div>
+      <div class="modal-body">
+        <div id="autosim-summary" class="autosim-summary"></div>
+        <div id="autosim-table" class="autosim-table"></div>
+        <div class="autosim-log-head">第一局戰報（可捲動）</div>
+        <div id="autosim-log" class="autosim-log"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-action" id="autosim-watch" disabled>▶ 觀戰第一局（AI 打 AI）</button>
+        <button class="btn-primary" id="autosim-close">關閉</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Win overlay -->
   <div id="win-overlay" class="win-overlay hidden">
     <div class="win-card">
@@ -301,13 +320,13 @@
 </div>
 
 <!-- Order matters: data → effects-data → engine → effects → ai → app -->
-<script src="js/data.js"></script>
-<script src="js/effects-data.js"></script>
-<script src="js/engine.js"></script>
-<script src="js/effects.js"></script>
-<script src="js/audio.js"></script>
-<script src="js/ai.js"></script>
-<script src="js/app.js?v=3.4"></script>
+<script src="js/data.js?v=3.5"></script>
+<script src="js/effects-data.js?v=3.5"></script>
+<script src="js/engine.js?v=3.5"></script>
+<script src="js/effects.js?v=3.5"></script>
+<script src="js/audio.js?v=3.5"></script>
+<script src="js/ai.js?v=3.5"></script>
+<script src="js/app.js?v=3.5"></script>
 <script>
   // Wire sound toggle after DOM ready
   document.getElementById("btn-sound-toggle").addEventListener("click", () => {
