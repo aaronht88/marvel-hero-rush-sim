@@ -65,6 +65,104 @@ window.MHR_EFFECTS_DATA = {
    ]
   }
  ],
+ "BP01-006": [
+  {
+   "trig": "AUTO",
+   "slot": "FIELD",
+   "cond": [
+    {
+     "if": "my_hand_odd"
+    }
+   ],
+   "ops": [
+    {
+     "op": "r_mod",
+     "target": "self",
+     "amount": 2,
+     "duration": "permanent"
+    }
+   ]
+  },
+  {
+   "trig": "AUTO",
+   "slot": "FIELD",
+   "cond": [
+    {
+     "if": "my_hand_even"
+    }
+   ],
+   "ops": [
+    {
+     "op": "power_mod",
+     "target": "self",
+     "amount": 5500,
+     "duration": "permanent"
+    }
+   ]
+  }
+ ],
+ "BP01-011": [
+  {
+   "trig": "TRIG",
+   "slot": "FIELD",
+   "cond": [
+    {
+     "if": "by_calling"
+    }
+   ],
+   "ops": [
+    {
+     "op": "draw",
+     "n": 1
+    },
+    {
+     "op": "attack_bonus",
+     "target": "self",
+     "duration": "this_turn"
+    }
+   ]
+  }
+ ],
+ "BP01-056": [
+  {
+   "trig": "AUTO",
+   "slot": "BATTLE",
+   "cond": [
+    {
+     "if": "opp_front_r_is",
+     "n": 1
+    }
+   ],
+   "ops": [
+    {
+     "op": "power_mod",
+     "target": "self",
+     "amount": 1500,
+     "duration": "permanent"
+    }
+   ]
+  }
+ ],
+ "BP01-058": [
+  {
+   "trig": "AUTO",
+   "slot": "FIELD",
+   "cond": [
+    {
+     "if": "opp_battle_total_r_ge",
+     "n": 3
+    }
+   ],
+   "ops": [
+    {
+     "op": "power_mod",
+     "target": "self",
+     "amount": 3500,
+     "duration": "permanent"
+    }
+   ]
+  }
+ ],
  "BP01-060": [
   {
    "trig": "TRIG",
@@ -80,6 +178,26 @@ window.MHR_EFFECTS_DATA = {
      "target": "opp_front",
      "amount": -1000,
      "duration": "this_turn"
+    }
+   ]
+  }
+ ],
+ "BP01-064": [
+  {
+   "trig": "AUTO",
+   "slot": "BATTLE",
+   "cond": [
+    {
+     "if": "my_battle_has_attr_except_self",
+     "attr": "Blue"
+    }
+   ],
+   "ops": [
+    {
+     "op": "power_mod",
+     "target": "self",
+     "amount": 2500,
+     "duration": "permanent"
     }
    ]
   }
@@ -110,6 +228,66 @@ window.MHR_EFFECTS_DATA = {
    ]
   }
  ],
+ "BP01-088": [
+  {
+   "trig": "AUTO",
+   "slot": "BATTLE",
+   "cond": [
+    {
+     "if": "opp_battle_has_power_ge",
+     "n": 5000
+    }
+   ],
+   "ops": [
+    {
+     "op": "r_mod",
+     "target": "self",
+     "amount": 3,
+     "duration": "permanent"
+    }
+   ]
+  }
+ ],
+ "SD01-008": [
+  {
+   "trig": "AUTO",
+   "slot": "HAND",
+   "cond": [
+    {
+     "if": "both_field_no_lv4",
+     "n": 4
+    }
+   ],
+   "ops": [
+    {
+     "op": "lv_mod",
+     "target": "self",
+     "amount": -2
+    }
+   ]
+  }
+ ],
+ "SD02-005": [
+  {
+   "trig": "ACTI",
+   "slot": "BASE",
+   "once": true,
+   "ops": [
+    {
+     "op": "draw",
+     "n": 1
+    },
+    {
+     "op": "discard",
+     "n": 3,
+     "target": "my_deck_top"
+    },
+    {
+     "op": "cover_self"
+    }
+   ]
+  }
+ ],
  "SD02-017": [
   {
    "trig": "TRIG",
@@ -125,6 +303,26 @@ window.MHR_EFFECTS_DATA = {
      "target": "opp_front",
      "amount": -1000,
      "duration": "this_turn"
+    }
+   ]
+  }
+ ],
+ "SD02-018": [
+  {
+   "trig": "AUTO",
+   "slot": "BATTLE",
+   "cond": [
+    {
+     "if": "opp_front_r_is",
+     "n": 1
+    }
+   ],
+   "ops": [
+    {
+     "op": "power_mod",
+     "target": "self",
+     "amount": 1500,
+     "duration": "permanent"
     }
    ]
   }

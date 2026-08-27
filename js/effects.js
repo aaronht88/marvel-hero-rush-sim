@@ -116,17 +116,45 @@
   }
 
   // ---- condition evaluators ----
+  // 讀卡 R（printed attackRange）
+  function readRange(card) {
+    if (!card) return 0;
+    return (card.attackRange && parseInt(card.attackRange, 10)) || 0;
+  }
+
   function evalCond(state, side, condArr, ctx) {
     if (!condArr || !condArr.length) return true;
+    const p = state.players[side];
+    const opp = state.players[side === "P" ? "A" : "P"];
     for (const c of condArr) {
       const k = c.if;
-      const p = state.players[side];
       if (k === "by_calling") {
         if (!ctx || !ctx.byCalling) return false;
       } else if (k === "all_my_field_attr") {
         const chars = battleChars(p);
         if (!chars.length) return false;
         if (!chars.every(x => x.attribute === c.attr)) return false;
+      } else if (k === "my_hand_odd") {
+        if (p.hand.length % 2 !== 1) return false;
+      } else if (k === "my_hand_even") {
+        if (p.hand.length % 2 !== 0) return false;
+      } else if (k === "opp_front_r_is") {
+        const f = opp.battle.front;
+        if (!f) return false;
+        if (readRange(f) !== (c.n || 0)) return false;
+      } else if (k === "opp_battle_total_r_ge") {
+        const total = battleChars(opp).reduce((s, x) => s + readRange(x), 0);
+        if (total < (c.n || 0)) return false;
+      } else if (k === "opp_battle_has_power_ge") {
+        if (!battleChars(opp).some(x => readField(x, "power") >= (c.n || 0))) return false;
+      } else if (k === "my_battle_has_attr_except_self") {
+        const others = battleChars(p).filter(x => x !== (ctx && ctx.source));
+        if (!others.some(x => x.attribute === c.attr)) return false;
+      } else if (k === "both_field_no_lv4") {
+        const all = battleChars(p).concat(battleChars(opp));
+        if (all.some(x => readField(x, "lv") >= (c.n || 4))) return false;
+      } else if (k === "my_base_empty") {
+        if (p.base.faceDown.length > 0) return false;
       } else if (k === "true") {
         // no-op
       } else {
@@ -263,6 +291,16 @@
     return { ok: true };
   }
 
+  // 蓋卡（S3b: ACTI:BASE "cover this card" → 卡變 face-down set card）
+  function opCoverSelf(state, side, opDef, ctx) {
+    if (!ctx || !ctx.source) return { ok: false };
+    const card = ctx.source;
+    if (card._faceDown) return { ok: false };
+    card._faceDown = true;
+    emitLog(state, `[效果] ${shortName(card)} 蓋卡（cover）`, side);
+    return { ok: true };
+  }
+
   // ---- stub ops（other 9 from §3 vocabulary）----
   function opStub(state, side, opDef, ctx) {
     emitLog(state, `[效果未實裝] op:${opDef.op}（M2+ 補齊）`, side);
@@ -276,6 +314,7 @@
     attack_bonus: opAttackBonus,
     r_mod: opRMod,
     lv_mod: opLvMod,
+    cover_self: opCoverSelf,
     // stubs
     move: opStub,
     discard: opStub,
