@@ -103,7 +103,7 @@ DSL descriptor 規格見 **`EFFECTS_DESCRIPTOR.md`**（interpreter 對接文件�
 | M1.2 | 效果分類統計 + DSL descriptor 規格（EFFECTS_DESCRIPTOR.md） | JARVIS | ✅ DONE 2026-08-27 |
 | M1.5 | Mulligan + 衝擊卡組實卡化 | JARVIS | ✅ DONE 2026-08-27（v3.4，瀏覽器實測） |
 | M2 | 180 張 stub effects declarative 化 + Range 對齊 | Senku | ⏳（以 EFFECTS_DESCRIPTOR.md 為對接基準；S3 auto-parse 由 JARVIS+Senku 共同） |
-| M3 | Play mat 視覺對齊官方（CSS-only）+ deckbuilder 對接 | JARVIS | ⏳ |
+| M3 | Play mat 視覺對齊官方（CSS-only）+ deckbuilder 對接 | JARVIS | ✅ DONE 2026-08-27（mat tint/zone 名 v3.3 已對齊；deckbuilder 對接：v2 share code 直通 + sim `?deck=` 參數自動載入 + 「試玩對戰」按鈕，round-trip 實測） |
 | M4 | Test deck + counter frame + verify + deploy | 共同 | ⏳ |
 
 ## 參考

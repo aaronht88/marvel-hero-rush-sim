@@ -538,11 +538,63 @@
   function hideImportOverlay() {
     document.getElementById("import-overlay").classList.add("hidden");
   }
-  function loadImportedDeck(code) {
+  // ---- v3.4 (M3): share code 解碼 — v2 compact + legacy base64 ----
+  // v2: "1|<name>|" + (系列字母 + 3位編號 + [vN] + qty base36)*
+  // legacy: base64(JSON [[card_no, qty], ...])
+  const SERIES_LETTER = { A: "BP01", B: "SD01", C: "SD02", D: "SD03", E: "SD04" };
+  function decodeShareCode(code) {
+    const s = (code || "").trim();
+    if (!s) return null;
+    let cardsPart = s;
+    let deckName = null;
+    if (s.startsWith("1|")) {
+      const idx = s.indexOf("|", 2);
+      if (idx === -1) return null;
+      deckName = s.slice(2, idx);
+      try { deckName = decodeURIComponent(deckName); } catch (e) { deckName = null; }
+      cardsPart = s.slice(idx + 1);
+    }
+    if (/^[A-E]/.test(cardsPart)) {
+      // v2 compact
+      const pairs = [];
+      let i = 0;
+      while (i < cardsPart.length) {
+        const letter = cardsPart[i++];
+        const num = cardsPart.substr(i, 3); i += 3;
+        if (!SERIES_LETTER[letter] || !/^\d{3}$/.test(num)) return null;
+        let no = SERIES_LETTER[letter] + "-" + num;
+        if (cardsPart[i] === "v") {
+          i++;
+          let v = "";
+          while (i < cardsPart.length && /\d/.test(cardsPart[i])) v += cardsPart[i++];
+          if (!v) return null;
+          no += "-V" + v;   // variant 保留；loadImportedDeck normalize 去 card_no
+        }
+        if (i >= cardsPart.length) return null;
+        const qty = parseInt(cardsPart[i++], 36);
+        if (qty > 0) pairs.push([no, qty]);
+      }
+      return { pairs, name: deckName };
+    }
+    // legacy base64 JSON
     try {
-      const json = decodeURIComponent(escape(atob(code.trim())));
-      const pairs = JSON.parse(json);
-      if (!Array.isArray(pairs)) throw new Error("格式錯誤");
+      const json = decodeURIComponent(escape(atob(cardsPart)));
+      const arr = JSON.parse(json);
+      if (!Array.isArray(arr)) return null;
+      return { pairs: arr, name: deckName };
+    } catch (e) { return null; }
+  }
+
+  function loadImportedDeck(code) {
+    const decoded = decodeShareCode(code);
+    if (!decoded) {
+      const status = document.getElementById("import-status");
+      status.textContent = "❌ 解碼失敗：share code 格式無效";
+      status.className = "import-status bad";
+      return false;
+    }
+    try {
+      const pairs = decoded.pairs;
       // Validate shape [[card_no, qty], ...]
       let total = 0;
       const cardList = pairs.map(([cn, q]) => {
@@ -566,13 +618,12 @@
         return false;
       }
       // Register as deck
-      const deckName = "Imported_" + Date.now().toString(36);
-      DATA.DECKS[deckName] = pairs.map(([cn, q]) => [cn, q]);
+      const deckName = decoded.name && decoded.name.trim() ? "Shared_" + decoded.name.trim().slice(0, 30) : "Imported_" + Date.now().toString(36);
+      DATA.DECKS[deckName] = pairs.map(([cn, q]) => [cn.replace(/-V\d+$/, ""), q]);
       // Build deck label
-      const p = state.players.P;
       const colorSet = new Set();
       pairs.forEach(([cn]) => {
-        const c = DATA.cardsByNo[cn];
+        const c = DATA.CARDS_BY_NO[cn.replace(/-V\d+$/, "")];
         if (c) colorSet.add(c.attribute);
       });
       const colorLabels = { Red: "紅", Yellow: "黃", Blue: "藍", Green: "綠" };
@@ -1260,4 +1311,27 @@
 
   // ---- Bootstrap ----
   renderDeckPicker();
+
+  // ---- v3.4 (M3): ?deck=<share code> URL param 自動載入（deckbuilder「試玩對戰」入口） ----
+  (function autoLoadSharedDeck() {
+    const code = new URLSearchParams(location.search).get("deck");
+    if (!code) return;
+    const decoded = decodeShareCode(code);
+    if (!decoded) return;
+    const pairs = decoded.pairs;
+    let total = 0;
+    const ok = pairs.every(([cn, q]) => {
+      if (typeof cn !== "string" || typeof q !== "number") return false;
+      total += q;
+      return DATA.CARDS_BY_NO[cn] || DATA.CARDS_BY_NO[cn.replace(/-V\d+$/, "")];
+    });
+    if (!ok || total !== 50) {
+      console.warn("?deck= 參數無效（需要 50 張合法卡）");
+      return;
+    }
+    const deckName = (decoded.name && decoded.name.trim() ? "Shared_" + decoded.name.trim() : "Shared_" + Date.now().toString(36)).slice(0, 40);
+    DATA.DECKS[deckName] = pairs.map(([cn, q]) => [cn.replace(/-V\d+$/, ""), q]);
+    view._chosenDeck = deckName;
+    startBattle();
+  })();
 })();
