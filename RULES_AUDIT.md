@@ -46,6 +46,7 @@ Deckbuilder 已有 34 張 RP 卡資料（BP01-121~150 + SDxx-019），圖鑑 tab
 - 應對·起動：卡牌能力
 **Sim：RESPOND phase 存在但簡化（engine.js 只有 comment）。**
 優先度：高
+**2026-08-27（M4）進展：** COUNTER 應對步驟已統一——attack() 內守方自動 COUNTER（DSL 優先 + legacy fallback 跳過 descriptor 卡），雙方攻擊都會觸發；BP01-002 轉 DSL（target=attacker）。完整「輪流應對」階段（應對號召/多輪）仍待 M2+。
 
 ### #4 行動階段「起動效果」— 官方 P11
 官方行動階段有 4 種行動（我哋得 3 種）：基地部署 / 行動號召 / 戰基移動 / **起動效果**。
@@ -104,7 +105,7 @@ DSL descriptor 規格見 **`EFFECTS_DESCRIPTOR.md`**（interpreter 對接文件�
 | M1.5 | Mulligan + 衝擊卡組實卡化 | JARVIS | ✅ DONE 2026-08-27（v3.4，瀏覽器實測） |
 | M2 | 180 張 stub effects declarative 化 + Range 對齊 | Senku | ⏳（以 EFFECTS_DESCRIPTOR.md 為對接基準；S3 auto-parse 由 JARVIS+Senku 共同） |
 | M3 | Play mat 視覺對齊官方（CSS-only）+ deckbuilder 對接 | JARVIS | ✅ DONE 2026-08-27（mat tint/zone 名 v3.3 已對齊；deckbuilder 對接：v2 share code 直通 + sim `?deck=` 參數自動載入 + 「試玩對戰」按鈕，round-trip 實測） |
-| M4 | Test deck + counter frame + verify + deploy | 共同 | ⏳ |
+| M4 | Test deck + counter frame + verify + deploy | 共同 | ✅ DONE 2026-08-27（counter frame：attack() 統一守方 COUNTER、DSL+legacy 防雙重、BP01-002 DSL 化、`attacker` target；AI `aiTurnFor` 參數化 → 12 局全自動對戰 harness 零 exception；M1/S3b/M4 smoke 全綠） |
 
 ## 參考
 

@@ -9,9 +9,14 @@
   const E = global.MHR_ENGINE;
 
   function aiTurn(state) {
-    const me = state.players.A;
-    const opp = state.players.P;
-    const flags = state.turnFlags.A;
+    return aiTurnFor(state, "A");
+  }
+
+  // M4: 參數化 side — 測試 harness 可以用同一套 AI 自動打雙方（P vs A 全自動對戰驗證）
+  function aiTurnFor(state, side) {
+    const me = state.players[side];
+    const opp = state.players[side === "P" ? "A" : "P"];
+    const flags = state.turnFlags[side];
 
     // (1) 基地部署 (1 次/回合) — 早期冇嘢做就用基地部署攤節奏
     if (!flags.setDeployUsed && me.hand.length >= 4 && me.base.faceDown.length < 6) {
@@ -23,28 +28,28 @@
           bestIdx = i;
         }
       }
-      if (bestIdx >= 0) E.setDeploy(state, "A", bestIdx);
+      if (bestIdx >= 0) E.setDeploy(state, side, bestIdx);
     }
 
     // (2) 行動號召 (上 3 次) — 優先叫 Lv1-3 直接上場，再 Lv4-6 計 retreat cost
-    const callBudget = E.maxCallCount(state, "A");
+    const callBudget = E.maxCallCount(state, side);
     while (flags.callCount < callBudget && !state.winner) {
-      const pick = pickBestCall(state, "A");
+      const pick = pickBestCall(state, side);
       if (!pick) break;
-      const r = E.callCard(state, "A", pick.handIdx, pick.retreatUids);
+      const r = E.callCard(state, side, pick.handIdx, pick.retreatUids);
       if (!r.ok) { console.warn("ai call failed:", r.err); break; }
     }
 
     // (3) 戰基移動 — 嘗試把蓋卡 Lv 1 翻入先鋒（如果空置）
     if (!me.battle.front && me.base.faceDown.length > 0) {
-      E.battleBaseMove(state, "A", me.base.faceDown[0]._uid, false);
+      E.battleBaseMove(state, side, me.base.faceDown[0]._uid, false);
     }
 
     if (state.winner) return;
 
     // (4) 戰鬥階段 — 先攻首回合跳過
-    if (!E.isFirstTurnBattleSkipped(state, "A")) {
-      aiBattlePhase(state);
+    if (!E.isFirstTurnBattleSkipped(state, side)) {
+      aiBattlePhase(state, side);
     }
 
     // (5) 應對階段 — 簡化：暫時跳過（AI 唔主動 counter/應對號召）
@@ -96,25 +101,23 @@
     return null;
   }
 
-  function aiBattlePhase(state) {
-    const me = state.players.A;
-    const opp = state.players.P;
+  function aiBattlePhase(state, side) {
+    const me = state.players[side];
+    const opp = state.players[side === "P" ? "A" : "P"];
 
     // 順序：先鋒 → 側翼 → 後衛
     const order = ["front", "wing1", "wing2", "back"];
     for (const slot of order) {
       const attacker = me.battle[slot] || (slot === "wing1" ? me.battle.wing[0] : slot === "wing2" ? me.battle.wing[1] : null);
       if (!attacker) continue;
-      if (state.turnFlags.A.attackedUids[attacker._uid]) continue;
+      if (state.turnFlags[side].attackedUids[attacker._uid]) continue;
       // pick best target
-      const targets = E.attackableTargets(state, "A", attacker._uid);
+      const targets = E.attackableTargets(state, side, attacker._uid);
       if (targets.length === 0) continue;
-      const pick = chooseBestTarget(state, "A", attacker, targets);
+      const pick = chooseBestTarget(state, side, attacker, targets);
       if (!pick) continue;
-      // COUNTER·ACTI 視窗：對手先用 counter
-      E.useCounter(state, "P", attacker._uid);
-      if (state.winner) return;
-      E.attack(state, "A", attacker._uid, pick);
+      // M4: COUNTER 已由 attack() 內部處理（DSL + legacy），呢度唔再另行 call
+      E.attack(state, side, attacker._uid, pick);
       if (state.winner) return;
     }
   }
@@ -144,5 +147,5 @@
     return idxs;
   }
 
-  global.MHR_AI = { aiTurn, aiMulligan };
+  global.MHR_AI = { aiTurn, aiTurnFor, aiMulligan };
 })(window);

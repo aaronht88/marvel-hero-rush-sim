@@ -56,6 +56,12 @@
             { op: "attack_bonus", target: "self", duration: "this_turn" },
           ] },
       ],
+      // M4: BP01-002 COUNTER·ACTI【HAND】— DSL counter frame 實證（手寫，target=attacker）
+      "BP01-002": [
+        { trig: "COUNTER_ACTI", slot: "HAND",
+          cost: [ { op: "discard_self_from_hand" } ],
+          ops: [ { op: "power_mod", target: "attacker", amount: -2000, duration: "this_turn" } ] },
+      ],
       // 其他卡 descriptors 由 S3（S3 JARVIS+Senku）批量 parse 後補入。
       // demo 範圍只放 BP01-011 Thor 確實行新 interpreter 路徑。
     }
@@ -703,12 +709,13 @@
     // Set attacked flag
     flags.attackedUids[attackerUid] = true;
 
-    // ②應對步驟 (簡化版): 守方先用 COUNTER (HAND), 否則 skip
-    if (attackerSide === "A") {
-      useCounter(state, "P", attackerUid);
-    } else {
-      // human decides — UI shows prompt before/after attack
+    // ②應對步驟：守方 COUNTER（M4：DSL 優先，舊 regex fallback 跳過 descriptor 卡）
+    // 無論邊方攻擊，守方都用 COUNTER·ACTI 手牌（AI 自動；人手牌暫時都係自動，prompt 留 UI 後續）
+    const defSide = attackerSide === "P" ? "A" : "P";
+    if (global.MHR_EFFECTS && global.MHR_EFFECTS.runEffects) {
+      global.MHR_EFFECTS.runEffects(state, defSide, { kind: "counter", attackerUid });
     }
+    useCounter(state, defSide, attackerUid);
 
     if (target.kind === "weakness") {
       // 攻破綻：時間線 +1 RP
@@ -861,11 +868,13 @@
   }
 
   // COUNTER·ACTI: discard from HAND to apply Power-N to attacker
+  // M4: descriptor 卡（Array.isArray(c.effects)）由 DSL interpreter 處理，呢度跳過
   function useCounter(state, defenderSide, attackerUid) {
     const p = state.players[defenderSide];
     for (let i = 0; i < p.hand.length; i++) {
       const c = p.hand[i];
       if (!c.effect) continue;
+      if (Array.isArray(c.effects) && c.effects.length) continue; // DSL 路徑
       if (!/COUNTER·ACTI/i.test(c.effect)) continue;
       const m = c.effect.match(/Power-(\d+)/);
       if (!m) continue;
@@ -901,6 +910,7 @@
   global.MHR_ENGINE = {
     initGame,
     mulligan,
+    injectEffects,   // M4: 測試/工具用 — 手動將 descriptor 注入卡實例
     startTurn,
     endTurn,
     setDeploy,

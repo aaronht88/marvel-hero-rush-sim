@@ -20,11 +20,19 @@
 
   // ---- target resolvers ----
   // 統一由 state + side + 對象 side 取出實際 cards。
-  function resolveTarget(state, ownerSide, targetKey) {
+  function resolveTarget(state, ownerSide, targetKey, ctx) {
     const me = state.players[ownerSide];
     const opp = state.players[ownerSide === "P" ? "A" : "P"];
     switch (targetKey) {
       case "self":        return []; // 需 effect.source，由 caller 注入
+      case "attacker":    // M4: counter 目標 = 攻擊者（ctx.attackerUid）
+        if (ctx && ctx.attackerUid) {
+          const atk = opp.battle.front && opp.battle.front._uid === ctx.attackerUid ? opp.battle.front
+            : opp.battle.back && opp.battle.back._uid === ctx.attackerUid ? opp.battle.back
+            : opp.battle.wing.find(c => c && c._uid === ctx.attackerUid);
+          return atk ? [atk] : [];
+        }
+        return [];
       case "my_field":    return battleAll(me);
       case "opp_field":   return battleAll(opp);
       case "my_battle":   return battleChars(me);
@@ -366,7 +374,7 @@
       return ctx && ctx.source ? [ctx.source] : [];
     }
     if (!targetKey) return [];
-    return resolveTarget(state, side, targetKey);
+    return resolveTarget(state, side, targetKey, ctx);
   }
 
   // =============================================================
@@ -420,6 +428,7 @@
         source: card,
         byCalling: !!(event && event.kind === "enter_field" && event.byCalling),
         retreatCount: event && event.retreatCount != null ? event.retreatCount : 0,
+        attackerUid: event && event.attackerUid != null ? event.attackerUid : null, // M4: counter 事件
       };
       // S3: 解析 descriptor 級 vars（{X: "count_opp_battle"} → ctx.X = N）供 ops/filters 用
       if (eff.vars) {
