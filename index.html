@@ -2,16 +2,16 @@
 <html lang="zh-HK">
 <head>
 <meta charset="UTF-8">
-<title>Marvel Hero Rush TCG — Battle Simulator v3.6</title>
+<title>Marvel Hero Rush TCG — Battle Simulator v3.8</title>
 <meta name="viewport" content="width=1480">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=3.6">
+<link rel="stylesheet" href="css/styles.css?v=3.8">
 <!-- Card data is committed locally (js/cards.js) so the sim is
      self-contained and works under any GitHub Pages subpath. -->
-<script src="js/cards.js?v=3.6"></script>
-<script src="js/mhr-decks.js?v=3.6"></script>
+<script src="js/cards.js?v=3.8"></script>
+<script src="js/mhr-decks.js?v=3.8"></script>
 </head>
 <body>
 
@@ -22,9 +22,9 @@
       <div class="logo-mark">★</div>
       <div>
         <h1>MARVEL HERO RUSH <small>Battle Sim</small></h1>
-        <p class="subtitle">Marvel Hero Rush TCG · 模擬對戰 · v3.6 (自動模擬對戰 · 對比模式 · DSL effects)</p>
+        <p class="subtitle">Marvel Hero Rush TCG · 模擬對戰 · v3.8 (自動模擬對戰 · 對比模式 · DSL effects)</p>
       </div>
-      <span class="version-badge">v3.6</span>
+      <span class="version-badge">v3.8</span>
       <button id="btn-sound-toggle" class="sound-toggle" title="音效切換">音效</button>
     </div>
   </header>
@@ -150,7 +150,17 @@
           結束回合
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4l14 8-14 8z"/></svg>
         </button>
-        <button id="btn-takeover" class="btn-action" hidden title="停止自動播放，改為手動操作">✋ 接管</button>
+      </div>
+      <div id="watch-controls" class="watch-controls" hidden>
+        <span class="watch-tag">👁 觀戰（AI 打雙方）</span>
+        <button id="btn-watch-pause" class="btn-action">⏸ 暫停</button>
+        <select id="watch-speed" class="sim-games" title="播放速度">
+          <option value="1800">慢</option>
+          <option value="1000" selected>正常</option>
+          <option value="450">快</option>
+        </select>
+        <button id="btn-watch-skip" class="btn-action" title="跳過播放，直接出結局">⏭ 快進結局</button>
+        <button id="btn-takeover" class="btn-action" title="停止自動播放，改為手動操作">✋ 接管</button>
       </div>
       <div class="action-hint" id="action-hint">…</div>
     </div>
@@ -328,13 +338,13 @@
 </div>
 
 <!-- Order matters: data → effects-data → engine → effects → ai → app -->
-<script src="js/data.js?v=3.6"></script>
-<script src="js/effects-data.js?v=3.6"></script>
-<script src="js/engine.js?v=3.6"></script>
-<script src="js/effects.js?v=3.6"></script>
-<script src="js/audio.js?v=3.6"></script>
-<script src="js/ai.js?v=3.6"></script>
-<script src="js/app.js?v=3.6"></script>
+<script src="js/data.js?v=3.8"></script>
+<script src="js/effects-data.js?v=3.8"></script>
+<script src="js/engine.js?v=3.8"></script>
+<script src="js/effects.js?v=3.8"></script>
+<script src="js/audio.js?v=3.8"></script>
+<script src="js/ai.js?v=3.8"></script>
+<script src="js/app.js?v=3.8"></script>
 <script>
   // Wire sound toggle after DOM ready
   document.getElementById("btn-sound-toggle").addEventListener("click", () => {

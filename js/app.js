@@ -24,6 +24,8 @@
     pendingCounter: null,   // { attackerUid }
     aiTimer: null,
     autoPlay: false,        // v3.5: 觀戰模式（AI 打雙方）
+    autoPlayPaused: false,  // v3.7: 觀戰暫停
+    aiDelay: 1000,          // v3.7: 觀戰每回合間隔 ms（慢 1800 / 正常 1000 / 快 450）
     _compareMode: false,    // v3.5: 對比模式（揀 2+ deck 一齊模擬）
     _compareSel: new Set(), // v3.5: 對比模式已選 deck
     _chosenRush: null,      // v3.4: 玩家自選衝擊卡組（9 張 card objects；null = 自動）
@@ -305,6 +307,8 @@
     if (!deck) deck = "RED_Aggro";
     state = E.initGame(deck, opponentDeck || _autosimOpponent || "YELLOW_Machine", view._chosenRush, null);
     view.autoPlay = true;
+    view.autoPlayPaused = false;
+    view.aiDelay = parseInt((document.getElementById("watch-speed") || {}).value, 10) || 1000;
     view.selectedHandIdx = null; view.attackerUid = null; view.pendingCall = null;
     view.pendingSetDeploy = null; view.moveFromUid = null; view.pendingCounter = null;
     _lastPhase = null; _lastWinner = null; _lastRpCount = { P: 0, A: 0 };
@@ -315,7 +319,7 @@
     document.getElementById("autosim-overlay").classList.add("hidden");
     document.getElementById("setup-screen").classList.remove("visible");
     document.getElementById("battle-screen").classList.add("visible");
-    document.getElementById("btn-takeover").hidden = false;
+    showWatchControls(true);
     render();
     scheduleAI();
   }
@@ -327,7 +331,29 @@
   document.getElementById("autosim-watch").addEventListener("click", () => startAutoPlay(_autosimOpponent));
   document.getElementById("btn-takeover").addEventListener("click", () => {
     view.autoPlay = false;
-    document.getElementById("btn-takeover").hidden = true;
+    view.autoPlayPaused = false;
+    showWatchControls(false);
+  });
+
+  // v3.7: 觀戰播放控制
+  document.getElementById("btn-watch-pause").addEventListener("click", () => {
+    if (!view.autoPlay) return;
+    view.autoPlayPaused = !view.autoPlayPaused;
+    showWatchControls(true);
+    if (view.autoPlayPaused) {
+      clearTimeout(view.aiTimer);
+    } else {
+      scheduleAI();
+    }
+  });
+  document.getElementById("watch-speed").addEventListener("change", (e) => {
+    view.aiDelay = parseInt(e.target.value, 10) || 1000;
+  });
+  document.getElementById("btn-watch-skip").addEventListener("click", () => {
+    if (!view.autoPlay || view.autoPlayPaused) return;
+    clearTimeout(view.aiTimer);
+    view.aiDelay = 1;   // 快進：極速逐回合跑完
+    scheduleAI();
   });
 
   // v3.5: 對比模式 toggle
@@ -1411,21 +1437,49 @@
     document.getElementById("win-overlay").classList.add("hidden");
     document.getElementById("battle-screen").classList.remove("visible");
     document.getElementById("setup-screen").classList.add("visible");
+    clearTimeout(view.aiTimer);
+    view.autoPlay = false;          // v3.7: 離開觀戰模式（避免同正常模式溝埋）
+    view.autoPlayPaused = false;
+    showWatchControls(false);
+    view._compareSel.clear();
+    document.querySelectorAll(".deck-card").forEach(c => c.classList.remove("compare-selected"));
     renderDeckPicker();
   });
 
   // ---- AI turn ----
+  // v3.7: turn-by-turn — 每個 tick 只行一回合（觀戰可以逐回合睇）
   function scheduleAI() {
+    clearTimeout(view.aiTimer);
     view.aiTimer = setTimeout(() => {
-      while (!state.winner && (state.activeSide === "A" || view.autoPlay)) {
-        // v3.5: autoPlay 觀戰模式 → AI 打埋 P 嘅回合；正常模式只打 A
-        const side = state.activeSide;
-        AI.aiTurnFor(state, side);
-        render();
-        if (state.winner) break;
-        if (!view.autoPlay && state.activeSide === "P") break;
+      if (state.winner) {
+        showWatchControls(false);
+        return;
       }
-    }, 600);
+      if (!view.autoPlay) {
+        // 正常模式：淨係處理 AI（A）嘅回合，一回合一次，然後交返畀玩家
+        if (state.activeSide !== "A") return;
+        AI.aiTurnFor(state, "A");
+        render();
+        return;
+      }
+      // 觀戰模式：AI 打雙方，每 tick 一回合
+      if (view.autoPlayPaused) return;   // 暫停中：唔再排期，等 resume
+      AI.aiTurnFor(state, state.activeSide);
+      render();
+      if (state.winner) {
+        showWatchControls(false);
+        return;
+      }
+      scheduleAI();   // 排下一回合
+    }, view.aiDelay == null ? 1000 : view.aiDelay);
+  }
+
+  // v3.7: 觀戰控制 bar 顯示/隱藏
+  function showWatchControls(show) {
+    const bar = document.getElementById("watch-controls");
+    if (bar) bar.hidden = !show;
+    const pauseBtn = document.getElementById("btn-watch-pause");
+    if (pauseBtn) pauseBtn.textContent = view.autoPlayPaused ? "▶ 繼續" : "⏸ 暫停";
   }
 
   // ---- Log ----
