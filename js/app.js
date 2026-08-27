@@ -24,6 +24,8 @@
     pendingCounter: null,   // { attackerUid }
     aiTimer: null,
     autoPlay: false,        // v3.5: 觀戰模式（AI 打雙方）
+    _compareMode: false,    // v3.5: 對比模式（揀 2+ deck 一齊模擬）
+    _compareSel: new Set(), // v3.5: 對比模式已選 deck
     _chosenRush: null,      // v3.4: 玩家自選衝擊卡組（9 張 card objects；null = 自動）
     _mulliganSelected: new Set(),  // v3.4: mulligan 已選手牌 index
   };
@@ -47,6 +49,16 @@
         <div class="deck-colors">${colStr}</div>
       `;
       card.addEventListener("click", () => {
+        if (view._compareMode) {
+          // v3.5 對比模式：多選
+          if (view._compareSel.has(dk)) view._compareSel.delete(dk);
+          else view._compareSel.add(dk);
+          card.classList.toggle("compare-selected", view._compareSel.has(dk));
+          const n = view._compareSel.size;
+          document.getElementById("btn-autosim").disabled = n < 2;
+          document.getElementById("btn-autosim").textContent = n >= 2 ? `🤖 模擬對比（${n} 副）` : "🤖 自動模擬對戰";
+          return;
+        }
         document.querySelectorAll(".deck-card").forEach(c => c.classList.remove("selected"));
         card.classList.add("selected");
         document.getElementById("btn-start").disabled = false;
@@ -191,18 +203,39 @@
 
   // ---- v3.5: 自動模擬對戰（AI 打 AI，勝率戰報） ----
   let _autosimOpponent = null;   // 觀戰第一局用
+  let _compareResults = null;    // 對比模式結果
   function openAutoSim() {
+    const perOpp = parseInt((document.getElementById("sim-games") || {}).value, 10) || 3;
+    const btn = document.getElementById("btn-autosim");
+    const running = (label) => { btn.disabled = true; btn.textContent = label; };
+    const done = () => { btn.disabled = false; btn.textContent = "🤖 自動模擬對戰"; };
+
+    // 對比模式：揀 2+ 副 deck 一齊跑
+    if (view._compareMode && view._compareSel.size >= 2) {
+      const decks = [...view._compareSel];
+      running(`🤖 模擬對比中（${decks.length} 副）…`);
+      setTimeout(() => {
+        let results = [];
+        try { results = decks.map(d => ({ deck: d, games: AI.runAutoSim(d, { perOpp, maxTurns: 80 }) })); }
+        catch (e) { console.error("compare sim failed:", e); }
+        done();
+        if (!results.length) return;
+        _compareResults = results;
+        _autosimOpponent = results[0].games[0] && results[0].games[0].opponent;
+        renderCompareResults(results);
+        document.getElementById("autosim-overlay").classList.remove("hidden");
+      }, 30);
+      return;
+    }
+
     const deck = view._chosenDeck;
     if (!deck) return;
-    const btn = document.getElementById("btn-autosim");
-    btn.disabled = true;
-    btn.textContent = "🤖 模擬中…";
+    running("🤖 模擬中…");
     setTimeout(() => {
       let results = [];
-      try { results = AI.runAutoSim(deck, { perOpp: 3, maxTurns: 80 }); }
+      try { results = AI.runAutoSim(deck, { perOpp, maxTurns: 80 }); }
       catch (e) { console.error("autosim failed:", e); }
-      btn.disabled = false;
-      btn.textContent = "🤖 自動模擬對戰";
+      done();
       if (!results.length) return;
       _autosimOpponent = results[0].opponent;
       renderAutoSimResults(results);
@@ -232,11 +265,44 @@
       ? first.log.map(m => `<div class="autosim-line${m.startsWith("[效果]") ? " fx" : ""}${m.startsWith("[效果未實裝]") ? " stub" : ""}">${m}</div>`).join("")
       : "";
     document.getElementById("autosim-watch").disabled = false;
+    document.getElementById("autosim-watch").textContent = "▶ 觀戰第一局（AI 打 AI）";
+  }
+
+  // v3.5: 對比模式矩陣（deck × 對手勝率）
+  function renderCompareResults(results) {
+    const opps = [];
+    results.forEach(r => r.games.forEach(g => { if (!opps.includes(g.opponent)) opps.push(g.opponent); }));
+    let summaryWins = 0, summaryTotal = 0;
+    const deckRows = results.map(r => {
+      const wins = r.games.filter(g => g.winner === "P").length;
+      summaryWins += wins; summaryTotal += r.games.length;
+      const cells = opps.map(opp => {
+        const g = r.games.filter(x => x.opponent === opp);
+        if (!g.length) return `<td class="cmp-na">—</td>`;   // 鏡像對局（vs 自己）冇數據
+        const w = g.filter(x => x.winner === "P").length;
+        return `<td>${Math.round(w / g.length * 100)}%<span class="autosim-sub">${w}/${g.length}</span></td>`;
+      }).join("");
+      return `<tr><td>${r.deck}</td>${cells}<td class="cmp-total">${Math.round(wins / r.games.length * 100)}%<span class="autosim-sub">${wins}/${r.games.length}</span></td></tr>`;
+    }).join("");
+    const rate = summaryTotal ? Math.round(summaryWins / summaryTotal * 100) : 0;
+    document.getElementById("autosim-summary").innerHTML =
+      `<div class="autosim-rate">整體平均勝率 <b>${rate}%</b> <span class="autosim-sub">${summaryWins} 勝 / ${summaryTotal} 負（${summaryTotal} 局，${results.length} 副）</span></div>`;
+    document.getElementById("autosim-table").innerHTML =
+      `<table><thead><tr><th>Deck</th>${opps.map(o => `<th>vs ${o}</th>`).join("")}<th>總計</th></tr></thead><tbody>${deckRows}</tbody></table>`;
+    document.getElementById("autosim-log-head").textContent = "第一局戰報（第一副 deck，可捲動）";
+    const first = results[0].games[0];
+    document.getElementById("autosim-log").innerHTML = first
+      ? first.log.map(m => `<div class="autosim-line${m.startsWith("[效果]") ? " fx" : ""}${m.startsWith("[效果未實裝]") ? " stub" : ""}">${m}</div>`).join("")
+      : "";
+    document.getElementById("autosim-watch").disabled = false;
+    document.getElementById("autosim-watch").textContent = `▶ 觀戰第一局（${results[0].deck} vs ${first.opponent}）`;
   }
 
   // 觀戰模式：AI 打雙方（可中途「✋ 接管」）
   function startAutoPlay(opponentDeck) {
-    const deck = view._chosenDeck || "RED_Aggro";
+    let deck = view._chosenDeck;
+    if (!deck && _compareResults && _compareResults.length) deck = _compareResults[0].deck;   // v3.5 對比模式
+    if (!deck) deck = "RED_Aggro";
     state = E.initGame(deck, opponentDeck || _autosimOpponent || "YELLOW_Machine", view._chosenRush, null);
     view.autoPlay = true;
     view.selectedHandIdx = null; view.attackerUid = null; view.pendingCall = null;
@@ -262,6 +328,21 @@
   document.getElementById("btn-takeover").addEventListener("click", () => {
     view.autoPlay = false;
     document.getElementById("btn-takeover").hidden = true;
+  });
+
+  // v3.5: 對比模式 toggle
+  document.getElementById("btn-compare").addEventListener("click", () => {
+    view._compareMode = !view._compareMode;
+    view._compareSel.clear();
+    document.querySelectorAll(".deck-card").forEach(c => c.classList.remove("compare-selected"));
+    document.getElementById("btn-compare").classList.toggle("compare-on", view._compareMode);
+    document.getElementById("btn-autosim").textContent = "🤖 自動模擬對戰";
+    document.getElementById("btn-autosim").disabled = view._compareMode ? true : !view._chosenDeck;
+    document.getElementById("btn-start").disabled = view._compareMode ? true : !view._chosenDeck;
+    const hint = document.getElementById("deck-picker-hint");
+    if (hint) hint.textContent = view._compareMode
+      ? "⚖️ 對比模式：揀 2+ 副 deck（再撳一次「⚖️ 對比模式」離開）"
+      : "";
   });
 
   // ---- Top bar HUD ----
@@ -1151,7 +1232,15 @@
 
   // ---- Zone card click (during action or battle) ----
   function onZoneCardClick(side, slot, card) {
-    if (state.activeSide !== "P" || state.winner) return;
+    if (state.winner) return;
+
+    // v3.5: 觀戰模式（autoPlay）— 撳任何 mat 卡睇資訊（唔理邊方回合）
+    if (view.autoPlay) {
+      showCardDetail(card);
+      return;
+    }
+
+    if (state.activeSide !== "P") return;
 
     // Attack mode: clicked target
     if (state.phase === "BATTLE" && view.attackerUid && side !== "P") {
@@ -1180,7 +1269,11 @@
       view.moveFromUid = null;
       view._moveToBase = null;
       render();
+      return;
     }
+
+    // v3.5: 冇任何 action mode 進行中 → 撳 mat 卡睇資訊（正常/觀戰通用）
+    showCardDetail(card);
   }
 
   function isInBattleSlot(p, uid) {

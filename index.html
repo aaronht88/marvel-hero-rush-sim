@@ -2,16 +2,16 @@
 <html lang="zh-HK">
 <head>
 <meta charset="UTF-8">
-<title>Marvel Hero Rush TCG — Battle Simulator v3.5</title>
+<title>Marvel Hero Rush TCG — Battle Simulator v3.6</title>
 <meta name="viewport" content="width=1480">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=3.5">
+<link rel="stylesheet" href="css/styles.css?v=3.6">
 <!-- Card data is committed locally (js/cards.js) so the sim is
      self-contained and works under any GitHub Pages subpath. -->
-<script src="js/cards.js?v=3.5"></script>
-<script src="js/mhr-decks.js?v=3.5"></script>
+<script src="js/cards.js?v=3.6"></script>
+<script src="js/mhr-decks.js?v=3.6"></script>
 </head>
 <body>
 
@@ -22,19 +22,27 @@
       <div class="logo-mark">★</div>
       <div>
         <h1>MARVEL HERO RUSH <small>Battle Sim</small></h1>
-        <p class="subtitle">Marvel Hero Rush TCG · 模擬對戰 · v3.5 (自動模擬對戰 · Mulligan · DSL effects)</p>
+        <p class="subtitle">Marvel Hero Rush TCG · 模擬對戰 · v3.6 (自動模擬對戰 · 對比模式 · DSL effects)</p>
       </div>
-      <span class="version-badge">v3.5</span>
+      <span class="version-badge">v3.6</span>
       <button id="btn-sound-toggle" class="sound-toggle" title="音效切換">音效</button>
     </div>
   </header>
   <main class="setup-main">
     <h2>選擇你嘅主牌組</h2>
+    <div id="deck-picker-hint" class="setup-hint"></div>
     <p class="muted">AI 會用緊接嘅下一副牌組；deck 來源：<code>/opt/data/mhr-decks.json</code></p>
     <div id="deck-picker" class="deck-picker"></div>
     <div class="setup-actions">
       <button id="btn-start" class="btn-primary" disabled>開始對戰</button>
       <button id="btn-autosim" class="btn-action" disabled>🤖 自動模擬對戰</button>
+      <select id="sim-games" class="sim-games" title="每對手模擬局數">
+        <option value="1">1 局/對手</option>
+        <option value="3" selected>3 局/對手</option>
+        <option value="5">5 局/對手</option>
+        <option value="10">10 局/對手</option>
+      </select>
+      <button id="btn-compare" class="btn-action" title="對比模式：揀 2+ 副 deck 一齊模擬">⚖️ 對比模式</button>
       <button id="btn-import" class="btn-action">📥 匯入 Deck</button>
       <button id="btn-rush-picker" class="btn-action">⚡ 衝擊卡組（自選 9）</button>
       <a class="link-muted" href="README.md" target="_blank">README / 規則假設</a>
@@ -262,7 +270,7 @@
       <div class="modal-body">
         <div id="autosim-summary" class="autosim-summary"></div>
         <div id="autosim-table" class="autosim-table"></div>
-        <div class="autosim-log-head">第一局戰報（可捲動）</div>
+        <div class="autosim-log-head" id="autosim-log-head">第一局戰報（可捲動）</div>
         <div id="autosim-log" class="autosim-log"></div>
       </div>
       <div class="modal-actions">
@@ -320,13 +328,13 @@
 </div>
 
 <!-- Order matters: data → effects-data → engine → effects → ai → app -->
-<script src="js/data.js?v=3.5"></script>
-<script src="js/effects-data.js?v=3.5"></script>
-<script src="js/engine.js?v=3.5"></script>
-<script src="js/effects.js?v=3.5"></script>
-<script src="js/audio.js?v=3.5"></script>
-<script src="js/ai.js?v=3.5"></script>
-<script src="js/app.js?v=3.5"></script>
+<script src="js/data.js?v=3.6"></script>
+<script src="js/effects-data.js?v=3.6"></script>
+<script src="js/engine.js?v=3.6"></script>
+<script src="js/effects.js?v=3.6"></script>
+<script src="js/audio.js?v=3.6"></script>
+<script src="js/ai.js?v=3.6"></script>
+<script src="js/app.js?v=3.6"></script>
 <script>
   // Wire sound toggle after DOM ready
   document.getElementById("btn-sound-toggle").addEventListener("click", () => {

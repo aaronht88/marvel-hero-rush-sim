@@ -1490,3 +1490,11 @@ body::after {
 .autosim-log { max-height: 260px; overflow-y: auto; border: 1px solid rgba(255, 255, 255, .12); border-radius: 6px; padding: 8px; font-size: 11px; line-height: 1.5; background: rgba(0, 0, 0, .35); }
 .autosim-line.fx { color: #7dd3fc; }
 .autosim-line.stub { color: #f59e0b; }
+.autosim-sub { font-size: 10px; opacity: .75; margin-left: 4px; }
+.cmp-total { color: var(--cyan, #22d3ee); font-weight: bold; }
+.sim-games { background: rgba(255, 255, 255, .08); color: var(--text); border: 1px solid rgba(255, 255, 255, .2); border-radius: 6px; padding: 4px 6px; font-size: 12px; }
+.setup-hint { min-height: 16px; font-size: 12px; color: var(--cyan, #22d3ee); margin: 6px 0; }
+.btn-action.compare-on { border-color: var(--cyan, #22d3ee); color: var(--cyan, #22d3ee); box-shadow: 0 0 10px rgba(34, 211, 238, .35); }
+.deck-card.compare-selected { border-color: var(--cyan, #22d3ee); box-shadow: 0 0 14px rgba(34, 211, 238, .55); }
+.deck-card.compare-selected::after { content: "✔"; position: absolute; top: 6px; right: 8px; color: var(--cyan, #22d3ee); font-weight: bold; }
+.cmp-na { color: rgba(255, 255, 255, .3); }
