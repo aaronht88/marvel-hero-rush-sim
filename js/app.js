@@ -23,6 +23,8 @@
     moveFromUid: null,      // when in move mode
     pendingCounter: null,   // { attackerUid }
     aiTimer: null,
+    _chosenRush: null,      // v3.4: 玩家自選衝擊卡組（9 張 card objects；null = 自動）
+    _mulliganSelected: new Set(),  // v3.4: mulligan 已選手牌 index
   };
 
   // ---- Setup ----
@@ -58,16 +60,15 @@
     const others = Object.keys(DATA.DECKS).filter(k => k !== deck);
     const aiDeck = others[Math.floor(Math.random() * others.length)];
 
-    state = E.initGame(deck, aiDeck);
-    // initGame 設 phase=DRAW 抽 2 張 → ACTION
-    E.startTurn(state);
-    SFX && SFX.play("draw"); // v3.0: opening draw cue
+    state = E.initGame(deck, aiDeck, view._chosenRush, null);
+    // initGame 設 phase=MULLIGAN → 玩家調整起始手牌 → AI 調整 → startTurn（第 1 回合）
     view.selectedHandIdx = null;
     view.attackerUid = null;
     view.pendingCall = null;
     view.pendingSetDeploy = null;
     view.moveFromUid = null;
     view.pendingCounter = null;
+    view._mulliganSelected = new Set();
     _lastPhase = null;
     _lastWinner = null;
     _lastRpCount = { P: 0, A: 0 };
@@ -76,8 +77,115 @@
     document.getElementById("battle-screen").classList.add("visible");
 
     render();
+    beginMulligan();
   }
   document.getElementById("btn-start").addEventListener("click", startBattle);
+
+  // ---- v3.4: Mulligan（調整起始手牌，官方 P9） ----
+  function beginMulligan() {
+    if (!state || state.phase !== "MULLIGAN" || state.mulliganDone.P) return;
+    SFX && SFX.play("draw");
+    renderMulliganOverlay();
+  }
+
+  function renderMulliganOverlay() {
+    const p = state.players.P;
+    const root = document.getElementById("mulligan-hand");
+    root.innerHTML = "";
+    view._mulliganSelected = new Set();
+    p.hand.forEach((c, i) => {
+      const card = document.createElement("div");
+      card.className = "m-card";
+      card.dataset.idx = i;
+      const art = document.createElement("div");
+      art.className = "m-card-art";
+      art.style.backgroundImage = `url("${DATA.artPath(c)}")`;
+      const name = document.createElement("div");
+      name.className = "m-card-name";
+      name.textContent = `Lv${c.level || "-"} · ${E.shortName(c)}`;
+      card.appendChild(art);
+      card.appendChild(name);
+      card.addEventListener("click", () => {
+        if (view._mulliganSelected.has(i)) view._mulliganSelected.delete(i);
+        else view._mulliganSelected.add(i);
+        card.classList.toggle("selected", view._mulliganSelected.has(i));
+        updateMulliganStatus();
+      });
+      root.appendChild(card);
+    });
+    updateMulliganStatus();
+    document.getElementById("mulligan-overlay").classList.remove("hidden");
+  }
+
+  function updateMulliganStatus() {
+    const n = view._mulliganSelected.size;
+    document.getElementById("mulligan-status").textContent = `已選 ${n} 張（放回底 → 抽 ${n} → 洗牌）`;
+    document.getElementById("mulligan-confirm").disabled = n === 0;
+  }
+
+  function finishPlayerMulligan() {
+    const r = E.mulligan(state, "P", [...view._mulliganSelected]);
+    if (!r.ok) console.warn("mulligan failed:", r.err);
+    document.getElementById("mulligan-overlay").classList.add("hidden");
+    // AI 後決定（簡化：自動 heuristic）
+    const aiIdxs = AI.aiMulligan(state);
+    E.mulligan(state, "A", aiIdxs);
+    // 雙方調整完成 → 正式開始第 1 回合
+    E.startTurn(state);
+    render();
+  }
+  document.getElementById("mulligan-keep").addEventListener("click", () => {
+    view._mulliganSelected = new Set();
+    finishPlayerMulligan();
+  });
+  document.getElementById("mulligan-confirm").addEventListener("click", finishPlayerMulligan);
+
+  // ---- v3.4: 衝擊卡組自選（官方 P7：玩家自選 9 款衝擊卡） ----
+  function renderRushPicker() {
+    const root = document.getElementById("rush-grid");
+    root.innerHTML = "";
+    const rp = (DATA.CARDS || []).filter(c => c.type === "impact");
+    const selected = new Set((view._chosenRush || []).map(c => c.card_no));
+    rp.forEach(c => {
+      const card = document.createElement("div");
+      card.className = "r-card" + (selected.has(c.card_no) ? " selected" : "");
+      card.dataset.no = c.card_no;
+      const art = document.createElement("div");
+      art.className = "r-card-art";
+      art.style.backgroundImage = `url("${DATA.artPath(c)}")`;
+      card.appendChild(art);
+      card.addEventListener("click", () => {
+        const cur = (view._chosenRush || []).slice();
+        const i = cur.findIndex(x => x.card_no === c.card_no);
+        if (i >= 0) cur.splice(i, 1);
+        else if (cur.length < 9) cur.push(c);
+        view._chosenRush = cur;
+        renderRushPicker();
+        updateRushStatus();
+      });
+      root.appendChild(card);
+    });
+    updateRushStatus();
+  }
+
+  function updateRushStatus() {
+    const n = (view._chosenRush || []).length;
+    document.getElementById("rush-status").textContent = `已選 ${n} / 9` + (n === 9 ? " ✓（可以開始）" : "（或按「自動」）");
+    document.getElementById("rush-confirm").disabled = n !== 9;
+  }
+
+  function openRushPicker() {
+    renderRushPicker();
+    document.getElementById("rush-overlay").classList.remove("hidden");
+  }
+  document.getElementById("btn-rush-picker").addEventListener("click", openRushPicker);
+  document.getElementById("rush-auto").addEventListener("click", () => {
+    view._chosenRush = null;   // null = engine 自動（跟主牌組 dominant set）
+    document.getElementById("rush-overlay").classList.add("hidden");
+  });
+  document.getElementById("rush-confirm").addEventListener("click", () => {
+    document.getElementById("rush-overlay").classList.add("hidden");
+  });
 
   // ---- Top bar HUD ----
   function renderHud() {
@@ -99,7 +207,8 @@
 
     // phase help + v3.2 action counters
     const ph = document.getElementById("phase-help");
-    if (state.phase === "DRAW") ph.textContent = "抽 2 張（自動）";
+    if (state.phase === "MULLIGAN") ph.textContent = "調整起始手牌：點擊選擇放回嘅手牌（先攻先決定）";
+    else if (state.phase === "DRAW") ph.textContent = "抽 2 張（自動）";
     else if (state.phase === "ACTION") {
       const f = state.turnFlags.P || {};
       const maxCall = E.maxCallCount(state, "P");

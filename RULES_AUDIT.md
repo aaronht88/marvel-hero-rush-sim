@@ -31,12 +31,14 @@
 先攻玩家先決定：把要調整嘅手牌蓋放回卡組底 → 從卡組頂抽等量 → 洗混卡組。後攻再決定。
 **Sim：完全冇呢步。**
 優先度：高（setup 規則，容易做）
+**✅ DONE 2026-08-27（v3.4）：** engine `mulligan()` + UI overlay（點卡選擇／全部保留）+ AI heuristic（Lv≥5 最多 2 張）。
 
 ### #2 衝擊卡組實卡化 — 官方 P7
 官方：玩家自選 **9 款衝擊卡** 組成衝擊卡組；時間線放嘅係實卡。
 Deckbuilder 已有 34 張 RP 卡資料（BP01-121~150 + SDxx-019），圖鑑 tab 已上線。
 **Sim：只係純計數（星爆 9 格），冇真正衝擊卡 deck。**
 優先度：高（deck builder 已 support，sim 要對接）
+**✅ DONE 2026-08-27（v3.4）：** setup screen 加自選衝擊卡組（34 張揀 9，揀滿先解鎖）；唔揀就自動（dominant set，v3.3 邏輯）；時間線已顯示實卡 art（v3.3）。
 
 ### #3 完整應對階段 — 官方 P14
 官方：雙方**輪流**選擇 1 個行動（應對號召 / 應對·起動 / 不行動），連續選擇直至雙方連續「不行動」。
@@ -96,10 +98,10 @@ DSL descriptor 規格見 **`EFFECTS_DESCRIPTOR.md`**（interpreter 對接文件�
 | # | Deliverable | 負責 | 狀態 |
 |---|---|---|---|
 | M0 | Art sync（101→268 圖） | JARVIS | ✅ DONE 2026-08-15 |
-| M1 | DSL engine core + interpreter + 5 sample ops + demo card | Senku | ⏳ |
+| M1 | DSL engine core + interpreter + 5 sample ops + demo card | Senku | ✅ DONE 2026-08-27（effects.js：draw/power_mod/retreat/prune/attack_bonus + Thor BP01-011 demo；node smoke 36 pass） |
 | M1.2 | 效果分類統計 + DSL descriptor 規格（EFFECTS_DESCRIPTOR.md） | JARVIS | ✅ DONE 2026-08-27 |
-| M1.5 | Mulligan + 衝擊卡組實卡化 | JARVIS | ⏳ |
-| M2 | 180 張 stub effects declarative 化 + Range 對齊 | Senku | ⏳（以 EFFECTS_DESCRIPTOR.md 為對接基準） |
+| M1.5 | Mulligan + 衝擊卡組實卡化 | JARVIS | ✅ DONE 2026-08-27（v3.4，瀏覽器實測） |
+| M2 | 180 張 stub effects declarative 化 + Range 對齊 | Senku | ⏳（以 EFFECTS_DESCRIPTOR.md 為對接基準；S3 auto-parse 由 JARVIS+Senku 共同） |
 | M3 | Play mat 視覺對齊官方（CSS-only）+ deckbuilder 對接 | JARVIS | ⏳ |
 | M4 | Test deck + counter frame + verify + deploy | 共同 | ⏳ |
 

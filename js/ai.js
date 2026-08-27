@@ -133,5 +133,16 @@
     return cards[0] || targets[0] || null;
   }
 
-  global.MHR_AI = { aiTurn };
+  // M1.5: AI 調整起始手牌 — 簡單 heuristic：Lv >= 5 嘅高費牌放返（最多 2 張），
+  // 其餘保留（早期抽到高費牌會卡手，等於官方「調整」嘅合理用法）。
+  function aiMulligan(state) {
+    const me = state.players.A;
+    const idxs = [];
+    me.hand.forEach((c, i) => {
+      if ((c.level || 0) >= 5 && idxs.length < 2) idxs.push(i);
+    });
+    return idxs;
+  }
+
+  global.MHR_AI = { aiTurn, aiMulligan };
 })(window);

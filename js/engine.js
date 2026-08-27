@@ -39,6 +39,29 @@
   const DATA = global.MHR_DATA;
   const DECKS = DATA.DECKS;
 
+  // ---- M1: declarative effect descriptors (DSL — see EFFECTS_DESCRIPTOR.md) ----
+  // 對應每張 card_no 嘅 declarative descriptor。M2 (S3) 自動 parse 簡單卡後會擴展。
+  // 注意：deckbuilder 嘅 cards.js 唔郁（MHR_DATA.CARDS source-of-truth），descriptor
+  // 由本 map 透過 card_no 注入 → 確保 engine 自足，UI deckbuilder 不受影響。
+  const EFFECTS_DESCRIPTORS = {
+    "BP01-011": [
+      { trig: "TRIG", slot: "FIELD",
+        cond: [ { if: "by_calling" } ],
+        ops: [
+          { op: "draw", n: 1 },
+          { op: "attack_bonus", target: "self", duration: "this_turn" },
+        ] },
+    ],
+    // 其他卡 descriptors 由 S3（S3 JARVIS+Senku）批量 parse 後補入。
+    // demo 範圍只放 BP01-011 Thor 確實行新 interpreter 路徑。
+  };
+
+  function injectEffects(c) {
+    const desc = EFFECTS_DESCRIPTORS[c.card_no];
+    if (desc) c.effects = desc;
+    return c;
+  }
+
   // ---- Constants (official) ----
   const RUSH_TO_WIN = 9;          // 9 張衝擊卡 或 對方牌組 0
   const HAND_SIZE_START = 6;      // 起始手牌 6
@@ -78,11 +101,33 @@
   })();
 
   function cloneCard(c) {
-    return Object.assign({}, c, { _uid: uid() });
+    return injectEffects(Object.assign({}, c, { _uid: uid() }));
   }
 
   function log(state, msg, side) {
     state.log.push({ side: side || null, msg });
+  }
+
+  // Fisher-Yates shuffle（共用；mulligan / newPlayer / buildRushDeck 一致）
+  function fisherYates(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  // 確保衝擊卡組 9 張：自選不足 9 時用 BP01 pool 補（M1.5 自選衝擊卡組）
+  function padRushDeck(cards) {
+    const out = cards.slice();
+    if (out.length >= RUSH_DECK_SIZE) return fisherYates(out.slice(0, RUSH_DECK_SIZE));
+    const bpPool = RUSH_POOL_BY_SET.BP01 || [];
+    let bi = 0;
+    while (out.length < RUSH_DECK_SIZE && bpPool.length > 0) {
+      out.push(Object.assign({}, bpPool[bi % bpPool.length], { _uid: "rp" + Math.random().toString(36).slice(2, 8) }));
+      bi++;
+    }
+    return fisherYates(out);
   }
 
   // =============================================================
@@ -133,13 +178,8 @@
     return out;
   }
 
-  function newPlayer(name, deckArr, deckLabel) {
-    const deck = deckArr.map(cloneCard);
-    // Shuffle (Fisher-Yates)
-    for (let i = deck.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [deck[i], deck[j]] = [deck[j], deck[i]];
-    }
+  function newPlayer(name, deckArr, deckLabel, rushCards) {
+    const deck = fisherYates(deckArr.map(cloneCard));
     return {
       name,
       deckLabel,
@@ -149,8 +189,8 @@
       voidZone: [],
       battle: { front: null, back: null, wing: [null, null] },
       base: { faceDown: [] },
-      // 衝擊卡組 — real tokens from same set as main deck (2026-08-15)
-      rushDeck: buildRushDeck(deck),
+      // 衝擊卡組 — 玩家自選 9 張實卡（M1.5）；否則自動（dominant set 實卡）
+      rushDeck: rushCards && rushCards.length ? padRushDeck(rushCards) : buildRushDeck(deck),
       // 時間線 (placed rush cards, = 玩家勝利步伐)
       timeline: [],
       rushPoints: 0,        // 同步 = timeline.length
@@ -159,15 +199,15 @@
     };
   }
 
-  function initGame(deckNameP, deckNameA /*, rngSeed */) {
+  function initGame(deckNameP, deckNameA, rushCardsP, rushCardsA) {
     const dp = DECKS[deckNameP];
     const da = DECKS[deckNameA];
     if (!dp || !da) throw new Error("Unknown deck: " + (deckNameP || deckNameA));
 
     const state = {
       players: {
-        P: newPlayer("Player", dp, deckNameP),
-        A: newPlayer("AI", da, deckNameA),
+        P: newPlayer("Player", dp, deckNameP, rushCardsP),
+        A: newPlayer("AI", da, deckNameA, rushCardsA),
       },
       activeSide: "P",
       turn: 1,
@@ -188,6 +228,12 @@
     log(state, `第 1 回合（先攻：Player）`);
 
     initTurnFlags(state, "P");
+
+    // M1.5: Mulligan（官方 P9）— 雙方抽 6 後進入調整起始手牌階段
+    // 先攻玩家先決定：蓋放回卡組底 → 抽等量 → 洗牌；後攻再決定。
+    state.phase = "MULLIGAN";
+    state.mulliganDone = { P: false, A: false };
+    log(state, "調整起始手牌（Mulligan）：先攻 Player 先決定，AI 後決定");
     return state;
   }
 
@@ -256,6 +302,35 @@
       p.retreat.push(c);
       log(state, `${p.name} 捨棄 ${shortName(c)} → RETREAT`, side);
     }
+  }
+
+  // =============================================================
+  // 1.5 MULLIGAN — 官方 P9（調整起始手牌）
+  // 先攻玩家先決定：把要調整嘅手牌蓋放回卡組底 → 從卡組頂抽等量 → 洗混卡組。
+  // 後攻再決定。階段 MULLIGAN 只喺遊戲開始出現一次。
+  // =============================================================
+  function mulligan(state, side, handIndices) {
+    const p = state.players[side];
+    if (state.phase !== "MULLIGAN") return { ok: false, err: "唔係調整起始手牌階段" };
+    if (state.mulliganDone[side]) return { ok: false, err: "已調整過" };
+
+    // 由高 index 開始移除，避免 index 移位；去重 + 過濾非法 index
+    const idxs = [...new Set((handIndices || []).map(Number))]
+      .filter(i => Number.isInteger(i) && i >= 0 && i < p.hand.length)
+      .sort((a, b) => b - a);
+    const returned = idxs.map(i => p.hand.splice(i, 1)[0]).reverse(); // 還原原手牌次序
+    const n = returned.length;
+
+    // 1. 蓋放回卡組底（deck 頂 = index 0，抽牌用 shift → 底 = push）
+    for (const c of returned) p.deck.push(c);
+    // 2. 從卡組頂抽等量
+    for (let i = 0; i < n && p.deck.length > 0; i++) p.hand.push(p.deck.shift());
+    // 3. 洗混卡組
+    fisherYates(p.deck);
+
+    state.mulliganDone[side] = true;
+    log(state, `${p.name} 調整起始手牌：放回 ${n} 張 → 抽 ${n} → 洗牌`, side);
+    return { ok: true, returned: n };
   }
 
   // =============================================================
@@ -461,7 +536,18 @@
     p._placedThisTurn = p._placedThisTurn || {};
     p._placedThisTurn[card._uid] = true;   // 戰基移動限制
     log(state, `${p.name} 號召 ${shortName(card)} → ${slotLabel(slot)}（Lv${lv}）`, side);
-    triggerEnter(state, side, card);
+    // M1: descriptor 路徑 — 優先行 effects interpreter，fallback 舊 regex
+    if (Array.isArray(card.effects) && card.effects.length) {
+      log(state, `[DSL] ${shortName(card)} descriptor 觸發（${card.effects.length} blocks）`, side);
+      global.MHR_EFFECTS.runEffects(state, side, {
+        kind: "enter_field",
+        source: card,
+        byCalling: true,
+        retreatCount: (retreatUids || []).length,
+      });
+    } else {
+      triggerEnter(state, side, card);
+    }
     return { ok: true };
   }
 
@@ -804,6 +890,7 @@
   // =============================================================
   global.MHR_ENGINE = {
     initGame,
+    mulligan,
     startTurn,
     endTurn,
     setDeploy,

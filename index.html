@@ -2,12 +2,12 @@
 <html lang="zh-HK">
 <head>
 <meta charset="UTF-8">
-<title>Marvel Hero Rush TCG — Battle Simulator v3.3</title>
+<title>Marvel Hero Rush TCG — Battle Simulator v3.4</title>
 <meta name="viewport" content="width=1480">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=3.3">
+<link rel="stylesheet" href="css/styles.css?v=3.4">
 <!-- Card data is committed locally (js/cards.js) so the sim is
      self-contained and works under any GitHub Pages subpath. -->
 <script src="js/cards.js"></script>
@@ -22,9 +22,9 @@
       <div class="logo-mark">★</div>
       <div>
         <h1>MARVEL HERO RUSH <small>Battle Sim</small></h1>
-        <p class="subtitle">Marvel Hero Rush TCG · 模擬對戰 · v3.3 (official mat tint · 268 card art · rules audit)</p>
+        <p class="subtitle">Marvel Hero Rush TCG · 模擬對戰 · v3.4 (Mulligan · 自選衝擊卡組 · rules audit)</p>
       </div>
-      <span class="version-badge">v3.3</span>
+      <span class="version-badge">v3.4</span>
       <button id="btn-sound-toggle" class="sound-toggle" title="音效切換">音效</button>
     </div>
   </header>
@@ -35,6 +35,7 @@
     <div class="setup-actions">
       <button id="btn-start" class="btn-primary" disabled>開始對戰</button>
       <button id="btn-import" class="btn-action">📥 匯入 Deck</button>
+      <button id="btn-rush-picker" class="btn-action">⚡ 衝擊卡組（自選 9）</button>
       <a class="link-muted" href="README.md" target="_blank">README / 規則假設</a>
     </div>
   </main>
@@ -262,12 +263,50 @@
   </div>
 </section>
 
-<!-- Order matters: data → engine → ai → app -->
+<!-- v3.4: Mulligan overlay（調整起始手牌，官方 P9）— body 級，避免受 screen 顯示狀態影響 -->
+<div id="mulligan-overlay" class="modal hidden">
+  <div class="modal-card mulligan-card">
+    <div class="modal-title">調整起始手牌（Mulligan）</div>
+    <div class="modal-body">
+      <p class="mulligan-hint">
+        點擊選擇想放回卡組底嘅手牌（蓋放回底 → 抽等量 → 洗牌）。先攻玩家先決定，AI 後決定。唔想調整就直接「全部保留」。
+      </p>
+      <div id="mulligan-hand" class="mulligan-hand"></div>
+      <div id="mulligan-status" class="import-status">已選 0 張</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-action" id="mulligan-keep">全部保留</button>
+      <button class="btn-primary" id="mulligan-confirm" disabled>確認調整</button>
+    </div>
+  </div>
+</div>
+
+<!-- v3.4: 衝擊卡組自選 overlay（官方 P7：玩家自選 9 款衝擊卡）— body 級 -->
+<div id="rush-overlay" class="modal hidden">
+  <div class="modal-card rush-card">
+    <div class="modal-title">選擇衝擊卡組（9 張）</div>
+    <div class="modal-body">
+      <p class="mulligan-hint">
+        官方規則：玩家自選 9 款衝擊卡組成衝擊卡組。揀滿 9 張或按「自動」。
+        「自動」= 跟主牌組主色系列（同盒 art）。
+      </p>
+      <div id="rush-grid" class="rush-grid"></div>
+      <div id="rush-status" class="import-status">已選 0 / 9</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-action" id="rush-auto">自動（跟主牌組）</button>
+      <button class="btn-primary" id="rush-confirm" disabled>確認（9 張）</button>
+    </div>
+  </div>
+</div>
+
+<!-- Order matters: data → engine → effects → ai → app -->
 <script src="js/data.js"></script>
 <script src="js/engine.js"></script>
+<script src="js/effects.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/ai.js"></script>
-<script src="js/app.js?v=3.3"></script>
+<script src="js/app.js?v=3.4"></script>
 <script>
   // Wire sound toggle after DOM ready
   document.getElementById("btn-sound-toggle").addEventListener("click", () => {
