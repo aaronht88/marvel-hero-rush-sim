@@ -1,8 +1,8 @@
 # RULES_AUDIT — Marvel Hero Rush Sim vs 官方規則書
 
 > 來源：官方《漫威对战卡牌-超英击战》快速入门规则 PDF（17 頁，Aaron 提供）
-> 日期：2026-08-15
-> 對比基準：sim v3.2 + deckbuilder repo（268 張卡圖）
+> 日期：2026-08-15（2026-08-27 更新：效果系統分類完成，見 EFFECTS_DESCRIPTOR.md）
+> 對比基準：sim v3.3 + deckbuilder repo（268 張卡圖）
 
 ## ✅ 已對齊
 
@@ -53,7 +53,9 @@ Deckbuilder 已有 34 張 RP 卡資料（BP01-121~150 + SDxx-019），圖鑑 tab
 ### #5 效果系統 — 官方 P15
 官方 4 種效果類型：觸發 / 常駐 / 起動 / 應對·起動。
 **Sim：只有 ~16 hardcoded trigger；~180 張卡 stub（log「效果未實裝」）。**
-優先度：最高（最大工程，見 effect framework 設計）
+優先度：最高（最大工程）
+**2026-08-27 進展：** 全量 267 卡效果文本分類完成（TRIG 135 / AUTO 89 / COUNTER 27 / ACTI 25 / COUNTER·ACTI 23；~14 core ops 覆蓋全部；34 張 X 變數卡），
+DSL descriptor 規格見 **`EFFECTS_DESCRIPTOR.md`**（interpreter 對接文件）。
 
 ### #6 能力 keyword 完整化 — 官方 P15
 官方 5 個能力：應對 / 攔截 / 連擊 / 強襲 / 空襲 / 唯一。
@@ -95,8 +97,9 @@ Deckbuilder 已有 34 張 RP 卡資料（BP01-121~150 + SDxx-019），圖鑑 tab
 |---|---|---|---|
 | M0 | Art sync（101→268 圖） | JARVIS | ✅ DONE 2026-08-15 |
 | M1 | DSL engine core + interpreter + 5 sample ops + demo card | Senku | ⏳ |
+| M1.2 | 效果分類統計 + DSL descriptor 規格（EFFECTS_DESCRIPTOR.md） | JARVIS | ✅ DONE 2026-08-27 |
 | M1.5 | Mulligan + 衝擊卡組實卡化 | JARVIS | ⏳ |
-| M2 | 180 張 stub effects declarative 化 + Range 對齊 | Senku | ⏳ |
+| M2 | 180 張 stub effects declarative 化 + Range 對齊 | Senku | ⏳（以 EFFECTS_DESCRIPTOR.md 為對接基準） |
 | M3 | Play mat 視覺對齊官方（CSS-only）+ deckbuilder 對接 | JARVIS | ⏳ |
 | M4 | Test deck + counter frame + verify + deploy | 共同 | ⏳ |
 
