@@ -78,6 +78,7 @@
     const aiDeck = others[Math.floor(Math.random() * others.length)];
 
     state = E.initGame(deck, aiDeck, view._chosenRush, null);
+    state.pendingHuman = true;              // v3.9.1: 手動模式 — 真人守方應對要 pause 等揀
     // initGame 設 phase=MULLIGAN → 玩家調整起始手牌 → AI 調整 → startTurn（第 1 回合）
     view._aStep = 0;
     view.selectedHandIdx = null;
@@ -308,6 +309,7 @@
     if (!deck && _compareResults && _compareResults.length) deck = _compareResults[0].deck;   // v3.5 對比模式
     if (!deck) deck = "RED_Aggro";
     state = E.initGame(deck, opponentDeck || _autosimOpponent || "YELLOW_Machine", view._chosenRush, null);
+    state.pendingHuman = false;             // v3.9.1: 觀戰/自動 — AI 打 AI 照舊全自動
     view.autoPlay = true;
     view.autoPlayPaused = false;
     view.aiDelay = parseInt((document.getElementById("watch-speed") || {}).value, 10) || 1000;
@@ -617,6 +619,8 @@
       e.stopPropagation();
       onZoneCardClick(side, slot, card);
     });
+    // v3.9.2: 自己場上卡 hover 出資料 banner（AI 蓋卡唔出）
+    if (side !== "A") bindCardHover(div, card);
     return div;
   }
 
@@ -671,6 +675,93 @@
     ghost.style.top = (tr.top + tr.height / 2 - fr.height / 2) + "px";
     setTimeout(() => ghost.remove(), 420);
   }
+
+  // ===== v3.9.1: 真人守方 COUNTER 應對 modal =====
+  function openCounterModal() {
+    const pend = state.pending;
+    if (!pend || pend.kind !== "counter") return;
+    view._counterOpen = true;
+    view._counterIdx = null;
+    const modal = document.getElementById("modal");
+    document.getElementById("modal-title").textContent = pend.title || "應對步驟（COUNTER）";
+    const body = document.getElementById("modal-body");
+    const atk = pend.attackerUid ? E.findAnywhereOnField(state.players[pend.attackerSide], pend.attackerUid) : null;
+    const atkName = atk ? `${E.shortName(atk)}（P${E.cardEffectivePower(state, pend.attackerSide, atk)}）` : "";
+    body.innerHTML = `<p style="margin-top:0">${atkName ? "⚠️ " + atkName + " 正在攻擊你" : "AI 攻擊你"} — 應對步驟：揀 1 張 COUNTER 卡（棄置 → 攻擊者本回合 -Power），或直接承受攻擊。</p>`;
+    pend.opts.forEach(o => {
+      const opt = document.createElement("label");
+      opt.className = "retreat-option counter-option";
+      opt.innerHTML = `<input type="radio" name="counter" value="${o.idx}"><span class="co-name">${o.name}</span><span class="co-power">Power -${o.power}</span>`;
+      opt.querySelector("input").addEventListener("change", () => {
+        view._counterIdx = o.idx;
+        document.getElementById("modal-confirm").disabled = false;
+      });
+      body.appendChild(opt);
+    });
+    const skip = document.createElement("label");
+    skip.className = "retreat-option counter-option skip";
+    skip.innerHTML = `<input type="radio" name="counter" value="skip"><span class="co-name">唔用 COUNTER</span><span class="co-sub">直接承受攻擊</span>`;
+    skip.querySelector("input").addEventListener("change", () => {
+      view._counterIdx = -1;
+      document.getElementById("modal-confirm").disabled = false;
+    });
+    body.appendChild(skip);
+    document.getElementById("modal-confirm").disabled = true;
+    document.getElementById("modal-confirm").textContent = "應對";
+    modal.classList.remove("hidden");
+  }
+  function closeCounterModal() {
+    view._counterOpen = false;
+    view._counterIdx = null;
+    document.getElementById("modal").classList.add("hidden");
+  }
+  function afterCounterResolved() {
+    // 真人應對完 → 如果仲係 AI 回合（分步），繼續行埋 AI
+    if (state && !state.winner && state.activeSide === "A" && !view.autoPlay) scheduleAI();
+  }
+
+  // ===== v3.9.2: 卡資料 hover banner（duels.ink 式：參數 chips + 效果說明，唔帶 art） =====
+  const HOVER_OK = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(hover: hover)").matches;
+  function cardBannerHTML(card) {
+    const lv = card.level != null ? card.level : "—";
+    const pw = DATA.numPower ? DATA.numPower(card.power) : (card.power || 0);
+    const rg = DATA.numRange ? DATA.numRange(card.attackRange) : card.attackRange;
+    const eff = (card.effect || "").trim();
+    const attrs = `<span class="cb-chip lv">Lv${lv}</span><span class="cb-chip pw">P${pw}</span><span class="cb-chip rg">R${rg}</span>` +
+      (card.attribute ? `<span class="cb-chip attr-${card.attribute}">${card.attribute}</span>` : "") +
+      (card.feature ? `<span class="cb-chip feat">${card.feature}</span>` : "") +
+      (card.rarity ? `<span class="cb-chip rarity">${card.rarity}</span>` : "");
+    return `<div class="cb-name">${(card.name || "").replace(/^「.*」/, "") || E.shortName(card)}</div>` +
+      `<div class="cb-stats">${attrs}</div>` +
+      `<div class="cb-effect">${eff || "—（無效果文本）"}</div>`;
+  }
+  function showCardPop(card, anchorEl) {
+    const pop = document.getElementById("card-pop");
+    if (!pop || !card) return;
+    pop.innerHTML = cardBannerHTML(card);
+    pop.hidden = false;
+    const r = anchorEl.getBoundingClientRect();
+    const pw = pop.offsetWidth || 300;
+    const ph = pop.offsetHeight || 140;
+    let left = r.left + r.width / 2 - pw / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - pw - 8));
+    let top = r.top - ph - 10;
+    if (top < 8) top = r.bottom + 10;
+    pop.style.left = left + "px";
+    pop.style.top = top + "px";
+  }
+  function hideCardPop() {
+    const pop = document.getElementById("card-pop");
+    if (pop) pop.hidden = true;
+  }
+  function bindCardHover(el, card) {
+    if (!el || !card || !HOVER_OK) return;
+    el.addEventListener("mouseenter", () => showCardPop(card, el));
+    el.addEventListener("mouseleave", hideCardPop);
+  }
+  // 任何 render 之後有新 card 都自動重新綁 hover（renderHand / buildMiniCard 各自 call）
+  function hidePopOnScroll() { window.addEventListener("scroll", hideCardPop, true); }
+  hidePopOnScroll();
 
   // ---- v3.2: Card detail modal ----
   function showCardDetail(card, handIdx) {
@@ -988,6 +1079,7 @@
         if (!callable) return;
         onHandCallDirect(i);
       });
+      bindCardHover(div, c);   // v3.9.2: 手牌 hover 出資料 banner
 
       root.appendChild(div);
     });
@@ -1256,6 +1348,14 @@
   }
 
   document.getElementById("modal-cancel").addEventListener("click", () => {
+    if (view._counterOpen) {
+      // v3.9.1: 取消 = 唔用 COUNTER 應對
+      E.resolveCounter(state, { use: false });
+      closeCounterModal();
+      render();
+      afterCounterResolved();
+      return;
+    }
     document.getElementById("modal").classList.add("hidden");
     view.pendingCall = null;
     view.pendingSetDeploy = null;
@@ -1266,6 +1366,16 @@
 
   document.getElementById("modal-confirm").addEventListener("click", () => {
     const modal = document.getElementById("modal");
+    if (view._counterOpen) {
+      // v3.9.1: 揀咗 COUNTER 卡 → resolveCounter；-1 = 唔用
+      const idx = view._counterIdx;
+      if (idx == null) return;
+      E.resolveCounter(state, idx >= 0 ? { use: true, idx } : { use: false });
+      closeCounterModal();
+      render();
+      afterCounterResolved();
+      return;
+    }
     if (view.pendingCall) {
       const { handIdx, retreatUids } = view.pendingCall;
       const handCard = state.players.P.hand[handIdx];
@@ -1543,8 +1653,14 @@
           view._aStep = 1;
           AI.aiActions(state, "A");          // 基地部署 / 號召 / 戰基移動
         } else if (view._aStep === 1) {
-          view._aStep = 2;
           if (!E.isFirstTurnBattleSkipped(state, "A")) AI.aiBattlePhase(state, "A");
+          if (E.isPaused(state)) {           // v3.9.1: 真人守方應對 — 開 modal 等揀，唔好跳 step
+            view._aStep = 1;
+            render();
+            openCounterModal();
+            return;
+          }
+          view._aStep = 2;
         } else {
           view._aStep = 0;
           E.endTurn(state);                  // 結束 → engine 自動開始 P 回合
@@ -1575,6 +1691,7 @@
   }
 
   // ---- Log ----
+  // v3.9.1: 圖形化 — icon + 分類色條 + turn divider，唔再係 raw text console
   function renderLog() {
     const root = document.getElementById("log-list");
     root.innerHTML = "";
@@ -1583,12 +1700,53 @@
       div.className = "log-line";
       if (entry.side === "P") div.classList.add("side-P");
       if (entry.side === "A") div.classList.add("side-A");
-      if (entry.msg.startsWith("===") || entry.msg.includes("開始") || entry.msg.includes("結束")) div.classList.add("log-system");
-      if (entry.msg.startsWith("[效果]")) div.classList.add("log-effect");
-      if (entry.msg.startsWith("[效果未實裝]")) div.classList.add("log-stub");
-      if (entry.msg.includes("攻") || entry.msg.includes("號召") || entry.msg.includes("戰基")) div.classList.add("log-battle");
-      if (entry.msg.includes("Rush Point") || entry.msg.includes("時間線")) div.classList.add("log-rp");
-      div.textContent = entry.msg;
+
+      let msg = entry.msg;
+      let icon = "·";
+      if (entry.msg.startsWith("===")) {
+        div.classList.add("log-system", "log-divider");
+        msg = entry.msg.replace(/\s*={2,}\s*/g, " · ").replace(/^[·\s]+|[·\s]+$/g, "") || "—";
+        icon = "🛡";
+      } else if (/^第 \d+ 回合/.test(entry.msg)) {
+        div.classList.add("log-turn");
+        icon = "🌀";
+      } else if (entry.msg.includes("遊戲結束") || entry.msg.includes("獲勝")) {
+        div.classList.add("log-system", "log-result");
+        icon = "🏁";
+      } else if (/Rush Point/.test(entry.msg)) {
+        div.classList.add("log-rp");
+        icon = "⭐";
+      } else if (entry.msg.startsWith("[COUNTER]")) {
+        div.classList.add("log-counter");
+        msg = entry.msg.replace(/^\[COUNTER\]\s*/, "");
+        icon = "🛡";
+      } else if (entry.msg.includes("攻") || entry.msg.includes("破綻")) {
+        div.classList.add("log-battle");
+        icon = "⚔";
+      } else if (/號召|基地部署|戰基移動|捨棄/.test(entry.msg)) {
+        div.classList.add("log-action");
+        icon = "🃏";
+      } else if (entry.msg.startsWith("[效果未實裝]")) {
+        div.classList.add("log-stub");
+        msg = entry.msg.replace(/^\[效果未實裝\]\s*/, "");
+        icon = "⚠";
+      } else if (entry.msg.startsWith("[效果]") || entry.msg.startsWith("[DSL]")) {
+        div.classList.add("log-effect");
+        msg = entry.msg.replace(/^\[(效果|DSL)\]\s*/, "");
+        icon = "✨";
+      } else if (/應對|COUNTER/.test(entry.msg)) {
+        div.classList.add("log-counter");
+        icon = "🛡";
+      }
+
+      const ic = document.createElement("span");
+      ic.className = "log-ico";
+      ic.textContent = icon;
+      const tx = document.createElement("span");
+      tx.className = "log-txt";
+      tx.textContent = msg;
+      div.appendChild(ic);
+      div.appendChild(tx);
       root.appendChild(div);
     });
     root.scrollTop = root.scrollHeight;

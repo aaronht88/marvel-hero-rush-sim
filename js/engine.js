@@ -694,12 +694,13 @@
   // Execute an attack. target may be:
   //   { kind: "card", slot, card }
   //   { kind: "weakness", slot }
+  // v3.9.1: 守方係人類（P）時，應對步驟會 pause 等 UI 揀 COUNTER →
+  //         resolveCounter(state, decision) 續行（AI 守方照舊自動）
   function attack(state, attackerSide, attackerUid, target) {
     const atkP = state.players[attackerSide];
-    const defP = state.players[attackerSide === "P" ? "A" : "P"];
+    const flags = state.turnFlags[attackerSide];
     const atk = findAnywhereOnField(atkP, attackerUid);
     if (!atk) return { ok: false, err: "攻擊者唔喺場上" };
-    const flags = state.turnFlags[attackerSide];
     if (flags.attackedUids[attackerUid]) {
       if (!flags.doubleAttackUids[attackerUid]) {
         return { ok: false, err: "本角色本回合已攻擊過" };
@@ -710,29 +711,84 @@
     flags.attackedUids[attackerUid] = true;
 
     // ②應對步驟：守方 COUNTER（M4：DSL 優先，舊 regex fallback 跳過 descriptor 卡）
-    // 無論邊方攻擊，守方都用 COUNTER·ACTI 手牌（AI 自動；人手牌暫時都係自動，prompt 留 UI 後續）
     const defSide = attackerSide === "P" ? "A" : "P";
-    if (global.MHR_EFFECTS && global.MHR_EFFECTS.runEffects) {
-      global.MHR_EFFECTS.runEffects(state, defSide, { kind: "counter", attackerUid });
+    const humanDef = !!state.pendingHuman && defSide === "P";
+    if (humanDef) {
+      // 真人守方：有 COUNTER 揀 → pause 等 UI（resolveCounter）；冇就直接結算
+      const opts = collectCounterOptions(state, defSide, attackerUid);
+      if (opts.length) {
+        setPending(state, {
+          kind: "counter",
+          attackerSide, attackerUid, target, defSide, opts,
+          title: "AI 攻擊你 — 應對步驟（COUNTER）",
+        });
+        return { ok: true, paused: "counter" };
+      }
+    } else {
+      if (global.MHR_EFFECTS && global.MHR_EFFECTS.runEffects) {
+        global.MHR_EFFECTS.runEffects(state, defSide, { kind: "counter", attackerUid });
+      }
+      useCounter(state, defSide, attackerUid);
     }
-    useCounter(state, defSide, attackerUid);
+    return finishAttack(state, attackerSide, attackerUid, target);
+  }
+
+  // v3.9.1: 真人守方應對決策 — resolveCounter(state, { use: true, idx }) / { use: false }
+  function resolveCounter(state, decision) {
+    const pend = state.pending;
+    if (!pend || pend.kind !== "counter") return { ok: false, err: "冇 pending counter 決策" };
+    const defP = state.players[pend.defSide];
+    if (decision && decision.use) {
+      const opt = (pend.opts || []).find(o => o.idx === decision.idx);
+      if (!opt) return { ok: false, err: "選擇無效" };
+      const card = defP.hand[opt.idx];
+      if (!card) return { ok: false, err: "手牌冇呢張卡" };
+      defP.hand.splice(opt.idx, 1);
+      defP.retreat.push(card);
+      const atk = findAnywhereOnField(state.players[pend.attackerSide], pend.attackerUid);
+      if (atk) {
+        atk._powerMod = (atk._powerMod || 0) - opt.power;
+        log(state, `[COUNTER] ${defP.name} 用 ${shortName(card)} 應對：${shortName(atk)} -${opt.power} Power（本回合）`, pend.defSide);
+      }
+    } else {
+      log(state, `${defP.name} 唔用 COUNTER 應對`, pend.defSide);
+    }
+    clearPending(state);
+    return finishAttack(state, pend.attackerSide, pend.attackerUid, pend.target);
+  }
+
+  // 守方可揀嘅 COUNTER 手牌（已實裝子集 = 引擎 useCounter 同一子集：COUNTER·ACTI【HAND】+ Power-N）
+  function collectCounterOptions(state, defSide, attackerUid) {
+    const p = state.players[defSide];
+    const out = [];
+    p.hand.forEach((c, i) => {
+      if (!c || !c.effect) return;
+      if (Array.isArray(c.effects) && c.effects.length) return;   // DSL 卡由 interpreter 處理（暫未支援 prompt）
+      if (!/COUNTER·ACTI/i.test(c.effect)) return;
+      const m = c.effect.match(/Power-(\d+)/);
+      if (!m) return;
+      out.push({ idx: i, power: parseInt(m[1], 10), name: shortName(c), card: c });
+    });
+    return out;
+  }
+
+  // 應對步驟之後嘅攻擊結算（weakness / 角色對戰），attack 同 resolveCounter 共用
+  function finishAttack(state, attackerSide, attackerUid, target) {
+    const atkP = state.players[attackerSide];
+    const defP = state.players[attackerSide === "P" ? "A" : "P"];
+    const atk = findAnywhereOnField(atkP, attackerUid);
+    if (!atk) return { ok: false, err: "攻擊者唔喺場上" };
 
     if (target.kind === "weakness") {
-      // 攻破綻：時間線 +1 RP
       const aPower = cardEffectivePower(state, attackerSide, atk);
-      const aSlot = isInBattle(atkP, atk);
       log(state, `${atkP.name} ${shortName(atk)} (P${aPower}) 攻擊 ${slotLabel(target.slot)}破綻`, attackerSide);
       gainRushPoint(state, attackerSide, `攻破綻 ${slotLabel(target.slot)}`);
-      // 強襲 keyword: if attacker has 強襲, weakness is "successful"
-      // 強襲 triggers when 攻擊戰勝 → 自動當破綻。我哋已 hit 破綻
       return { ok: true, result: "weakness" };
     }
 
     const tgt = target.card;
     const aPower = cardEffectivePower(state, attackerSide, atk);
     const tPower = cardEffectivePower(state, attackerSide === "P" ? "A" : "P", tgt);
-    const aSlot = isInBattle(atkP, atk);
-    const tSlot = isInBattle(defP, tgt);
     log(state, `${atkP.name} ${shortName(atk)} (P${aPower}) 攻 ${defP.name} ${shortName(tgt)} (P${tPower})`, attackerSide);
 
     let atkRetreat = false, tgtRetreat = false;
@@ -746,11 +802,14 @@
     if (atkRetreat) {
       retreatCard(state, attackerSide, atk, "戰敗");
     }
-    // 強襲：若攻擊戰勝，判定破綻成功（只單純 +1 RP if 戰勝）
     if (aPower > tPower && hasAbility(atk, "強襲")) {
       gainRushPoint(state, attackerSide, "強襲（攻擊戰勝）");
     }
     return { ok: true, result: atkRetreat ? (tgtRetreat ? "both" : "attacker_lost") : (tgtRetreat ? "attacker_won" : "draw?") };
+  }
+
+  function isPaused(state) {
+    return !!state.pending;
   }
 
   // Helper: check if a card has a 能力 keyword
@@ -918,6 +977,9 @@
     battleBaseMove,
     retreatCard,
     attack,
+    resolveCounter,
+    collectCounterOptions,
+    isPaused,
     attackableTargets,
     useCounter,
     cardEffectivePower,

@@ -118,6 +118,8 @@
       if (!pick) continue;
       // M4: COUNTER 已由 attack() 內部處理（DSL + legacy），呢度唔再另行 call
       E.attack(state, side, attacker._uid, pick);
+      // v3.9.1: 真人守方應對步驟 pause — 停低等 UI resolveCounter，其餘攻擊者之後再續
+      if (E.isPaused(state)) return;
       if (state.winner) return;
     }
   }
