@@ -588,39 +588,35 @@
     const pow = E.cardEffectivePower(state, side, card);
     if (!isEffectImplemented(card)) div.classList.add("unimplemented");
 
-    // Face-down for AI side
-    if (side === "A") {
-      div.classList.add("face-down");
-    } else {
-      const art = document.createElement("div");
-      art.className = "mc-art";
-      const artUrl = DATA.artPath(card);
-      art.style.backgroundImage = `url("${artUrl}")`;
-      div.appendChild(art);
+    // v3.9.2: AI 戰區卡都係公開資訊 — 同自己一樣顯示 art + 參數（唔再面朝下）
+    const art = document.createElement("div");
+    art.className = "mc-art";
+    const artUrl = DATA.artPath(card);
+    art.style.backgroundImage = `url("${artUrl}")`;
+    div.appendChild(art);
 
-      const statsOverlay = document.createElement("div");
-      statsOverlay.className = "mc-stats-overlay";
-      statsOverlay.innerHTML =
-        `<span class="mc-stat lv">Lv${card.level}</span>` +
-        `<span class="mc-stat pw">P${pow}</span>` +
-        `<span class="mc-stat rg">R${DATA.numRange(card.attackRange)}</span>`;
-      div.appendChild(statsOverlay);
+    const statsOverlay = document.createElement("div");
+    statsOverlay.className = "mc-stats-overlay";
+    statsOverlay.innerHTML =
+      `<span class="mc-stat lv">Lv${card.level}</span>` +
+      `<span class="mc-stat pw">P${pow}</span>` +
+      `<span class="mc-stat rg">R${DATA.numRange(card.attackRange)}</span>`;
+    div.appendChild(statsOverlay);
 
-      const info = document.createElement("div");
-      info.className = "mc-info";
-      const name = document.createElement("div");
-      name.className = "mc-name";
-      name.textContent = E.shortName(card);
-      info.appendChild(name);
-      div.appendChild(info);
-    }
+    const info = document.createElement("div");
+    info.className = "mc-info";
+    const name = document.createElement("div");
+    name.className = "mc-name";
+    name.textContent = (side === "A" ? "AI · " : "") + E.shortName(card);
+    info.appendChild(name);
+    div.appendChild(info);
 
     div.addEventListener("click", (e) => {
       e.stopPropagation();
       onZoneCardClick(side, slot, card);
     });
-    // v3.9.2: 自己場上卡 hover 出資料 banner（AI 蓋卡唔出）
-    if (side !== "A") bindCardHover(div, card);
+    // v3.9.2: 場上所有卡（含 AI 公開卡）hover 出資料 banner
+    bindCardHover(div, card);
     return div;
   }
 

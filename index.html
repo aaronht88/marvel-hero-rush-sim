@@ -2,16 +2,16 @@
 <html lang="zh-HK">
 <head>
 <meta charset="UTF-8">
-<title>Marvel Hero Rush TCG — Battle Simulator v3.9.2</title>
+<title>Marvel Hero Rush TCG — Battle Simulator v3.9.3</title>
 <meta name="viewport" content="width=1480">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=3.9.2">
+<link rel="stylesheet" href="css/styles.css?v=3.9.3">
 <!-- Card data is committed locally (js/cards.js) so the sim is
      self-contained and works under any GitHub Pages subpath. -->
-<script src="js/cards.js?v=3.9.2"></script>
-<script src="js/mhr-decks.js?v=3.9.2"></script>
+<script src="js/cards.js?v=3.9.3"></script>
+<script src="js/mhr-decks.js?v=3.9.3"></script>
 </head>
 <body>
 
@@ -22,9 +22,9 @@
       <div class="logo-mark">★</div>
       <div>
         <h1>MARVEL HERO RUSH <small>Battle Sim</small></h1>
-        <p class="subtitle">Marvel Hero Rush TCG · 手動對戰 + 模擬 · v3.9.2 (手動對戰 vs AI · 自動模擬 · 對比模式 · DSL effects)</p>
+        <p class="subtitle">Marvel Hero Rush TCG · 手動對戰 + 模擬 · v3.9.3 (手動對戰 vs AI · 自動模擬 · 對比模式 · DSL effects)</p>
       </div>
-      <span class="version-badge">v3.9.2</span>
+      <span class="version-badge">v3.9.3</span>
       <button id="btn-sound-toggle" class="sound-toggle" title="音效切換">音效</button>
     </div>
   </header>
@@ -234,7 +234,7 @@
     </div>
   </div>
 
-  <!-- v3.9.2: 卡資料 hover banner（duels.ink 式；唔帶 art，純參數 + 效果） -->
+  <!-- v3.9.3: 卡資料 hover banner（duels.ink 式；唔帶 art，純參數 + 效果） -->
 <div id="card-pop" class="card-pop" hidden></div>
 
 <!-- v3.2: Card detail modal (click any card to view stats/effect) -->
@@ -341,13 +341,13 @@
 </div>
 
 <!-- Order matters: data → effects-data → engine → effects → ai → app -->
-<script src="js/data.js?v=3.9.2"></script>
-<script src="js/effects-data.js?v=3.9.2"></script>
-<script src="js/engine.js?v=3.9.2"></script>
-<script src="js/effects.js?v=3.9.2"></script>
-<script src="js/audio.js?v=3.9.2"></script>
-<script src="js/ai.js?v=3.9.2"></script>
-<script src="js/app.js?v=3.9.2"></script>
+<script src="js/data.js?v=3.9.3"></script>
+<script src="js/effects-data.js?v=3.9.3"></script>
+<script src="js/engine.js?v=3.9.3"></script>
+<script src="js/effects.js?v=3.9.3"></script>
+<script src="js/audio.js?v=3.9.3"></script>
+<script src="js/ai.js?v=3.9.3"></script>
+<script src="js/app.js?v=3.9.3"></script>
 <script>
   // Wire sound toggle after DOM ready
   document.getElementById("btn-sound-toggle").addEventListener("click", () => {
