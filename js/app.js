@@ -563,6 +563,24 @@
         } else {
           slot.style.opacity = "0.25";
           slot.style.cursor = "default";
+          // v3.9.4: 空基地格都接受拖曳 — 手牌拖落嚟 = 基地部署
+          if (side === "P") {
+            slot.addEventListener("dragover", (e) => {
+              if (!canSetDeployNow()) return;
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+              slot.classList.add("drag-target");
+            });
+            slot.addEventListener("dragleave", () => slot.classList.remove("drag-target"));
+            slot.addEventListener("drop", (e) => {
+              e.preventDefault();
+              slot.classList.remove("drag-target");
+              if (!canSetDeployNow()) return;
+              const handIdx = parseInt(e.dataTransfer.getData("text/plain"), 10);
+              if (isNaN(handIdx)) return;
+              onHandDeployDrop(handIdx);
+            });
+          }
         }
         root.appendChild(slot);
       }
@@ -577,6 +595,28 @@
       return;
     }
     view.moveFromUid = card._uid;
+    render();
+  }
+
+  // ===== v3.9.4: 基地拖曳部署 helpers =====
+  function canSetDeployNow() {
+    if (!state || state.activeSide !== "P" || state.phase !== "ACTION" || state.winner) return false;
+    const p = state.players.P;
+    if ((state.turnFlags.P || {}).setDeployUsed) return false;
+    if (p.base.faceDown.length >= E.BASE_SIZE_MAX) return false;
+    return p.hand.length > 0;
+  }
+  function onHandDeployDrop(handIdx) {
+    const p = state.players.P;
+    const handCard = p.hand[handIdx];
+    if (!handCard) return;
+    const handEl = document.querySelector(`.hand-card[data-uid="${handCard._uid}"]`);
+    const baseZone = document.querySelector(".mat-p .zone-base");
+    if (handEl && baseZone) flyCard(handEl, baseZone);
+    const r = E.setDeploy(state, "P", handIdx);
+    if (r && !r.ok) console.warn(r.err);
+    SFX && SFX.play("deploy");
+    view.selectedHandIdx = null;
     render();
   }
 

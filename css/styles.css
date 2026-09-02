@@ -2004,6 +2004,79 @@ body { font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-
   font-size: 13px;
   line-height: 1.6;
 }
+/* v3.9.4: 基地格拖曳目標 highlight */
+.set-card.drag-target {
+  outline: 2px dashed var(--cyan, #00e5ff);
+  outline-offset: -2px;
+  background: rgba(0, 229, 255, .12) !important;
+  box-shadow: inset 0 0 14px rgba(0, 229, 255, .25);
+  opacity: 1 !important;
+  cursor: copy;
+}
 @media (hover: none) {
   #card-pop { display: none !important; }   /* touch：靠 click 開 banner modal */
 }
+
+/* =====================================================================
+   v3.9.5：戰區陣形重排 — 先鋒中間靠上、後衛靠玩家、側翼左右兩邊
+   （AI 鏡像：雙方先鋒都向住中間線，後衛喺外側）
+   P 區由上到下：先鋒 → 側翼(左/右) → 後衛(近玩家)
+   AI 區由上到下：後衛 → 側翼(左/右) → 先鋒(近中間線)
+   ===================================================================== */
+.battle-stack {
+  flex-direction: column !important;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  width: calc(var(--slot-w) * 3 + 48px) !important;
+  max-width: 96%;
+}
+.zone-wing-row {
+  display: flex !important;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 8px;
+}
+.battle-stack > .zone-wing-row > .zone-wing { margin: 0; }
+/* P（玩家，下方）：先鋒行最上（近中間線），後衛行最下（近玩家） */
+.mat-p .battle-stack > .zone-front { order: 1; }
+.mat-p .battle-stack > .zone-wing-row { order: 2; }
+.mat-p .battle-stack > .zone-back { order: 3; }
+/* AI（上方）：鏡像 — 後衛最上（外側），先鋒最下（近中間線） */
+.mat-ai .battle-stack > .zone-back { order: 1; }
+.mat-ai .battle-stack > .zone-wing-row { order: 2; }
+.mat-ai .battle-stack > .zone-front { order: 3; }
+/* 先鋒/後衛喺行中間（單格置中） */
+.battle-stack > .zone-front, .battle-stack > .zone-back {
+  align-self: center;
+  margin: 0 auto;
+}
+
+/* =====================================================================
+   v3.9.5b：陣形收緊 — 先鋒/後衛上下貼住（中間唔留空行），側翼左右夾住
+   3 欄 × 2 行 grid：左/右欄 = 側翼（垂直置中），中欄 = 先鋒(上)＋後衛(下)
+   P ：上先鋒下後衛；AI 鏡像：上後衛下先鋒（雙方先鋒都貼中間線）
+   ===================================================================== */
+.battle-stack {
+  display: grid !important;
+  grid-template-columns: repeat(3, var(--slot-w));
+  grid-template-rows: repeat(2, auto);
+  gap: 10px;
+  align-items: start;
+  width: calc(var(--slot-w) * 3 + 20px) !important;
+  max-width: 96%;
+}
+.zone-wing-row { display: contents !important; }
+.battle-stack > .zone-wing-row > .zone-wing {
+  width: var(--slot-w);
+  height: var(--slot-h);
+  align-self: center;
+  margin: 0;
+}
+.mat-p .battle-stack { grid-template-areas: "w1 front w2" "w1 back  w2"; }
+.mat-ai .battle-stack { grid-template-areas: "w1 back  w2" "w1 front w2"; }
+.battle-stack > .zone-front { grid-area: front; align-self: center; margin: 0; }
+.battle-stack > .zone-back  { grid-area: back;  align-self: center; margin: 0; }
+.battle-stack > .zone-wing-row > .zone-wing:first-child { grid-area: w1; }
+.battle-stack > .zone-wing-row > .zone-wing:last-child  { grid-area: w2; }
