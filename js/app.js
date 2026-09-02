@@ -30,6 +30,7 @@
     _compareSel: new Set(), // v3.5: 對比模式已選 deck
     _chosenRush: null,      // v3.4: 玩家自選衝擊卡組（9 張 card objects；null = 自動）
     _mulliganSelected: new Set(),  // v3.4: mulligan 已選手牌 index
+    _aStep: 0,              // v3.9 手動模式：AI 回合分步狀態（0=未開始 / 1=行動 / 2=戰鬥）
   };
 
   // ---- Setup ----
@@ -78,6 +79,7 @@
 
     state = E.initGame(deck, aiDeck, view._chosenRush, null);
     // initGame 設 phase=MULLIGAN → 玩家調整起始手牌 → AI 調整 → startTurn（第 1 回合）
+    view._aStep = 0;
     view.selectedHandIdx = null;
     view.attackerUid = null;
     view.pendingCall = null;
@@ -333,6 +335,8 @@
     view.autoPlay = false;
     view.autoPlayPaused = false;
     showWatchControls(false);
+    // v3.9：若果喺 AI 分步回合中途接管，繼續行埋 AI 嗰段
+    if (state && state.activeSide === "A" && !state.winner) scheduleAI();
   });
 
   // v3.7: 觀戰播放控制
@@ -381,6 +385,8 @@
     document.getElementById("turn-num").textContent = `回合 ${state.turn}`;
     document.getElementById("phase-label").textContent = state.phase;
     document.getElementById("phase-pill").textContent = state.phase;
+    // v3.9.1: 階段色（data-phase → CSS 每階段唔同 accent）
+    document.querySelectorAll("#phase-pill, #phase-label").forEach(el => el.dataset.phase = state.phase);
     document.getElementById("active-side").textContent =
       state.activeSide === "P" ? "Player 行動" : "AI 思考中…";
     const tb = document.querySelector(".battle-topbar");
@@ -464,7 +470,7 @@
         if (!zoneEl) return;
         // wipe children
         [...zoneEl.querySelectorAll(".mini-card")].forEach(n => n.remove());
-        zoneEl.classList.remove("has-card", "is-source", "is-target", "is-weakness");
+        zoneEl.classList.remove("has-card", "is-source", "is-target", "is-weakness", "is-selectable-atk", "has-attacked");
         zoneEl.onclick = null;      // clear any leftover weakness handler
         zoneEl.style.cursor = "";
         // v3.2: drag-drop handlers (own side, ACTION phase, empty slot → call target)
@@ -487,6 +493,23 @@
           zoneEl.classList.add("has-card");
           zoneEl.appendChild(buildMiniCard(card, side, slot));
           if (side === state.activeSide && view.attackerUid === card._uid) zoneEl.classList.add("is-source");
+          // v3.9 手動對戰：P 方 BATTLE 階段 — 未攻擊嘅角色標示可揀做攻擊者 / 已攻擊嘅變灰
+          if (side === "P" && state.activeSide === "P" && state.phase === "BATTLE" && !state.winner) {
+            const f = state.turnFlags.P || {};
+            const doubleOk = (f.doubleAttackUids || {})[card._uid];
+            if ((f.attackedUids || {})[card._uid] && !doubleOk) {
+              zoneEl.classList.add("has-attacked");
+            } else if (view.attackerUid !== card._uid) {
+              zoneEl.classList.add("is-selectable-atk");
+            }
+          }
+          // v3.9：有攻擊者被揀咗 → AI 場上嘅合法角色目標加紅框
+          if (side === "A" && state.activeSide === "P" && state.phase === "BATTLE" && view.attackerUid) {
+            const targets = E.attackableTargets(state, "P", view.attackerUid);
+            if (targets.some(t => t.kind === "card" && t.card._uid === card._uid)) {
+              zoneEl.classList.add("is-target");
+            }
+          }
         } else {
           // Weakness highlight when in attack mode
           if (side !== state.activeSide && view.attackerUid) {
@@ -674,9 +697,16 @@
       callBtn.style.display = "";
       deployBtn.style.display = "";
       const f = state.turnFlags.P || {};
-      const canCall = f.callCount < E.maxCallCount(state, "P");
-      callBtn.disabled = !canCall || state.phase !== "ACTION";
-      deployBtn.disabled = !canCall || state.phase !== "ACTION" || !!f.setDeployUsed;
+      const handCard = state.players.P.hand[handIdx];
+      const callable = !!handCard && isHandCardCallable(handCard);
+      const lv = handCard ? (E.cardEffectiveLv ? E.cardEffectiveLv(handCard) : handCard.level) : 1;
+      callBtn.disabled = !callable;
+      callBtn.textContent = lv >= 4 ? `號召到場（撤退合計 Lv${lv}）` : "號召到場（上前線）";
+      callBtn.title = callable ? "" : handCallBlockReason(handCard);
+      const canDeploy = state.activeSide === "P" && state.phase === "ACTION" &&
+        !f.setDeployUsed && state.players.P.base.faceDown.length < E.BASE_SIZE_MAX;
+      deployBtn.disabled = !canDeploy;
+      deployBtn.title = canDeploy ? "" : (f.setDeployUsed ? "基地部署用咗（1 次/回合）" : "唔係行動階段");
     } else {
       callBtn.style.display = "none";
       deployBtn.style.display = "none";
@@ -855,6 +885,43 @@
   });
 
   // ---- Hand render (v3.2: draggable + click for detail) ----
+  // ===== v3.9 手動對戰：合法動作檢查 helpers =====
+  function battleHasEmptySlot(p) {
+    return !p.battle.front || !p.battle.wing[0] || !p.battle.wing[1] || !p.battle.back;
+  }
+  function canPayRetreat(lv) {
+    // subset-sum：係咪有組 retreat source 合計 Lv 啱啱好 = lv（戰區角色照 Lv，蓋卡每張 1）
+    const p = state.players.P;
+    const vals = [];
+    E.battleChars(p).forEach(({ card }) => vals.push((card._faceDown ? 1 : (E.cardEffectiveLv ? E.cardEffectiveLv(card) : card.level)) || 1));
+    p.base.faceDown.forEach(() => vals.push(1));
+    const reach = new Array(lv + 1).fill(false);
+    reach[0] = true;
+    for (const v of vals) {
+      for (let s = lv - v; s >= 0; s--) if (reach[s]) reach[s + v] = true;
+    }
+    return !!reach[lv];
+  }
+  function isHandCardCallable(c) {
+    if (state.activeSide !== "P" || state.phase !== "ACTION" || state.winner) return false;
+    const f = state.turnFlags.P || {};
+    if (f.callCount >= E.maxCallCount(state, "P")) return false;
+    if (!battleHasEmptySlot(state.players.P)) return false;
+    const lv = E.cardEffectiveLv ? E.cardEffectiveLv(c) : (c.level || 1);
+    if (lv <= 3) return true;
+    return canPayRetreat(lv);
+  }
+  function handCallBlockReason(c) {
+    if (state.activeSide !== "P") return "未到你嘅回合";
+    if (state.phase !== "ACTION") return "淨係行動階段先可以號召";
+    const f = state.turnFlags.P || {};
+    if (f.callCount >= E.maxCallCount(state, "P")) return `號召次數已用完（${E.maxCallCount(state, "P")} 次/回合）`;
+    if (!battleHasEmptySlot(state.players.P)) return "戰區已滿（先鋒/側翼×2/後衛）";
+    const lv = E.cardEffectiveLv ? E.cardEffectiveLv(c) : (c.level || 1);
+    if (lv > 3 && !canPayRetreat(lv)) return `撤退合計唔夠 Lv${lv}（撤退戰區角色或蓋卡嚟補）`;
+    return "";
+  }
+
   function renderHand() {
     const root = document.getElementById("hand-list");
     root.innerHTML = "";
@@ -867,7 +934,9 @@
       div.draggable = true;  // v3.2: enable HTML5 drag-drop
       const f = state.turnFlags.P || {};
       const canCall = f.callCount < E.maxCallCount(state, "P");
-      if (!canCall) div.classList.add("unplayable");
+      const callable = isHandCardCallable(c);
+      if (!callable) { div.classList.add("unplayable"); div.title = handCallBlockReason(c); }
+      else div.classList.add("hand-callable");
       if (view.selectedHandIdx === i) div.classList.add("selected");
       if (!isEffectImplemented(c)) div.classList.add("unimplemented");
 
@@ -900,21 +969,23 @@
         document.querySelectorAll(".zone.drag-target").forEach(z => z.classList.remove("drag-target"));
       });
 
-      // v3.2: click → open card detail modal (single click only when turn active)
+      // v3.9: click 開動作 modal 加 260ms debounce — 快速雙撳 = 號召時唔會俾 modal 遮住
+      let _hcTimer = null;
       div.addEventListener("click", () => {
         if (state.activeSide !== "P") return;
-        if (state.phase === "ACTION" && canCall) {
-          // ACTION phase: single click opens detail (use double-click or detail modal button to actually call)
+        if (_hcTimer) clearTimeout(_hcTimer);
+        _hcTimer = setTimeout(() => {
+          _hcTimer = null;
+          if (state.activeSide !== "P" || state.winner) return;
           showCardDetail(c, i);
-        } else {
-          showCardDetail(c, i);
-        }
+        }, 260);
       });
 
-      // v3.2: double-click on hand card → directly call (Lv1-3) or open retreat modal (Lv4+)
+      // double-click → 快速號召（Lv1-3 直接，Lv4+ retreat modal）；同時取消開 modal
       div.addEventListener("dblclick", (e) => {
         e.preventDefault();
-        if (state.activeSide !== "P" || state.phase !== "ACTION" || !canCall) return;
+        if (_hcTimer) { clearTimeout(_hcTimer); _hcTimer = null; }
+        if (!callable) return;
         onHandCallDirect(i);
       });
 
@@ -993,8 +1064,8 @@
       const anyUnattacked = E.battleChars(state.players.P).some(({ card }) => !f.attackedUids[card._uid]);
       atkBtn.disabled = !anyUnattacked;
       endBtn.disabled = false;
-      if (view.attackerUid) hint.textContent = "揀攻擊目標（角色 / 破綻），或再撳自己取消";
-      else hint.textContent = "戰鬥階段：撳 ⚔ 進入攻擊模式，撳先鋒/側翼/後衛揀攻擊者";
+      if (view.attackerUid) hint.textContent = "揀攻擊目標（AI 場上紅框角色 / 破綻空格），或撳自己角色取消";
+      else hint.textContent = "戰鬥階段：直接撳自己未攻擊嘅角色（青框）揀攻擊者，或用 ⚔ 揀；打完撳 結束回合";
       return;
     }
     if (state.phase !== "ACTION") {
@@ -1019,7 +1090,7 @@
     } else if (view.selectedHandIdx !== null) {
       hint.textContent = "已揀手牌：撳手牌再次取消 / 等彈 modal";
     } else {
-      hint.textContent = `行動：撳手牌叫出 / 撳 基地部署 蓋 1 張 / 撳 ↔ 戰基移動 / 撳 結束回合 → 戰鬥`;
+      hint.textContent = `行動階段：單撳手牌開動作 · 雙撳快速號召 · 拖去戰區都得 · 撳 結束回合 入戰鬥`;
     }
   }
 
@@ -1064,7 +1135,10 @@
         render();
         return;
       }
-      state.phase = "BATTLE";
+      const f = state.turnFlags.P || {};
+      const canAtk = E.battleChars(state.players.P).some(({ card }) =>
+        !(f.attackedUids || {})[card._uid] || (f.doubleAttackUids || {})[card._uid]);
+      state.phase = canAtk ? "BATTLE" : "RESPOND";
       view.attackerUid = null;
       render();
       return;
@@ -1275,12 +1349,18 @@
       return;
     }
 
-    // Cancel attack by clicking own
-    if (state.phase === "BATTLE" && view.attackerUid && side === "P") {
-      if (card._uid === view.attackerUid) {
-        view.attackerUid = null;
-        render();
+    // v3.9 手動對戰：BATTLE 階段撳自己嘅角色 = 揀做攻擊者（再撳取消）；已攻擊過嘅先開 detail
+    if (state.phase === "BATTLE" && side === "P" && state.activeSide === "P") {
+      const f = state.turnFlags.P || {};
+      const doubleOk = (f.doubleAttackUids || {})[card._uid];
+      const spent = (f.attackedUids || {})[card._uid] && !doubleOk;
+      if (spent) {
+        showCardDetail(card);
+        return;
       }
+      view.attackerUid = view.attackerUid === card._uid ? null : card._uid;
+      SFX && SFX.play("click");
+      render();
       return;
     }
 
@@ -1456,10 +1536,22 @@
         return;
       }
       if (!view.autoPlay) {
-        // 正常模式：淨係處理 AI（A）嘅回合，一回合一次，然後交返畀玩家
+        // v3.9 手動模式：AI 回合分步（行動 → 戰鬥 → 結束回合），每步 render 畀玩家睇
         if (state.activeSide !== "A") return;
-        AI.aiTurnFor(state, "A");
+        if (state.winner) return;
+        if (!view._aStep) {
+          view._aStep = 1;
+          AI.aiActions(state, "A");          // 基地部署 / 號召 / 戰基移動
+        } else if (view._aStep === 1) {
+          view._aStep = 2;
+          if (!E.isFirstTurnBattleSkipped(state, "A")) AI.aiBattlePhase(state, "A");
+        } else {
+          view._aStep = 0;
+          E.endTurn(state);                  // 結束 → engine 自動開始 P 回合
+        }
         render();
+        if (state.winner) return;
+        if (view._aStep) scheduleAI();       // 未完 → 排下一段
         return;
       }
       // 觀戰模式：AI 打雙方，每 tick 一回合

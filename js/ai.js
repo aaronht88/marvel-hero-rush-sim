@@ -14,13 +14,25 @@
 
   // M4: 參數化 side — 測試 harness 可以用同一套 AI 自動打雙方（P vs A 全自動對戰驗證）
   function aiTurnFor(state, side) {
+    aiActions(state, side);
+    if (state.winner) return;
+    // (4) 戰鬥階段 — 先攻首回合跳過
+    if (!E.isFirstTurnBattleSkipped(state, side)) {
+      aiBattlePhase(state, side);
+    }
+    if (state.winner) return;
+    // (6) 回合結束
+    E.endTurn(state);
+  }
+
+  // v3.9: 抽離 ACTION 階段行動（基地部署/號召/戰基移動），畀手動模式分步播放 AI 回合
+  function aiActions(state, side) {
     const me = state.players[side];
-    const opp = state.players[side === "P" ? "A" : "P"];
     const flags = state.turnFlags[side];
+    if (!flags || !me) return;
 
     // (1) 基地部署 (1 次/回合) — 早期冇嘢做就用基地部署攤節奏
     if (!flags.setDeployUsed && me.hand.length >= 4 && me.base.faceDown.length < 6) {
-      // 揀 Lv 最高嘅手牌蓋入基地（避免將高 Lv 牌浪費喺前線）
       let bestIdx = -1, bestLv = -1;
       for (let i = 0; i < me.hand.length; i++) {
         if (E.cardEffectiveLv(me.hand[i]) > bestLv) {
@@ -44,18 +56,6 @@
     if (!me.battle.front && me.base.faceDown.length > 0) {
       E.battleBaseMove(state, side, me.base.faceDown[0]._uid, false);
     }
-
-    if (state.winner) return;
-
-    // (4) 戰鬥階段 — 先攻首回合跳過
-    if (!E.isFirstTurnBattleSkipped(state, side)) {
-      aiBattlePhase(state, side);
-    }
-
-    // (5) 應對階段 — 簡化：暫時跳過（AI 唔主動 counter/應對號召）
-
-    // (6) 回合結束
-    E.endTurn(state);
   }
 
   // 揀最佳號召卡：先 Lv4+（攞高戰力），後 Lv1-3
@@ -185,5 +185,5 @@
     return results;
   }
 
-  global.MHR_AI = { aiTurn, aiTurnFor, aiMulligan, runAutoSim };
+  global.MHR_AI = { aiTurn, aiTurnFor, aiActions, aiBattlePhase, aiMulligan, runAutoSim };
 })(window);
