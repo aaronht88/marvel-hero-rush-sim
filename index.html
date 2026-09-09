@@ -2,16 +2,16 @@
 <html lang="zh-HK">
 <head>
 <meta charset="UTF-8">
-<title>Marvel Hero Rush TCG — Battle Simulator v3.9.5</title>
+<title>Marvel Hero Rush TCG — Battle Simulator v3.9.8c</title>
 <meta name="viewport" content="width=1480">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=3.9.5">
+<link rel="stylesheet" href="css/styles.css?v=3.9.8">
 <!-- Card data is committed locally (js/cards.js) so the sim is
      self-contained and works under any GitHub Pages subpath. -->
-<script src="js/cards.js?v=3.9.5"></script>
-<script src="js/mhr-decks.js?v=3.9.5"></script>
+<script src="js/cards.js?v=3.9.8"></script>
+<script src="js/mhr-decks.js?v=3.9.8"></script>
 </head>
 <body>
 
@@ -22,9 +22,9 @@
       <div class="logo-mark">★</div>
       <div>
         <h1>MARVEL HERO RUSH <small>Battle Sim</small></h1>
-        <p class="subtitle">Marvel Hero Rush TCG · 手動對戰 + 模擬 · v3.9.5 (手動對戰 vs AI · 自動模擬 · 對比模式 · DSL effects)</p>
+        <p class="subtitle">Marvel Hero Rush TCG · 手動對戰 + 模擬 · v3.9.8c (手動對戰 vs AI · 自動模擬 · 對比模式 · DSL effects)</p>
       </div>
-      <span class="version-badge">v3.9.5</span>
+      <span class="version-badge">v3.9.8c</span>
       <button id="btn-sound-toggle" class="sound-toggle" title="音效切換">音效</button>
     </div>
   </header>
@@ -70,33 +70,19 @@
     </div>
   </header>
 
-  <!-- =============== AI half of the mat (top, faces down) =============== -->
+  <!-- =============== AI half of the mat (top, faces up) =============== -->
   <div class="mat mat-ai" id="mat-ai">
-    <div class="mat-topstrip mat-topstrip-ai">
-      <div class="zone zone-timeline" data-side="A" data-zone="timeline">
-        <span class="zone-label">時間線 ⑦</span>
-        <div class="timeline-grid" id="timeline-A"></div>
-      </div>
-      <div class="zone zone-side">
-        <span class="zone-label">虛空區 ⑥</span>
-        <span class="zone-count" id="void-cnt-a">0</span>
-      </div>
-      <div class="zone zone-side">
-        <span class="zone-label">撤退區 ⑤</span>
-        <span class="zone-count" id="retreat-cnt-a">0</span>
-      </div>
-      <div class="zone zone-deck" data-side="A" data-zone="deck">
-        <span class="zone-label">卡組 ⑧</span>
-        <span class="zone-count" id="deck-cnt-a">50</span>
-      </div>
-      <div class="zone zone-rushdeck" data-side="A" data-zone="rushdeck">
-        <span class="zone-label">衝擊卡組 ⑨</span>
-        <span class="zone-count" id="rushdeck-cnt-a">9</span>
-      </div>
-    </div>
-
     <div class="mat-body mat-body-ai">
-      <div class="mat-sidecol mat-sidecol-l"></div>
+      <div class="mat-sidecol mat-sidecol-l">
+        <div class="zone zone-side">
+          <span class="zone-label">手牌</span>
+          <span class="zone-count" id="hand-cnt-a">6</span>
+        </div>
+        <div class="zone zone-deck" data-side="A" data-zone="deck">
+          <span class="zone-label">卡組 ⑧</span>
+          <span class="zone-count" id="deck-cnt-a">50</span>
+        </div>
+      </div>
       <div class="mat-battlecol">
         <div class="battle-stack">
           <div class="zone zone-back" data-side="A" data-slot="back"><span class="zone-label">後衛區 ③</span></div>
@@ -113,25 +99,43 @@
       </div>
       <div class="mat-sidecol mat-sidecol-r">
         <div class="zone zone-side">
-          <span class="zone-label">手牌</span>
-          <span class="zone-count" id="hand-cnt-a">6</span>
+          <span class="zone-label">虛空區 ⑥</span>
+          <span class="zone-count" id="void-cnt-a">0</span>
+          <div class="pile" id="void-cards-a"></div>
+        </div>
+        <div class="zone zone-side">
+          <span class="zone-label">撤退區 ⑤</span>
+          <span class="zone-count" id="retreat-cnt-a">0</span>
+          <div class="pile" id="retreat-cards-a"></div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- =============== Center: phase strip + log + action panel =============== -->
+  <!-- =============== Center: RUSH POINT 計分牌 + log + action =============== -->
   <div class="center-strip">
-    <div>
-      <div class="phase-banner">
-        <span class="phase-pill" id="phase-pill">DRAW</span>
-        <span id="phase-help">回合開始：抽 2 張</span>
+    <div class="scoreboard">
+      <div class="score-panel score-panel-a">
+        <div class="score-head"><span class="score-name">AI</span><span class="score-cnt" id="score-cnt-a">0/9</span></div>
+        <div class="timeline-grid" id="timeline-A"></div>
       </div>
-      <div class="log-panel">
-        <div class="log-header">Battle Log</div>
-        <div id="log-list" class="log-list"></div>
+      <div class="score-mid">★<br>RUSH<br>POINT</div>
+      <div class="score-panel score-panel-p">
+        <div class="score-head"><span class="score-name">你</span><span class="score-cnt" id="score-cnt-p">0/9</span></div>
+        <div class="timeline-grid" id="timeline-P"></div>
       </div>
     </div>
+    <div class="center-row">
+      <div>
+        <div class="phase-banner">
+          <span class="phase-pill" id="phase-pill">DRAW</span>
+          <span id="phase-help">回合開始：抽 2 張</span>
+        </div>
+        <div class="log-panel">
+          <div class="log-header">Battle Log</div>
+          <div id="log-list" class="log-list"></div>
+        </div>
+      </div>
     <div class="action-panel" id="action-panel">
       <div class="action-row">
         <button id="btn-set-deploy" class="btn-action" disabled>
@@ -147,7 +151,7 @@
           攻擊
         </button>
         <button id="btn-end-turn" class="btn-action btn-end" disabled>
-          結束回合
+          <span id="btn-end-label">結束回合</span>
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4l14 8-14 8z"/></svg>
         </button>
       </div>
@@ -163,6 +167,7 @@
         <button id="btn-takeover" class="btn-action" title="停止自動播放，改為手動操作">✋ 接管</button>
       </div>
       <div class="action-hint" id="action-hint">…</div>
+      </div>
     </div>
   </div>
 
@@ -173,6 +178,10 @@
         <div class="zone zone-side">
           <span class="zone-label">手牌</span>
           <span class="zone-count" id="hand-cnt-p">6</span>
+        </div>
+        <div class="zone zone-deck" data-side="P" data-zone="deck">
+          <span class="zone-label">卡組 ⑧</span>
+          <span class="zone-count" id="deck-cnt-p">50</span>
         </div>
       </div>
       <div class="mat-battlecol">
@@ -189,29 +198,17 @@
           <div class="base-slots" id="base-P"></div>
         </div>
       </div>
-      <div class="mat-sidecol mat-sidecol-r"></div>
-    </div>
-
-    <div class="mat-topstrip mat-topstrip-p">
-      <div class="zone zone-timeline" data-side="P" data-zone="timeline">
-        <span class="zone-label">時間線 ⑦</span>
-        <div class="timeline-grid" id="timeline-P"></div>
-      </div>
-      <div class="zone zone-side">
-        <span class="zone-label">虛空區 ⑥</span>
-        <span class="zone-count" id="void-cnt-p">0</span>
-      </div>
-      <div class="zone zone-side">
-        <span class="zone-label">撤退區 ⑤</span>
-        <span class="zone-count" id="retreat-cnt-p">0</span>
-      </div>
-      <div class="zone zone-deck" data-side="P" data-zone="deck">
-        <span class="zone-label">卡組 ⑧</span>
-        <span class="zone-count" id="deck-cnt-p">50</span>
-      </div>
-      <div class="zone zone-rushdeck" data-side="P" data-zone="rushdeck">
-        <span class="zone-label">衝擊卡組 ⑨</span>
-        <span class="zone-count" id="rushdeck-cnt-p">9</span>
+      <div class="mat-sidecol mat-sidecol-r">
+        <div class="zone zone-side">
+          <span class="zone-label">虛空區 ⑥</span>
+          <span class="zone-count" id="void-cnt-p">0</span>
+          <div class="pile" id="void-cards-p"></div>
+        </div>
+        <div class="zone zone-side">
+          <span class="zone-label">撤退區 ⑤</span>
+          <span class="zone-count" id="retreat-cnt-p">0</span>
+          <div class="pile" id="retreat-cards-p"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -234,7 +231,7 @@
     </div>
   </div>
 
-  <!-- v3.9.5: 卡資料 hover banner（duels.ink 式；唔帶 art，純參數 + 效果） -->
+  <!-- v3.9.8c: 卡資料 hover banner（duels.ink 式；唔帶 art，純參數 + 效果） -->
 <div id="card-pop" class="card-pop" hidden></div>
 
 <!-- v3.2: Card detail modal (click any card to view stats/effect) -->
@@ -257,6 +254,15 @@
       </div>
     </div>
   </div>
+
+  <!-- Win modal moved out of battle-screen — see body-level placement below -->
+  </section>
+
+  <!-- Modal overlays at body-level — they must live OUTSIDE the
+       .screen containers because each .screen defaults to display:none
+       and a fixed-position modal inheriting from a display:none ancestor
+       collapses to a 0×0 box on Chrome. v3.9.8c fix (import deck
+       button was unresponsive). -->
 
   <!-- v3.2: Deck import overlay -->
   <div id="import-overlay" class="modal hidden">
@@ -293,7 +299,7 @@
     </div>
   </div>
 
-  <!-- Win overlay -->
+  <!-- Win overlay (also moved out — same ancestor-collapse bug applied) -->
   <div id="win-overlay" class="win-overlay hidden">
     <div class="win-card">
       <div id="win-title" class="win-title">遊戲結束</div>
@@ -301,9 +307,8 @@
       <button id="btn-rematch" class="btn-primary">再來一局</button>
     </div>
   </div>
-</section>
 
-<!-- v3.4: Mulligan overlay（調整起始手牌，官方 P9）— body 級，避免受 screen 顯示狀態影響 -->
+  <!-- v3.4: Mulligan overlay（調整起始手牌，官方 P9）— body 級，避免受 screen 顯示狀態影響 -->
 <div id="mulligan-overlay" class="modal hidden">
   <div class="modal-card mulligan-card">
     <div class="modal-title">調整起始手牌（Mulligan）</div>
@@ -341,13 +346,13 @@
 </div>
 
 <!-- Order matters: data → effects-data → engine → effects → ai → app -->
-<script src="js/data.js?v=3.9.5"></script>
-<script src="js/effects-data.js?v=3.9.5"></script>
-<script src="js/engine.js?v=3.9.5"></script>
-<script src="js/effects.js?v=3.9.5"></script>
-<script src="js/audio.js?v=3.9.5"></script>
-<script src="js/ai.js?v=3.9.5"></script>
-<script src="js/app.js?v=3.9.5"></script>
+<script src="js/data.js?v=3.9.8"></script>
+<script src="js/effects-data.js?v=3.9.8"></script>
+<script src="js/engine.js?v=3.9.8"></script>
+<script src="js/effects.js?v=3.9.8"></script>
+<script src="js/audio.js?v=3.9.8"></script>
+<script src="js/ai.js?v=3.9.8"></script>
+<script src="js/app.js?v=3.9.8"></script>
 <script>
   // Wire sound toggle after DOM ready
   document.getElementById("btn-sound-toggle").addEventListener("click", () => {
