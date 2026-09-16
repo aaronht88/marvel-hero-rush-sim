@@ -426,34 +426,69 @@
     document.getElementById("void-cnt-a").textContent = a.voidZone.length;
     document.getElementById("hand-cnt-p").textContent = p.hand.length;
     document.getElementById("hand-cnt-a").textContent = a.hand.length;
-    document.getElementById("rushdeck-cnt-p").textContent = p.rushDeck.length;
-    document.getElementById("rushdeck-cnt-a").textContent = a.rushDeck.length;
+    // v3.9.7: 衝擊卡組 UI 已移除（改用時間線計分牌）
   }
 
+  // v3.9.7: 時間線 = 中央 RUSH POINT 計分牌（1–9 大格 + 數字 + x/9 分數）
   function renderTimelines() {
     for (const side of ["P", "A"]) {
       const root = document.getElementById("timeline-" + side);
       root.innerHTML = "";
+      const tl = state.players[side].timeline || [];
       for (let i = 0; i < E.RUSH_TO_WIN; i++) {
         const cell = document.createElement("div");
         cell.className = "timeline-cell";
-        if (state.players[side].timeline[i]) {
+        const no = document.createElement("span");
+        no.className = "tl-no";
+        no.textContent = i + 1;
+        cell.appendChild(no);
+        const rp = tl[i];
+        if (rp) {
           cell.classList.add("filled");
-          const rp = state.players[side].timeline[i];
           if (rp && rp.art) {
             cell.classList.add("filled", "has-art");
-            cell.textContent = "";
             const img = document.createElement("img");
             img.src = rp.art;
             img.alt = "RUSH POINT";
             img.className = "timeline-art";
             cell.appendChild(img);
-          } else {
-            cell.classList.add("filled");
-            cell.textContent = "★";
           }
         }
         root.appendChild(cell);
+      }
+      const cnt = document.getElementById("score-cnt-" + side);
+      if (cnt) cnt.textContent = tl.length + " / " + E.RUSH_TO_WIN;
+    }
+  }
+
+  // v3.9.8: 虛空區/撤退區細卡（hover banner + click detail 同一般卡）
+  function renderPiles() {
+    for (const side of ["P", "A"]) {
+      const s = side === "P" ? "p" : "a";   // HTML id 用細階
+      for (const [zone, key] of [["void", "voidZone"], ["retreat", "retreat"]]) {
+        const box = document.getElementById(zone + "-cards-" + s);
+        if (!box) continue;
+        box.innerHTML = "";
+        const arr = (state.players[side][key] || []);
+        for (const card of arr) {
+          if (!card) continue;
+          const t = document.createElement("div");
+          t.className = "tiny-card";
+          t.title = E.shortName(card);
+          const url = (DATA.artPath && DATA.artPath(card)) || (card.art || "");
+          if (url) t.style.backgroundImage = `url("${url}")`;
+          t.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            if (!state || state.winner || view.attackerUid || state.pending) return;
+            if (view.selectedHandIdx !== null) return;
+            const modal = document.getElementById("modal");
+            if (modal && !modal.classList.contains("hidden")) return;
+            SFX && SFX.play("click");
+            showCardDetail(card);
+          });
+          bindCardHover(t, card);   // hover banner 照出
+          box.appendChild(t);
+        }
       }
     }
   }
@@ -1168,12 +1203,28 @@
   }
 
   // ---- Action buttons state ----
+  function nextEndLabel() {
+    if (!state || state.winner) return "結束";
+    if (state.activeSide !== "P") return "等 AI";
+    const f = state.turnFlags.P || {};
+    if (state.phase === "ACTION") {
+      const canAtk = E.battleChars(state.players.P).some(({ card }) =>
+        !(f.attackedUids || {})[card._uid] || (f.doubleAttackUids || {})[card._uid]);
+      const goBattle = !E.isFirstTurnBattleSkipped(state, "P") && canAtk;
+      return goBattle ? "結束行動 → 戰鬥" : "結束行動 → 應對";
+    }
+    if (state.phase === "BATTLE") return "結束戰鬥 → 應對";
+    if (state.phase === "RESPOND") return "結束回合 → AI";
+    return "結束回合";
+  }
   function renderActions() {
     const setBtn = document.getElementById("btn-set-deploy");
     const moveBtn = document.getElementById("btn-battle-move");
     const atkBtn = document.getElementById("btn-attack");
     const endBtn = document.getElementById("btn-end-turn");
+    const endLbl = document.getElementById("btn-end-label");
     const hint = document.getElementById("action-hint");
+    if (endLbl) endLbl.textContent = nextEndLabel();
     if (state.winner) {
       [setBtn, moveBtn, atkBtn, endBtn].forEach(b => b.disabled = true);
       hint.textContent = "遊戲結束";
@@ -1792,6 +1843,7 @@
     renderHud();
     renderCounters();
     renderTimelines();
+    renderPiles();
     renderBase();
     renderBattleZones();
     renderHand();
