@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>召喚圖鑑 — MARVEL HERO RUSH</title>
+  <meta name="theme-color" content="#06100d" />
+  <link rel="stylesheet" href="css/theme.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <header class="titlebar">
+    <a class="back" href="hub.html">← 返回</a>
+    <h1>召喚圖鑑 <span class="titlebar-en">/ SUMMON ARCHIVE</span></h1>
+    <span class="money" id="moneyLabel">💰 $ 300</span>
+    <button class="audio-btn" id="audioBtn" aria-label="音效設定" style="position:static;">
+      <span aria-hidden="true">♪</span> 音效
+    </button>
+  </header>
+
+  <section class="archive-page">
+    <!-- ============ Left: filters ============ -->
+    <aside class="filters-col">
+      <div class="progress">
+        <div class="row">
+          <span class="label">CARD ARCHIVE PROGRESS / 收集進度</span>
+        </div>
+        <div class="row">
+          <span class="value gold" id="archiveNum">0</span>
+          <span class="value mute" style="font-size:14px;">/ <span id="archiveTotal">0</span></span>
+        </div>
+        <div class="bar"><div class="bar-fill" id="archiveBar" style="width:0%"></div></div>
+        <div class="row">
+          <span class="mono mute" style="font-size:11px;">
+            <span id="archivePct">0.0</span>% · 尚欠 <span id="archiveRemain">0</span> 種
+          </span>
+        </div>
+      </div>
+
+      <div class="filters" id="filters">
+        <div class="filter-group">
+          <div class="group-label">CHAPTER / 章節</div>
+          <div class="pill-row" data-filter="chapter">
+            <button class="pill active" data-value="">全部章</button>
+            <button class="pill" data-value="始動之章">始動之章</button>
+            <button class="pill" data-value="青之章">青之章</button>
+            <button class="pill" data-value="特別咭">特別咭</button>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <div class="group-label">CARD CLASS / 卡種</div>
+          <div class="pill-row" data-filter="type">
+            <button class="pill active" data-value="">全部種類</button>
+            <button class="pill" data-value="召喚師">召喚師</button>
+            <button class="pill" data-value="召喚獸">召喚獸</button>
+            <button class="pill" data-value="Ch / R">Ch / R</button>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <div class="group-label">ATTRIBUTE / 屬性</div>
+          <div class="pill-row" data-filter="attribute">
+            <button class="pill active" data-value="">全部</button>
+            <button class="pill" data-value="Red">Red</button>
+            <button class="pill" data-value="Yellow">Yellow</button>
+            <button class="pill" data-value="Blue">Blue</button>
+            <button class="pill" data-value="Green">Green</button>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <div class="group-label">RECORD / 收藏</div>
+          <div class="pill-row" data-filter="record">
+            <button class="pill active" data-value="">全部</button>
+            <button class="pill" data-value="collected">已有</button>
+            <button class="pill" data-value="locked">未有</button>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <div class="group-label">SORT / 排序</div>
+          <div class="pill-row" data-filter="sort">
+            <button class="pill active" data-value="card_no">Card No.</button>
+            <button class="pill" data-value="level">Level</button>
+            <button class="pill" data-value="power">Power</button>
+            <button class="pill" data-value="rarity">Rarity</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ============ Center: card matrix ============ -->
+    <div class="matrix-col scroll-area">
+      <div class="matrix-header">
+        <h2>CARD MATRIX</h2>
+        <span class="count"><span id="visibleCount">0</span> CARDS / <span id="matrixTotal">0</span> 種卡牌</span>
+      </div>
+      <div class="matrix" id="matrix" role="grid"></div>
+    </div>
+
+    <!-- ============ Right: card detail panel ============ -->
+    <aside class="detail-panel" id="detailPanel">
+      <div class="label-row" id="detailLabel">請選擇一張卡牌</div>
+      <div class="card-render" id="cardRender">
+        <div class="top-bar">
+          <span id="renderCardNo">—</span>
+          <span id="renderAttribute">—</span>
+        </div>
+        <div class="art" id="renderArt"></div>
+        <div>
+          <div class="name" id="renderName">—</div>
+          <div class="class-line" id="renderClass">—</div>
+        </div>
+        <div class="stats">
+          <div><div class="label">LV</div><div class="value" id="renderLevel">—</div></div>
+          <div><div class="label">PWR</div><div class="value" id="renderPower">—</div></div>
+          <div><div class="label">R</div><div class="value" id="renderRange">—</div></div>
+        </div>
+        <div class="own-ribbon" id="renderOwn" hidden>OWN ×0</div>
+      </div>
+      <div class="effect-box" id="renderEffect">—</div>
+    </aside>
+  </section>
+
+  <script src="js/data.js"></script>
+  <script src="js/archive.js"></script>
+</body>
+</html>

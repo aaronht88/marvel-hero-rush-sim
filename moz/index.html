@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>MARVEL HERO RUSH 召喚王「再現」</title>
+  <meta name="description" content="Marvel Hero Rush 集換式卡牌 — 收集 Marvel 角色卡牌，編成卡組並挑戰對手。" />
+  <meta name="theme-color" content="#06100d" />
+  <link rel="stylesheet" href="css/theme.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <button class="audio-btn" id="audioBtn" aria-label="音效設定">
+    <span aria-hidden="true">♪</span> 音效
+  </button>
+
+  <main class="shell">
+    <section class="shell-left">
+      <p class="eyebrow">CARD BATTLE RPG · GRIFF CHRONICLE</p>
+
+      <div class="logo-block">
+        <h1 class="logo-moz">MHR<span class="logo-tag">「再現」</span></h1>
+        <div class="subtitle-line">
+          <span>THE MIRACLE OF ZONE</span>
+          <span id="versionLabel">V2026.10.15</span>
+        </div>
+      </div>
+
+      <nav class="menu" aria-label="主選單">
+        <button class="menu-btn" data-action="new">
+          <span class="num">01</span>
+          <span>
+            <div class="label-zh">開始物語</div>
+            <div class="label-en">NEW CHRONICLE</div>
+          </span>
+          <span class="chevron">›</span>
+        </button>
+        <button class="menu-btn" data-action="online" disabled>
+          <span class="num">02</span>
+          <span>
+            <div class="label-zh">網上對戰</div>
+            <div class="label-en">ONLINE ARENA</div>
+          </span>
+          <span class="chevron">·</span>
+        </button>
+        <button class="menu-btn" data-action="hub">
+          <span class="num">03</span>
+          <span>
+            <div class="label-zh">進入召喚界</div>
+            <div class="label-en">ENTER HUB</div>
+          </span>
+          <span class="chevron">›</span>
+        </button>
+        <button class="menu-btn" data-action="archive">
+          <span class="num">04</span>
+          <span>
+            <div class="label-zh">召喚圖鑑</div>
+            <div class="label-en">SUMMON ARCHIVE</div>
+          </span>
+          <span class="chevron">›</span>
+        </button>
+      </nav>
+
+      <p class="mute mono" style="font-size:11px; letter-spacing:.16em;">
+        448 CARDS · SUMMONER PORTRAITS
+      </p>
+
+      <footer class="shell-footer">
+        <span>MOZ RE:CREATION · MHR DATA</span>
+        <a href="#" id="reportLink">遊戲報錯</a>
+      </footer>
+    </section>
+
+    <section class="shell-right" aria-hidden="true">
+      <div class="hero-canvas">
+        <span class="hero-glyph">MHR</span>
+      </div>
+    </section>
+  </main>
+
+  <!-- Starter-deck modal (shown when user clicks 01 開始物語) -->
+  <div class="modal-backdrop" id="starterBackdrop" hidden>
+    <div class="modal" role="dialog" aria-labelledby="starterTitle">
+      <h3 id="starterTitle">🎁 基本咭組【龍炎】</h3>
+      <p class="mute">
+        恭喜！你獲得隨機基本咭組 —【龍炎】（5 位召喚師 + 50 張 Zone 咭），仲有 $300 零用錢。
+      </p>
+      <div class="starter-grid" id="starterGrid"></div>
+      <button class="begin-btn" id="beginBtn">開始冒險！</button>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/landing.js"></script>
+</body>
+</html>
