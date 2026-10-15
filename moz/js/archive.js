@@ -124,8 +124,21 @@
     document.getElementById("renderLevel").textContent = c.level;
     document.getElementById("renderPower").textContent = c.power.toLocaleString();
     document.getElementById("renderRange").textContent = c.range;
-    document.getElementById("renderEffect").textContent =
-      c.effect || "（無效果描述）";
+
+    // Tokenised effect rendering (Marvel Hero Rush rules vocabulary).
+    const efxEl = document.getElementById("renderEffect");
+    if (window.MOZ_EFX && c.effect) {
+      const blocks = window.MOZ_EFX.parse(c.effect);
+      const html = blocks
+        .map((tokens) => `<div class="efx-block">${window.MOZ_EFX.render(tokens)}</div>`)
+        .join("");
+      efxEl.innerHTML = html || `<span class="efx-text">（無效果描述）</span>`;
+    } else if (c.effect) {
+      efxEl.textContent = c.effect;
+    } else {
+      efxEl.innerHTML = `<span class="efx-text">（無效果描述）</span>`;
+    }
+
     const ownEl = document.getElementById("renderOwn");
     if (c.collected) {
       ownEl.hidden = false;

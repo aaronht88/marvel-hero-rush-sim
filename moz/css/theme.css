@@ -668,8 +668,193 @@ img { display: block; max-width: 100%; }
   font-size: 12px;
   color: var(--text-cream);
   line-height: 1.6;
-  max-height: 180px;
+  max-height: 220px;
   overflow-y: auto;
+}
+
+/* =========================================================================
+   Effect-token rendering (Marvel Hero Rush rules vocabulary)
+   Source: EFFECTS_DESCRIPTOR.md (5 triggers × 9 slots).
+   ========================================================================= */
+
+/* Trigger pill (TRIG / AUTO / ACTI / COUNTER / COUNTER·ACTI) */
+.efx-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  border-radius: 3px;
+  margin-right: 2px;
+}
+
+.efx-icon {
+  font-size: 11px;
+  line-height: 1;
+}
+
+.efx-trigger.efx-trig-TRIG {
+  background: rgba(201, 160, 80, 0.18);
+  color: var(--gold);
+  border: 1px solid var(--gold);
+}
+.efx-trigger.efx-trig-AUTO {
+  background: rgba(80, 128, 199, 0.20);
+  color: #7da9d4;
+  border: 1px solid #5080c7;
+}
+.efx-trigger.efx-trig-ACTI {
+  background: rgba(95, 165, 90, 0.20);
+  color: #95c990;
+  border: 1px solid #5fa55a;
+}
+.efx-trigger.efx-trig-COUNTER {
+  background: rgba(199, 80, 80, 0.22);
+  color: #d49090;
+  border: 1px solid #c75050;
+}
+.efx-trigger.efx-trig-COUNTER·ACTI {
+  background: rgba(212, 100, 100, 0.22);
+  color: #d49090;
+  border: 1px solid #c75050;
+}
+
+/* Slot chip (FIELD/HAND/BATTLE/...) */
+.efx-slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border-radius: 3px;
+  background: var(--bg-elev);
+  color: var(--text-cream);
+  border: 1px solid var(--bg-elev);
+  margin: 0 2px;
+}
+
+.efx-once {
+  font-style: italic;
+  color: var(--text-mute);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+
+.efx-var {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  color: var(--gold);
+  padding: 0 2px;
+  border-bottom: 1px dashed var(--gold);
+}
+
+.efx-lv, .efx-rank {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--gold);
+}
+
+.efx-verb {
+  font-weight: 700;
+  color: var(--text-cream);
+  text-decoration: underline;
+  text-decoration-color: var(--gold-dim);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.efx-attr {
+  display: inline-block;
+  padding: 0 4px;
+  border-radius: 2px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.efx-attr-Red    { background: rgba(180, 60, 60, 0.22); color: #d49090; }
+.efx-attr-Yellow { background: rgba(180, 150, 60, 0.22); color: #d4c075; }
+.efx-attr-Blue   { background: rgba(80, 128, 199, 0.22); color: #95b5d5; }
+.efx-attr-Green  { background: rgba(95, 165, 90, 0.22); color: #95c990; }
+
+.efx-title {
+  font-weight: 700;
+  color: var(--gold);
+}
+
+.efx-bracket {
+  font-family: var(--font-mono);
+  color: var(--text-mute);
+  font-size: 11px;
+}
+
+.efx-punct {
+  color: var(--text-mute);
+}
+
+.efx-text {
+  color: var(--text-cream);
+}
+
+/* Effect-vocabulary legend (archive sidebar) */
+.efx-legend {
+  margin-top: var(--gap-3);
+  padding: var(--gap-3);
+  background: var(--bg-card);
+  border: 1px solid var(--bg-elev);
+  font-size: 11px;
+  color: var(--text-mute);
+}
+
+.efx-legend h4 {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+  margin: 0 0 var(--gap-2) 0;
+}
+
+.efx-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.efx-legend-row .swatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 700;
+  min-width: 64px;
+  justify-content: center;
+}
+
+.efx-legend-row .slot-swatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--bg-elev);
+  color: var(--text-cream);
+  font-weight: 600;
+  min-width: 64px;
+  justify-content: center;
 }
 
 /* =========================================================================
