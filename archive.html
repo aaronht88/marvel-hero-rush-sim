@@ -1,31 +1,38 @@
 <!DOCTYPE html>
 <html lang="zh-HK">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>召喚圖鑑 — MARVEL HERO RUSH</title>
-  <meta name="theme-color" content="#06100d" />
-  <link rel="stylesheet" href="css/theme.css" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <meta charset="UTF-8">
+  <title>Marvel Hero Rush — 召喚圖鑑</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#06100d">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Russo+One&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css?v=3.13">
 </head>
-<body>
-  <header class="titlebar">
-    <a class="back" href="hub.html">← 返回</a>
-    <h1>召喚圖鑑 <span class="titlebar-en">/ SUMMON ARCHIVE</span></h1>
-    <span class="money" id="moneyLabel">💰 $ 300</span>
-    <button class="audio-btn" id="audioBtn" aria-label="音效設定" style="position:static;">
-      <span aria-hidden="true">♪</span> 音效
-    </button>
+<body class="page-archive">
+
+  <header class="mhr-topbar">
+    <a class="mhr-brand" href="index.html">
+      <span class="mhr-brand-mark">★</span>
+      <span class="mhr-brand-text">
+        <span class="mhr-brand-title">MARVEL HERO RUSH</span>
+        <span class="mhr-brand-sub">召喚圖鑑 / SUMMON ARCHIVE</span>
+      </span>
+    </a>
+    <nav class="mhr-nav">
+      <a class="mhr-nav-link" href="index.html">⚔ 對戰</a>
+      <a class="mhr-nav-link active" href="archive.html">📖 圖鑑</a>
+    </nav>
+    <span class="mhr-shell">💰 $300</span>
   </header>
 
-  <section class="archive-page">
+  <main class="archive-page">
     <!-- ============ Left: filters ============ -->
     <aside class="filters-col">
-      <div class="progress">
+      <div class="archive-progress">
         <div class="row">
-          <span class="label">CARD ARCHIVE PROGRESS / 收集進度</span>
+          <span class="label">CARD ARCHIVE / 收集進度</span>
         </div>
         <div class="row">
           <span class="value gold" id="archiveNum">0</span>
@@ -34,7 +41,7 @@
         <div class="bar"><div class="bar-fill" id="archiveBar" style="width:0%"></div></div>
         <div class="row">
           <span class="mono mute" style="font-size:11px;">
-            <span id="archivePct">0.0</span>% · 尚欠 <span id="archiveRemain">0</span> 種
+            <span id="archivePct">0.0</span>% · 已標 <span id="archiveHighlighted">0</span> 張
           </span>
         </div>
       </div>
@@ -44,19 +51,15 @@
           <div class="group-label">CHAPTER / 章節</div>
           <div class="pill-row" data-filter="chapter">
             <button class="pill active" data-value="">全部章</button>
-            <button class="pill" data-value="始動之章">始動之章</button>
-            <button class="pill" data-value="青之章">青之章</button>
-            <button class="pill" data-value="特別咭">特別咭</button>
-          </div>
-        </div>
-
-        <div class="filter-group">
-          <div class="group-label">CARD CLASS / 卡種</div>
-          <div class="pill-row" data-filter="type">
-            <button class="pill active" data-value="">全部種類</button>
-            <button class="pill" data-value="召喚師">召喚師</button>
-            <button class="pill" data-value="召喚獸">召喚獸</button>
-            <button class="pill" data-value="Ch / R">Ch / R</button>
+            <button class="pill" data-value="MARVEL ORIGIN">MARVEL ORIGIN</button>
+            <button class="pill" data-value="REALITY STARTER">REALITY</button>
+            <button class="pill" data-value="MIND STARTER">MIND</button>
+            <button class="pill" data-value="SPACE STARTER">SPACE</button>
+            <button class="pill" data-value="TIME STARTER">TIME</button>
+            <button class="pill" data-value="SPECIAL CARDS">SPECIAL</button>
+            <button class="pill" data-value="EXTRA BOOSTER">EXTRA</button>
+            <button class="pill" data-value="PROMO BOUNDARY">PROMO</button>
+            <button class="pill" data-value="TRADING CARD">TRADING</button>
           </div>
         </div>
 
@@ -72,11 +75,19 @@
         </div>
 
         <div class="filter-group">
-          <div class="group-label">RECORD / 收藏</div>
-          <div class="pill-row" data-filter="record">
+          <div class="group-label">RARITY / 稀有度</div>
+          <div class="pill-row" data-filter="rarity">
             <button class="pill active" data-value="">全部</button>
-            <button class="pill" data-value="collected">已有</button>
-            <button class="pill" data-value="locked">未有</button>
+            <button class="pill" data-value="SEC">SEC</button>
+            <button class="pill" data-value="MR">MR</button>
+            <button class="pill" data-value="UR">UR</button>
+            <button class="pill" data-value="GR">GR</button>
+            <button class="pill" data-value="SR">SR</button>
+            <button class="pill" data-value="R">R</button>
+            <button class="pill" data-value="ER">ER</button>
+            <button class="pill" data-value="PR">PR</button>
+            <button class="pill" data-value="HR">HR</button>
+            <button class="pill" data-value="TR">TR</button>
           </div>
         </div>
 
@@ -91,9 +102,9 @@
         </div>
       </div>
 
-      <!-- Effect vocabulary legend (Marvel Hero Rush DSL) -->
+      <!-- EFFECT VOCABULARY legend (Marvel Hero Rush DSL) -->
       <div class="efx-legend">
-        <h4>EFFECT 語言</h4>
+        <h4>EFFECT VOCABULARY</h4>
         <div class="efx-legend-row">
           <span class="swatch efx-trig-TRIG">⚡ TRIG</span>
           <span>觸發效果</span>
@@ -160,14 +171,15 @@
           <div><div class="label">PWR</div><div class="value" id="renderPower">—</div></div>
           <div><div class="label">R</div><div class="value" id="renderRange">—</div></div>
         </div>
-        <div class="own-ribbon" id="renderOwn" hidden>OWN ×0</div>
+        <div class="own-ribbon" id="renderOwn" hidden>OWN ×1</div>
       </div>
       <div class="effect-box" id="renderEffect">—</div>
     </aside>
-  </section>
+  </main>
 
-  <script src="js/data.js"></script>
-  <script src="js/effect-parser.js"></script>
-  <script src="js/archive.js"></script>
+  <script src="js/cards.js?v=3.13"></script>
+  <script src="js/cards-data.js?v=3.13"></script>
+  <script src="js/effect-parser.js?v=3.13"></script>
+  <script src="js/archive.js?v=3.13"></script>
 </body>
 </html>

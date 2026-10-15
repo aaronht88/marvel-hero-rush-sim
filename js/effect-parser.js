@@ -1,5 +1,6 @@
 /* =============================================================
    effect-parser.js — Marvel Hero Rush card-effect tokenizer.
+
    Parses raw effect text into structured tokens matching the
    declarative DSL in /opt/data/mhr-battle-sim/EFFECTS_DESCRIPTOR.md.
 
@@ -8,15 +9,12 @@
                       BACK, FRONT, VOID
    Once-per-turn:     ONCE PER TURN (italicize)
    Dynamic variable:  X (highlight, italic)
-   Conditional:       "if …", "When …", "may" → soft dim
-   Action keywords:   prune, draw, discard, retreat, attach, show,
-                      swap, place, move, cover, call → bold accent
    Attribute refs:    Red/Yellow/Blue/Green → colored
 
    This is display-only: a pretty-printer for the archive detail
    panel and the matrix tooltips. The real rules engine lives in
-   mhr-battle-sim/js/engine.js; this module does not change game
-   state.
+   /js/effects.js (declarative interpreter); this module does not
+   change game state.
    ============================================================= */
 (function (root) {
   "use strict";
@@ -43,7 +41,6 @@
   };
 
   // ---- Verb list (action keywords we render as bold accent) ----
-  // Lowercase forms (official text mixes both; we lowercase before matching).
   const VERBS = new Set([
     "prune", "prunes", "pruned",
     "draw", "draws", "drew",
@@ -66,7 +63,6 @@
   ]);
 
   // ---- Parse one effect block ----
-  // Each top-level effect block is separated by literal "\n".
   function parse(rawEffect) {
     if (!rawEffect) return [];
     const blocks = rawEffect.split(/\n+/).map((b) => b.trim()).filter(Boolean);
@@ -74,7 +70,6 @@
   }
 
   function parseBlock(block) {
-    // Strip leading trigger+slot header: e.g. "TRIG【FIELD】:", "COUNTER·ACTI【HAND/ONCE PER TURN】:"
     const headerRe =
       /^(TRIG|AUTO|ACTI|COUNTER·ACTI|COUNTER)\s*【([^】]+)】\s*:?\s*/i;
     const m = block.match(headerRe);
@@ -95,7 +90,6 @@
       tokens.push({ kind: "ws", value: " " });
     }
 
-    // Walk remaining text and emit tokens
     const rest = m ? block.slice(m[0].length) : block;
     const parts2 = rest.split(/(\s+|[,.;:\uFF1A\u3002\uFF0C\uFF1B]|「[^」]*」|Lv\d+|\bX\b|\bONCE PER TURN\b|\[.+?\]|R\+\d+)/g);
     parts2.forEach((part) => {
@@ -143,7 +137,6 @@
       tokens.push({ kind: "text", value: part });
     });
 
-    // Attach trigger/slot icons as decorative prefix meta (resolved by renderer)
     return tokens;
   }
 
@@ -188,13 +181,6 @@
       .join("");
   }
 
-  // ---- Plain summary (for tooltip / first 60 chars) ----
-  function summarize(rawEffect, max = 80) {
-    if (!rawEffect) return "";
-    const flat = rawEffect.replace(/\s+/g, " ").trim();
-    return flat.length > max ? flat.slice(0, max) + "…" : flat;
-  }
-
   // ---- Helpers ----
   function escapeHtml(s) {
     return String(s).replace(/&/g, "&amp;")
@@ -206,7 +192,7 @@
   }
 
   // Public API
-  root.MOZ_EFX = {
+  root.MHR_EFX = {
     parse,
     render,
     TRIG_ICON,

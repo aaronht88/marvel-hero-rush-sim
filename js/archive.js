@@ -1,31 +1,34 @@
 /* =============================================================
-   Card archive (召喚圖鑑) — /moz/archive.html
-   Filter sidebar, 12-col matrix grid, side detail panel.
+   Card archive (召喚圖鑑) — /archive.html
+   Sister page of /index.html. MHR-native (uses MHR_CARDS from
+   js/cards-data.js, MHR_EFX from js/effect-parser.js).
+
+   Filter sidebar + 12-col card matrix + sticky detail panel.
+   Effect text is tokenized against the Marvel Hero Rush rules
+   vocabulary per EFFECTS_DESCRIPTOR.md (5 triggers × 9 slots).
    ============================================================= */
 (function () {
   "use strict";
 
-  const cards = window.MOZ_CARDS || [];
+  const cards = window.MHR_CARDS || [];
   const total = cards.length;
-  const collectedCount = cards.filter((c) => c.collected).length;
+  const highlightedCount = cards.filter((c) => c.highlight).length;
 
   // ---------- Filter state ----------
   const state = {
     chapter:    "",
-    type:       "",
     attribute:  "",
-    record:     "",   // "" | "collected" | "locked"
+    rarity:     "",
     sort:       "card_no",
   };
 
   // ---------- Progress widget ----------
-  document.getElementById("archiveNum").textContent = collectedCount;
+  document.getElementById("archiveNum").textContent = highlightedCount;
   document.getElementById("archiveTotal").textContent = total;
-  const pct = total ? Math.round((collectedCount / total) * 1000) / 10 : 0;
+  const pct = total ? Math.round((highlightedCount / total) * 1000) / 10 : 0;
   document.getElementById("archiveBar").style.width = pct + "%";
   document.getElementById("archivePct").textContent = pct.toFixed(1);
-  document.getElementById("archiveRemain").textContent = (total - collectedCount);
-
+  document.getElementById("archiveHighlighted").textContent = highlightedCount;
   document.getElementById("matrixTotal").textContent = total;
 
   // ---------- Filter pill binding ----------
@@ -36,28 +39,18 @@
         row.querySelectorAll(".pill").forEach((p) => p.classList.remove("active"));
         pill.classList.add("active");
         const value = pill.dataset.value;
-        if (filterKey === "sort") state.sort = value;
-        else state[filterKey] = value;
+        state[filterKey] = value;
         render();
       });
     });
-  });
-
-  // ---------- Audio toggle ----------
-  const audioBtn = document.getElementById("audioBtn");
-  audioBtn.addEventListener("click", () => {
-    audioBtn.classList.toggle("active");
-    audioBtn.textContent = audioBtn.classList.contains("active") ? "♪ ON" : "♪ 音效";
   });
 
   // ---------- Filter logic ----------
   function filtered() {
     const list = cards.filter((c) => {
       if (state.chapter && c.chapter !== state.chapter) return false;
-      if (state.type && c.type !== state.type) return false;
       if (state.attribute && c.attribute !== state.attribute) return false;
-      if (state.record === "collected" && !c.collected) return false;
-      if (state.record === "locked" && c.collected) return false;
+      if (state.rarity && c.rarity !== state.rarity) return false;
       return true;
     });
 
@@ -83,18 +76,15 @@
     matrixEl.innerHTML = list
       .map((c) => {
         const isSel = c.id === selectedId;
-        const lockedCls = c.collected ? "" : "locked";
-        const artStyle = c.collected
-          ? `style="background-image:url('../${escapeAttr(c.art)}')"`
-          : "";
+        const lockedCls = c.highlight ? "" : "locked";
+        const artStyle = `style="background-image:url('${escapeAttr(c.art)}')"`;
         return `
         <button class="card-thumb ${lockedCls} ${isSel ? "selected" : ""}"
                 data-id="${escapeAttr(c.id)}"
                 aria-label="${escapeAttr(c.name)}">
           <div class="art" ${artStyle}></div>
-          ${c.collected ? "" : '<div class="lock">？？？</div>'}
           <div class="meta">
-            <span class="name">${escapeHtml(stripBrackets(c.collected ? c.name : "？？？"))}</span>
+            <span class="name">${escapeHtml(stripBrackets(c.name))}</span>
             <span>${escapeHtml(c.rarity)}</span>
           </div>
         </button>`;
@@ -106,7 +96,7 @@
         selectedId = el.dataset.id;
         const card = cards.find((c) => c.id === selectedId);
         if (card) showDetail(card);
-        render();   // re-render so selected highlight updates
+        render();
       });
     });
   }
@@ -114,23 +104,23 @@
   // ---------- Detail panel ----------
   function showDetail(c) {
     document.getElementById("detailLabel").textContent =
-      `${c.type} · ${c.card_no} · ${c.chapter}`;
+      `${c.set} · ${c.card_no} · ${c.chapter}`;
     document.getElementById("renderCardNo").textContent = c.card_no;
     document.getElementById("renderAttribute").textContent = c.attribute;
     document.getElementById("renderArt").style.backgroundImage =
-      c.collected ? `url('../${c.art}')` : "none";
+      `url('${c.art}')`;
     document.getElementById("renderName").textContent = stripBrackets(c.name);
     document.getElementById("renderClass").textContent = c.feature || c.type;
     document.getElementById("renderLevel").textContent = c.level;
     document.getElementById("renderPower").textContent = c.power.toLocaleString();
-    document.getElementById("renderRange").textContent = c.range;
+    document.getElementById("renderRange").textContent = c.attackRange;
 
     // Tokenised effect rendering (Marvel Hero Rush rules vocabulary).
     const efxEl = document.getElementById("renderEffect");
-    if (window.MOZ_EFX && c.effect) {
-      const blocks = window.MOZ_EFX.parse(c.effect);
+    if (window.MHR_EFX && c.effect) {
+      const blocks = window.MHR_EFX.parse(c.effect);
       const html = blocks
-        .map((tokens) => `<div class="efx-block">${window.MOZ_EFX.render(tokens)}</div>`)
+        .map((tokens) => `<div class="efx-block">${window.MHR_EFX.render(tokens)}</div>`)
         .join("");
       efxEl.innerHTML = html || `<span class="efx-text">（無效果描述）</span>`;
     } else if (c.effect) {
@@ -140,7 +130,7 @@
     }
 
     const ownEl = document.getElementById("renderOwn");
-    if (c.collected) {
+    if (c.highlight) {
       ownEl.hidden = false;
       ownEl.textContent = `OWN ×1`;
     } else {
@@ -153,21 +143,20 @@
     return String(s).replace(/^「[^」]*」/, "").trim();
   }
   function escapeHtml(s) {
-    return String(s)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
+    return String(s).replace(/&/g, "&amp;")
+                     .replace(/</g, "&lt;")
+                     .replace(/>/g, "&gt;");
   }
   function escapeAttr(s) {
     return escapeHtml(s).replace(/"/g, "&quot;");
   }
 
-  // Initial render + auto-select first collected card so the detail panel
-  // is not empty on first paint.
-  const firstCollected = cards.find((c) => c.collected);
-  if (firstCollected) {
-    selectedId = firstCollected.id;
-    showDetail(firstCollected);
+  // Initial render — auto-select first highlighted card so the detail
+  // panel is not empty on first paint.
+  const firstHighlight = cards.find((c) => c.highlight);
+  if (firstHighlight) {
+    selectedId = firstHighlight.id;
+    showDetail(firstHighlight);
   }
   render();
 })();

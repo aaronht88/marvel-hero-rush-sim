@@ -2,31 +2,35 @@
 <html lang="zh-HK">
 <head>
 <meta charset="UTF-8">
-<title>Marvel Hero Rush TCG — Battle Simulator v3.9.8c</title>
+<title>Marvel Hero Rush TCG — Battle Simulator v3.13</title>
 <meta name="viewport" content="width=1480">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=3.9.8">
+<link rel="stylesheet" href="css/styles.css?v=3.13">
 <!-- Card data is committed locally (js/cards.js) so the sim is
      self-contained and works under any GitHub Pages subpath. -->
-<script src="js/cards.js?v=3.9.8"></script>
-<script src="js/mhr-decks.js?v=3.9.8"></script>
+<script src="js/cards.js?v=3.13"></script>
+<script src="js/mhr-decks.js?v=3.13"></script>
 </head>
 <body>
 
 <!-- ============ Setup screen ============ -->
 <section id="setup-screen" class="screen visible">
-  <header class="topbar">
-    <div class="brand">
-      <div class="logo-mark">★</div>
-      <div>
-        <h1>MARVEL HERO RUSH <small>Battle Sim</small></h1>
-        <p class="subtitle">Marvel Hero Rush TCG · 手動對戰 + 模擬 · v3.9.8c (手動對戰 vs AI · 自動模擬 · 對比模式 · DSL effects)</p>
-      </div>
-      <span class="version-badge">v3.9.8c</span>
-      <button id="btn-sound-toggle" class="sound-toggle" title="音效切換">音效</button>
-    </div>
+  <header class="mhr-topbar">
+    <a class="mhr-brand" href="index.html">
+      <span class="mhr-brand-mark">★</span>
+      <span class="mhr-brand-text">
+        <span class="mhr-brand-title">MARVEL HERO RUSH</span>
+        <span class="mhr-brand-sub">Battle Simulator</span>
+      </span>
+    </a>
+    <nav class="mhr-nav">
+      <a class="mhr-nav-link active" href="index.html">⚔ 對戰</a>
+      <a class="mhr-nav-link" href="archive.html">📖 圖鑑</a>
+    </nav>
+    <span class="version-badge">v3.13</span>
+    <button id="btn-sound-toggle" class="sound-toggle" title="音效切換">音效</button>
   </header>
   <main class="setup-main">
     <h2>選擇你嘅主牌組</h2>
@@ -346,13 +350,13 @@
 </div>
 
 <!-- Order matters: data → effects-data → engine → effects → ai → app -->
-<script src="js/data.js?v=3.9.8"></script>
-<script src="js/effects-data.js?v=3.9.8"></script>
-<script src="js/engine.js?v=3.9.8"></script>
-<script src="js/effects.js?v=3.9.8"></script>
-<script src="js/audio.js?v=3.9.8"></script>
-<script src="js/ai.js?v=3.9.8"></script>
-<script src="js/app.js?v=3.9.8"></script>
+<script src="js/data.js?v=3.13"></script>
+<script src="js/effects-data.js?v=3.13"></script>
+<script src="js/engine.js?v=3.13"></script>
+<script src="js/effects.js?v=3.13"></script>
+<script src="js/audio.js?v=3.13"></script>
+<script src="js/ai.js?v=3.13"></script>
+<script src="js/app.js?v=3.13"></script>
 <script>
   // Wire sound toggle after DOM ready
   document.getElementById("btn-sound-toggle").addEventListener("click", () => {
