@@ -121,7 +121,7 @@
       art.style.backgroundImage = `url("${DATA.artPath(c)}")`;
       const name = document.createElement("div");
       name.className = "m-card-name";
-      name.textContent = `Lv${c.level || "-"} · ${E.shortName(c)}`;
+      name.textContent = `Lv${c.level || "-"} · ${E.fullName(c)}`;
       card.appendChild(art);
       card.appendChild(name);
       card.addEventListener("click", () => {
@@ -474,7 +474,7 @@
           if (!card) continue;
           const t = document.createElement("div");
           t.className = "tiny-card";
-          t.title = E.shortName(card);
+          t.title = E.fullName(card);
           const url = (DATA.artPath && DATA.artPath(card)) || (card.art || "");
           if (url) t.style.backgroundImage = `url("${url}")`;
           t.addEventListener("click", (ev) => {
@@ -591,7 +591,7 @@
         slot.style.flex = "1";
         if (base[i]) {
           slot.textContent = "蓋";
-          slot.title = E.shortName(base[i]) + "（蓋卡）";
+          slot.title = E.fullName(base[i]) + "（蓋卡）";
           if (state.activeSide === side) {
             slot.addEventListener("click", () => onSetCardClick(side, base[i]));
           }
@@ -682,7 +682,7 @@
     info.className = "mc-info";
     const name = document.createElement("div");
     name.className = "mc-name";
-    name.textContent = (side === "A" ? "AI · " : "") + E.shortName(card);
+    name.textContent = (side === "A" ? "AI · " : "") + E.fullName(card);
     info.appendChild(name);
     div.appendChild(info);
 
@@ -757,7 +757,7 @@
     document.getElementById("modal-title").textContent = pend.title || "應對步驟（COUNTER）";
     const body = document.getElementById("modal-body");
     const atk = pend.attackerUid ? E.findAnywhereOnField(state.players[pend.attackerSide], pend.attackerUid) : null;
-    const atkName = atk ? `${E.shortName(atk)}（P${E.cardEffectivePower(state, pend.attackerSide, atk)}）` : "";
+    const atkName = atk ? `${E.fullName(atk)}（P${E.cardEffectivePower(state, pend.attackerSide, atk)}）` : "";
     body.innerHTML = `<p style="margin-top:0">${atkName ? "⚠️ " + atkName + " 正在攻擊你" : "AI 攻擊你"} — 應對步驟：揀 1 張 COUNTER 卡（棄置 → 攻擊者本回合 -Power），或直接承受攻擊。</p>`;
     pend.opts.forEach(o => {
       const opt = document.createElement("label");
@@ -802,7 +802,7 @@
       (card.attribute ? `<span class="cb-chip attr-${card.attribute}">${card.attribute}</span>` : "") +
       (card.feature ? `<span class="cb-chip feat">${card.feature}</span>` : "") +
       (card.rarity ? `<span class="cb-chip rarity">${card.rarity}</span>` : "");
-    return `<div class="cb-name">${(card.name || "").replace(/^「.*」/, "") || E.shortName(card)}</div>` +
+    return `<div class="cb-name">${E.fullName(card)}</div>` +
       `<div class="cb-stats">${attrs}</div>` +
       `<div class="cb-effect">${eff || "—（無效果文本）"}</div>`;
   }
@@ -840,7 +840,7 @@
     modal.dataset.cardUid = card._uid;
     modal.dataset.handIdx = handIdx != null ? String(handIdx) : "";
     document.getElementById("detail-art").style.backgroundImage = `url("${DATA.artPath(card)}")`;
-    document.getElementById("detail-name").textContent = card.name || E.shortName(card);
+    document.getElementById("detail-name").textContent = card.name || E.fullName(card);
     const stats = document.getElementById("detail-stats");
     const lv = card.level;
     const pw = E.cardEffectivePower ? E.cardEffectivePower(state, "P", card) : DATA.numPower(card.power);
@@ -1116,7 +1116,7 @@
 
       const name = document.createElement("div");
       name.className = "hc-name";
-      name.textContent = E.shortName(c);
+      name.textContent = E.fullName(c);
       div.appendChild(name);
 
       // v3.2: drag/drop
@@ -1350,7 +1350,7 @@
     p.hand.forEach((c, i) => {
       const opt = document.createElement("label");
       opt.className = "retreat-option";
-      opt.innerHTML = `<input type="radio" name="set" value="${i}"> Lv${c.level} ${E.shortName(c)}`;
+      opt.innerHTML = `<input type="radio" name="set" value="${i}"> Lv${c.level} ${E.fullName(c)}`;
       opt.querySelector("input").addEventListener("change", () => {
         view.pendingSetDeploy = { handIdx: parseInt(opt.querySelector("input").value, 10) };
         document.getElementById("modal-confirm").disabled = false;
@@ -1378,7 +1378,7 @@
       if (p.base.faceDown.length >= E.BASE_SIZE_MAX) continue;
       const opt = document.createElement("label");
       opt.className = "retreat-option";
-      opt.innerHTML = `<input type="radio" name="mv" value="toBase:${card._uid}"> ${slot} → 基地：Lv${card.level} ${E.shortName(card)}`;
+      opt.innerHTML = `<input type="radio" name="mv" value="toBase:${card._uid}"> ${slot} → 基地：Lv${card.level} ${E.fullName(card)}`;
       opt.querySelector("input").addEventListener("change", () => {
         view.moveFromUid = card._uid;
         view._moveToBase = true;
@@ -1392,7 +1392,7 @@
         if (flags.movedUids[c._uid]) continue;
         const opt = document.createElement("label");
         opt.className = "retreat-option";
-        opt.innerHTML = `<input type="radio" name="mv" value="toBattle:${c._uid}"> 基地 → 先鋒：${E.shortName(c)}（蓋卡）`;
+        opt.innerHTML = `<input type="radio" name="mv" value="toBattle:${c._uid}"> 基地 → 先鋒：${E.fullName(c)}（蓋卡）`;
         opt.querySelector("input").addEventListener("change", () => {
           view.moveFromUid = c._uid;
           view._moveToBase = false;
@@ -1422,7 +1422,7 @@
       const opt = document.createElement("label");
       opt.className = "retreat-option";
       const range = DATA.numRange(c.attackRange);
-      opt.innerHTML = `<input type="radio" name="atk" value="${c._uid}"> ${slot}：Lv${c.level} R${range} ${E.shortName(c)}`;
+      opt.innerHTML = `<input type="radio" name="atk" value="${c._uid}"> ${slot}：Lv${c.level} R${range} ${E.fullName(c)}`;
       opt.querySelector("input").addEventListener("change", () => {
         view.attackerUid = c._uid;
         document.getElementById("modal-confirm").disabled = false;
@@ -1638,7 +1638,7 @@
       opt.className = "retreat-option";
       const m = c.effect.match(/Power-(\d+)/);
       const amt = m ? m[1] : "?";
-      opt.innerHTML = `<input type="radio" name="cnt" value="${i}"> Lv${c.level} ${E.shortName(c)}（-${amt}）`;
+      opt.innerHTML = `<input type="radio" name="cnt" value="${i}"> Lv${c.level} ${E.fullName(c)}（-${amt}）`;
       opt.querySelector("input").addEventListener("change", () => {
         view.pendingCounter = { attackerUid, target, handIdx: i };
         document.getElementById("modal-confirm").disabled = false;
@@ -1660,7 +1660,7 @@
   function showRetreatModal(handIdx, handCard) {
     const p = state.players.P;
     const modal = document.getElementById("modal");
-    document.getElementById("modal-title").textContent = `號召 Lv${handCard.level} ${E.shortName(handCard)} — 揀 retreat 角色（合計 Lv = ${handCard.level}，蓋卡當 Lv1）`;
+    document.getElementById("modal-title").textContent = `號召 Lv${handCard.level} ${E.fullName(handCard)} — 揀 retreat 角色（合計 Lv = ${handCard.level}，蓋卡當 Lv1）`;
     const body = document.getElementById("modal-body");
     body.innerHTML = `<p>揀要 retreat 嘅場上角色（或基地蓋卡）。</p>`;
     const sources = [...E.battleChars(p).map(({ card, slot }) => ({ card, slot, lv: card.level })),
@@ -1668,7 +1668,7 @@
     sources.forEach(({ card, slot, lv }) => {
       const opt = document.createElement("label");
       opt.className = "retreat-option";
-      opt.innerHTML = `<input type="checkbox" value="${card._uid}"> ${slot} Lv${lv} ${E.shortName(card)}`;
+      opt.innerHTML = `<input type="checkbox" value="${card._uid}"> ${slot} Lv${lv} ${E.fullName(card)}`;
       opt.querySelector("input").addEventListener("change", updateSum);
       body.appendChild(opt);
     });

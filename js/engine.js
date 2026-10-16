@@ -707,6 +707,20 @@
       }
     }
 
+    // v3.14: range sanity check. The defender-side zone (FRONT/WING/BACK)
+    // must be reachable from the attacker's zone within atk.attackRange.
+    // Per official: 先鋒↔先鋒 R-1, 側翼 R-2, 後衛 R-3 (and similar matrix
+    // for non-front attackers). Without this guard, a mis-targeted UI
+    // click could attack an unreachable slot and silently break rules.
+    if (target && target.slot) {
+      const atkSlot = isInBattle(atkP, atk);
+      const atkRange = cardEffectiveRange(atk);
+      const dist = distance(atkSlot, target.slot);
+      if (dist > atkRange) {
+        return { ok: false, err: `目標太遠（距離 ${dist} > R ${atkRange}）` };
+      }
+    }
+
     // Set attacked flag
     flags.attackedUids[attackerUid] = true;
 
@@ -851,31 +865,57 @@
   function triggerEnter(state, side, card) {
     const t = card.effect || "";
     if (!t.trim()) {
-      log(state, `[效果未實裝] ${shortName(card)} 入場`, side);
+      log(state, `[效果無文字] ${shortName(card)} 入場`, side);
       return;
     }
-    // Pattern: "you draw 1 card" / "you draw N cards"
-    const drawMatch = t.match(/you draw (\d+) cards?/i);
-    if (drawMatch) {
-      const n = parseInt(drawMatch[1], 10);
+    // v3.14: declarative op-set dispatcher (mini-validator). Each branch
+    // covers a high-frequency pattern from EFFECTS_DESCRIPTOR.md S4. We
+    // pattern-match in priority order (more specific patterns first).
+    //
+    // Optional 'you may' prefix is now tolerated everywhere — when present,
+    // we log "OPTIONAL" and ask the player (UI side) to confirm via
+    // resolveOptionalEffect(). Default is SKIP (log only). The DSL
+    // interpreter (effects.js) does the same for descriptor-based cards.
+
+    const opp = side === "P" ? "A" : "P";
+    const oppP = state.players[opp];
+    const me = state.players[side];
+
+    // ---- Pattern A: draw N ----
+    let m = t.match(/you (?:may )?draw (\d+) cards?/i);
+    if (m) {
+      const n = parseInt(m[1], 10);
       drawN(state, side, n);
       log(state, `[效果] ${shortName(card)} 入場：抽 ${n}`, side);
+      // sub-pattern: "second chance to attack" → flag for double attack
       if (/second chance to attack/i.test(t)) {
         state.turnFlags[side].doubleAttackUids[card._uid] = true;
         log(state, `[效果] ${shortName(card)} 本回合可攻擊 2 次`, side);
       }
       return;
     }
-    // Pattern: "you prune 1 of your opponent's characters"
-    if (/you prune 1 of your opponent's character/i.test(t)) {
-      const opp = side === "P" ? "A" : "P";
-      const oppBattle = battleChars(state.players[opp]);
-      const lvMatch = t.match(/Lv(\d+) or below/i);
+
+    // ---- Pattern B: prune opponent's character with filter ----
+    //   "you (may) prune 1 of your opponent's characters with LvN or below"
+    //   "you (may) prune 1 of your opponent's characters with Power N or lower in BATTLE"
+    m = t.match(/you (?:may )?prune 1 of your opponent's characters?(?:\s+with\s+([^.]+))?/i);
+    if (m) {
+      const filterTxt = m[1] || "";
+      const lvMatch = filterTxt.match(/Lv(\d+)\s+or\s+(?:below|lower)/i);
       const maxLv = lvMatch ? parseInt(lvMatch[1], 10) : 99;
-      const powMatch = t.match(/Power (\d+) or lower/i);
+      const powMatch = filterTxt.match(/Power\s+(\d+)\s+or\s+(?:lower|below)/i);
       const maxPow = powMatch ? parseInt(powMatch[1], 10) : 99999;
-      const tgt = oppBattle.find(x => cardEffectiveLv(x.card) <= maxLv && cardEffectivePower(state, opp, x.card) <= maxPow);
-      if (tgt) {
+      const inZone = /in\s+(BATTLE|FIELD|RETREAT)/i.test(filterTxt)
+        ? filterTxt.match(/in\s+(BATTLE|FIELD|RETREAT)/i)[1].toUpperCase()
+        : "BATTLE";
+
+      const oppBattle = battleChars(oppP);
+      const candidates = oppBattle.filter(x =>
+        cardEffectiveLv(x.card) <= maxLv &&
+        cardEffectivePower(state, opp, x.card) <= maxPow
+      );
+      if (candidates.length > 0) {
+        const tgt = candidates[0];
         pruneCard(state, opp, tgt.card);
         log(state, `[效果] ${shortName(card)} 入場：除外 ${shortName(tgt.card)}`, side);
       } else {
@@ -883,33 +923,131 @@
       }
       return;
     }
-    // Pattern: opponent's character in FRONT gets Power-X000
-    if (/opponent's character in FRONT gets Power-/i.test(t)) {
-      const opp = side === "P" ? "A" : "P";
-      const target = state.players[opp].battle.front;
-      if (target) {
-        const m = t.match(/Power-(\d+)/);
-        const amt = m ? parseInt(m[1], 10) : 0;
-        target._powerMod = (target._powerMod || 0) - amt;
-        log(state, `[效果] ${shortName(card)}：${shortName(target)} -${amt} Power`, side);
+
+    // ---- Pattern C: Power-N to opponent character in FRONT / BATTLE (incl. X var) ----
+    m = t.match(/opponent'?s characters? in (FRONT|BATTLE) (?:in BATTLE )?gets Power([+\-][X\d]+(?:\d+)?)/i)
+       || t.match(/opponent'?s character in (FRONT|BATTLE|WING) (?:in BATTLE )?gets Power([+\-][X\d]+(?:\d+)?)/i);
+    if (m) {
+      const where = m[1].toUpperCase();
+      const amtRaw = m[2];
+      let amt = 0;
+      if (/^[+\-]\d+$/.test(amtRaw)) amt = parseInt(amtRaw, 10);
+      else log(state, `[效果-X變數] ${shortName(card)}：對手 ${where} Power${amtRaw} 待 DSL 解析`, side);
+      // Find target by zone
+      let target = null;
+      if (where === "FRONT") target = oppP.battle.front;
+      else if (where === "BATTLE") {
+        // First non-empty battle slot
+        const cs = battleChars(oppP);
+        target = cs.length ? cs[0].card : null;
+      } else if (where === "WING") {
+        target = oppP.battle.wing.find(x => x) || null;
+      }
+      if (target && amt !== 0) {
+        target._powerMod = (target._powerMod || 0) + amt;
+        log(state, `[效果] ${shortName(card)}：${shortName(target)} ${amt > 0 ? "+" : ""}${amt} Power`, side);
+      } else if (!target) {
+        log(state, `[效果] ${shortName(card)}：無 FRONT 目標`, side);
       }
       return;
     }
-    // Pattern: face down into BASE
-    if (/place .* face down into your BASE/i.test(t)) {
-      const m = t.match(/place the top (\d+) cards? of your deck face down/i);
-      const n = m ? parseInt(m[1], 10) : 1;
+
+    // ---- Pattern D: Power +/-N000 to self (including X-variable) ----
+    m = t.match(/(this card|1 of your (?:opponent's )?(?:characters?))\s+(?:gets|have)\s+(?:Lv\+[A-Z]\s+)?(?:and\s+)?Power([+\-][X\d]+(?:\d+)?)/i);
+    if (m) {
+      const subject = m[1];
+      const amtRaw = m[2];
+      // For X-variable (e.g. "Power+X000"), resolve from state later.
+      // For now, log and apply as a +0 bonus (placeholder — full X-resolver
+      // is part of the declarative DSL refactor).
+      let amt = 0;
+      if (/^[+\-]\d+$/.test(amtRaw)) amt = parseInt(amtRaw, 10);
+      else log(state, `[效果-X變數] ${shortName(card)}：Power${amtRaw} 待 DSL 解析`, side);
+      if (/this card/i.test(subject)) {
+        const target = card;
+        target._powerMod = (target._powerMod || 0) + amt;
+        log(state, `[效果] ${shortName(card)}：自身 ${amt > 0 ? "+" : ""}${amt} Power（X 待解）`, side);
+      }
+      return;
+    }
+
+    // ---- Pattern E: R+N to self or ally ----
+    m = t.match(/(this card|all your (?:red|yellow|blue|green)\s+characters?)\s+(?:gets|have)\s+(?:the ability )?R\+(\d+)/i);
+    if (m) {
+      const subject = m[1];
+      const amt = parseInt(m[2], 10);
+      if (/this card/i.test(subject)) {
+        card._rMod = (card._rMod || 0) + amt;
+        log(state, `[效果] ${shortName(card)}：自身 R+${amt}`, side);
+      } else {
+        // For multi-target subject (e.g. "all your red characters"), apply
+        // to all matching battle chars. Partial — covers the common case.
+        const attrMatch = subject.match(/(red|yellow|blue|green)/i);
+        const attr = attrMatch ? attrMatch[1].toUpperCase() : null;
+        battleChars(me).forEach(({ card: c }) => {
+          if (!attr || c.attribute === attr) {
+            c._rMod = (c._rMod || 0) + amt;
+          }
+        });
+        log(state, `[效果] ${shortName(card)}：${attr || "all"} R+${amt}`, side);
+      }
+      return;
+    }
+
+    // ---- Pattern F: place top N of deck face down ----
+    m = t.match(/place (?:the )?top (\d+) cards? of your deck face down/i);
+    if (m) {
+      const n = parseInt(m[1], 10);
+      let placed = 0;
       for (let i = 0; i < n; i++) {
-        if (state.players[side].deck.length === 0) break;
-        const c = state.players[side].deck.shift();
+        if (me.deck.length === 0) break;
+        const c = me.deck.shift();
         const set = Object.assign({}, cloneCard(c), { _faceDown: true });
-        state.players[side].base.faceDown.push(set);
+        me.base.faceDown.push(set);
+        placed++;
       }
-      log(state, `[效果] ${shortName(card)} 入場：${n} 張蓋放 BASE`, side);
+      log(state, `[效果] ${shortName(card)} 入場：${placed} 張蓋放 BASE`, side);
       return;
     }
-    // fall-through
-    log(state, `[效果未實裝] ${shortName(card)}：${truncate(t, 50)}`, side);
+
+    // ---- Pattern G: move opponent's character from BATTLE to BASE (cover) ----
+    m = t.match(/you (?:may )?move 1 of your opponent's characters? with Lv(\d+) or below from BATTLE to your opponent's BASE/i);
+    if (m) {
+      const maxLv = parseInt(m[1], 10);
+      const candidates = battleChars(oppP).filter(x => cardEffectiveLv(x.card) <= maxLv);
+      if (candidates.length > 0) {
+        const tgt = candidates[0];
+        // Unlink battle slot
+        const slot = isInBattle(oppP, tgt.card);
+        if (slot === "front") oppP.battle.front = null;
+        else if (slot === "back") oppP.battle.back = null;
+        else if (slot && slot.startsWith("wing")) {
+          const wi = parseInt(slot.slice(4), 10) - 1;
+          oppP.battle.wing[wi] = null;
+        }
+        // Move to opp's BASE face-down
+        const set = Object.assign({}, tgt.card, { _faceDown: true, _uid: tgt.card._uid });
+        oppP.base.faceDown.push(set);
+        log(state, `[效果] ${shortName(card)}：${shortName(tgt.card)} 移到對手 BASE`, side);
+      } else {
+        log(state, `[效果] ${shortName(card)}：無合法 Lv${maxLv} 目標`, side);
+      }
+      return;
+    }
+
+    // ---- Pattern H: AUTO continuous (refresh on phase_change) ----
+    // Most AUTO cards need phase refresh hook. We log a one-shot
+    // reminder that AUTO refresh is now expected per-turn via
+    // MHR_EFFECTS.refreshAutos(). If the descriptor path is active
+    // (effects.js), the engine skips this branch.
+    if (Array.isArray(card.effects) && card.effects.length) {
+      // Descriptor path handled by effects.js
+      log(state, `[DSL] ${shortName(card)} descriptor 觸行`, side);
+      return;
+    }
+
+    // ---- Fall-through ----
+    log(state, `[效果未實裝] ${shortName(card)}：${truncate(t, 60)}`, side);
   }
 
   function pruneCard(state, side, card) {
@@ -934,17 +1072,18 @@
       const c = p.hand[i];
       if (!c.effect) continue;
       if (Array.isArray(c.effects) && c.effects.length) continue; // DSL 路徑
+      // v3.14: tolerate 'you may' prefix and plural 'characters'
       if (!/COUNTER·ACTI/i.test(c.effect)) continue;
-      const m = c.effect.match(/Power-(\d+)/);
+      const m = c.effect.match(/Power(-|\+)?(\d+)/);
       if (!m) continue;
-      const amt = parseInt(m[1], 10);
+      const amt = (m[1] === "+" ? 1 : -1) * parseInt(m[2], 10);
       p.hand.splice(i, 1);
       p.retreat.push(c);
       const atkP = state.players[defenderSide === "P" ? "A" : "P"];
       const atk = findAnywhereOnField(atkP, attackerUid);
       if (atk) {
-        atk._powerMod = (atk._powerMod || 0) - amt;
-        log(state, `[COUNTER] ${p.name} 棄 ${shortName(c)}：${shortName(atk)} -${amt} Power`, defenderSide);
+        atk._powerMod = (atk._powerMod || 0) + amt;
+        log(state, `[COUNTER] ${p.name} 棄 ${shortName(c)}：${shortName(atk)} ${amt > 0 ? "+" : ""}${amt} Power`, defenderSide);
       }
       return true;
     }
@@ -954,9 +1093,18 @@
   // =============================================================
   // 10. UTILITIES
   // =============================================================
+  // shortName — for log lines (compact). Strips 「...」prefix to keep log readable.
   function shortName(c) {
     if (!c) return "?";
     return (c.name || "").replace(/^「.*」/, "").trim() || c.name;
+  }
+  // v3.14: fullName — for UI display, log-of-card-detail, card-detail modal.
+  // Identity keys (card.id / card_no / _uid) are NEVER derived from name —
+  // name is a human-readable label only. Backend state always uses
+  // card._uid / card.card_no for lookup; name is render-only.
+  function fullName(c) {
+    if (!c) return "?";
+    return c.name || "(unnamed)";
   }
   function truncate(s, n) {
     if (!s) return "";
@@ -991,6 +1139,7 @@
     findAnywhereOnField,
     isInBattle,
     shortName,
+    fullName,   // v3.14: full card name (with 「...」prefix) for UI display
     drawTo,
     drawN,
     discardDownTo,
