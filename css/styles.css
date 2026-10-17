@@ -2832,3 +2832,109 @@ body.page-archive {
 ::-webkit-scrollbar-track { background: #06100d; }
 ::-webkit-scrollbar-thumb { background: #1c3b34; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #8a6e36; }
+
+/* =============================================================
+   v3.15: Online room UI (index.html)
+   ============================================================= */
+.online-room {
+  margin-top: 20px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--bg-elev, #1c3b34);
+  border-radius: 8px;
+  max-width: 720px;
+}
+.online-room h3 {
+  margin: 0 0 12px 0;
+  font-family: "Russo One", sans-serif;
+  color: var(--gold, #c9a050);
+  font-size: 16px;
+  letter-spacing: 0.04em;
+}
+.online-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.online-actions input[type="text"] {
+  flex: 1;
+  min-width: 200px;
+  padding: 6px 10px;
+  background: var(--bg-deep, #06100d);
+  border: 1px solid var(--bg-elev, #1c3b34);
+  color: var(--cream, #f5e6c8);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  border-radius: 4px;
+}
+.online-actions input[type="text"]#online-code {
+  flex: 0;
+  min-width: 80px;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  text-align: center;
+  font-weight: 700;
+}
+.online-or {
+  color: var(--muted, #8a948f);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  margin: 0 4px;
+}
+.online-status {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  color: var(--muted, #8a948f);
+  margin-left: auto;
+  letter-spacing: 0.06em;
+}
+.online-status.open { color: #5fa55a; }
+.online-status.closed { color: #c75050; }
+.online-status.match { color: var(--gold, #c9a050); }
+
+.online-room-info {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 8px 16px;
+  align-items: center;
+  padding: 12px;
+  background: var(--bg-deep, #06100d);
+  border: 1px solid var(--gold-dim, #8a6e36);
+  border-radius: 6px;
+  margin-top: 8px;
+}
+.online-room-info > div {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  color: var(--cream, #f5e6c8);
+}
+.online-room-info code {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 18px;
+  color: var(--gold, #c9a050);
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  background: var(--bg-card, #15302a);
+  padding: 2px 8px;
+  border-radius: 3px;
+}
+.online-room-info .btn-primary,
+.online-room-info .btn-action {
+  padding: 4px 12px;
+  font-size: 12px;
+}
+
+.online-log {
+  margin: 12px 0 0 0;
+  padding: 8px;
+  background: var(--bg-deep, #06100d);
+  border: 1px solid var(--bg-elev, #1c3b34);
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--muted, #8a948f);
+  max-height: 100px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}

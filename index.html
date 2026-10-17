@@ -2,7 +2,7 @@
 <html lang="zh-HK">
 <head>
 <meta charset="UTF-8">
-<title>Marvel Hero Rush TCG — Battle Simulator v3.13</title>
+<title>Marvel Hero Rush TCG — Battle Simulator v3.15</title>
 <meta name="viewport" content="width=1480">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -29,7 +29,7 @@
       <a class="mhr-nav-link active" href="index.html">⚔ 對戰</a>
       <a class="mhr-nav-link" href="archive.html">📖 圖鑑</a>
     </nav>
-    <span class="version-badge">v3.13</span>
+    <span class="version-badge">v3.15</span>
     <button id="btn-sound-toggle" class="sound-toggle" title="音效切換">音效</button>
   </header>
   <main class="setup-main">
@@ -51,6 +51,30 @@
       <button id="btn-rush-picker" class="btn-action">⚡ 衝擊卡組（自選 9）</button>
       <a class="link-muted" href="README.md" target="_blank">README / 規則假設</a>
     </div>
+
+    <!-- v3.15: Online room -->
+    <section class="online-room" id="onlineRoom">
+      <h3>🌐 線上對戰 (Online Room)</h3>
+      <div class="online-actions">
+        <input type="text" id="online-url" placeholder="wss://broker.example.com" />
+        <button id="btn-online-connect" class="btn-action">連接伺服器</button>
+      </div>
+      <div class="online-actions" id="online-lobby" hidden>
+        <button id="btn-online-create" class="btn-primary">🏠 建立房間</button>
+        <span class="online-or">或</span>
+        <input type="text" id="online-code" maxlength="4" placeholder="ABCD" />
+        <button id="btn-online-join" class="btn-action">🚪 加入房間</button>
+        <span class="online-status" id="online-status">未連接</span>
+      </div>
+      <div class="online-room-info" id="online-room-info" hidden>
+        <div>房號：<code id="online-room-code">—</code></div>
+        <div>你是：<span id="online-side">—</span></div>
+        <div id="online-peer-status">等待對手…</div>
+        <button id="btn-online-ready" class="btn-primary" disabled>✅ 準備好</button>
+        <button id="btn-online-leave" class="btn-action">離開房間</button>
+      </div>
+      <p class="online-log mono" id="online-log"></p>
+    </section>
   </main>
 </section>
 
@@ -350,13 +374,15 @@
 </div>
 
 <!-- Order matters: data → effects-data → engine → effects → ai → app -->
-<script src="js/data.js?v=3.13"></script>
-<script src="js/effects-data.js?v=3.13"></script>
-<script src="js/engine.js?v=3.13"></script>
-<script src="js/effects.js?v=3.13"></script>
-<script src="js/audio.js?v=3.13"></script>
-<script src="js/ai.js?v=3.13"></script>
-<script src="js/app.js?v=3.13"></script>
+<script src="js/data.js?v=3.15"></script>
+<script src="js/effects-data.js?v=3.15"></script>
+<script src="js/engine.js?v=3.15"></script>
+<script src="js/effects.js?v=3.15"></script>
+<script src="js/audio.js?v=3.15"></script>
+<script src="js/ai.js?v=3.15"></script>
+<script src="js/online-protocol.js?v=3.15"></script>
+<script src="js/online.js?v=3.15"></script>
+<script src="js/app.js?v=3.15"></script>
 <script>
   // Wire sound toggle after DOM ready
   document.getElementById("btn-sound-toggle").addEventListener("click", () => {

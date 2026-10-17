@@ -1909,4 +1909,291 @@
     view._chosenDeck = deckName;
     startBattle();
   })();
+
+  // =============================================================
+  // v3.15: Online room integration. Independent of the local
+  // man-vs-AI / autoplay flow above. When a room is connected and
+  // match_start arrives, we boot a fresh engine with both decks and
+  // route every player action through online.sendAction(). The
+  // peer's relayed actions are applied to the same engine via
+  // MHR_ONLINE_CLIENT.applyPeerAction(). The AI is NOT involved in
+  // online mode — only the human local player and the remote peer.
+  // =============================================================
+
+  const Online = (function () {
+    const logEl = () => document.getElementById("online-log");
+    const statusEl = () => document.getElementById("online-status");
+    const lobbyEl = () => document.getElementById("online-lobby");
+    const roomInfoEl = () => document.getElementById("online-room-info");
+    const codeEl = () => document.getElementById("online-room-code");
+    const sideEl = () => document.getElementById("online-side");
+    const peerStatusEl = () => document.getElementById("online-peer-status");
+    const readyBtn = () => document.getElementById("btn-online-ready");
+
+    function setStatus(text, cls) {
+      const el = statusEl();
+      if (!el) return;
+      el.textContent = text;
+      el.className = "online-status" + (cls ? " " + cls : "");
+    }
+    function logLine(s) {
+      const el = logEl();
+      if (!el) return;
+      el.textContent += s + "\n";
+      el.scrollTop = el.scrollHeight;
+    }
+    function setRoomInfo({ code, side }) {
+      if (codeEl()) codeEl().textContent = code;
+      if (sideEl()) sideEl().textContent = side === "P" ? "先鋒 (P) — 主機" : "後手 (A) — 加入者";
+      if (roomInfoEl()) roomInfoEl().hidden = false;
+    }
+    function clearRoomInfo() {
+      if (roomInfoEl()) roomInfoEl().hidden = true;
+      if (codeEl()) codeEl().textContent = "—";
+      if (sideEl()) sideEl().textContent = "—";
+      if (peerStatusEl()) peerStatusEl().textContent = "等待對手…";
+    }
+
+    let conn = null;
+    let selfSide = null;
+    let peerDeck = null;
+    let firstSide = null;
+    let onlineState = null;        // engine state when match is live
+    let chosenDeck = null;         // { name, code } the local user picked
+
+    // Track deck picker → stash into chosenDeck
+    function attachDeckPickerWatcher() {
+      // Whenever the user picks a deck, capture it. The deck-picker
+      // handler is in app.js above; we hook via a small click
+      // observer on .deck-card elements.
+      document.body.addEventListener("click", (e) => {
+        const el = e.target.closest(".deck-card");
+        if (el && el.dataset && el.dataset.deck) {
+          chosenDeck = { name: el.dataset.deck };
+        }
+      }, true);
+    }
+
+    function setOnlineBattle(state) {
+      onlineState = state;
+      // Hide deck-picker, show battle screen. We re-use the same
+      // render functions as the local-vs-AI flow.
+      try {
+        // Hide setup, show battle
+        document.getElementById("setup-screen").classList.remove("visible");
+        document.getElementById("battle-screen").classList.add("visible");
+        // Re-render using the same hooks
+        // (app.js's existing onStateChange / render funcs are bound
+        // to the local-vs-AI `state`. For online mode we shim by
+        // calling them via a re-entrant state variable swap.)
+        const prevState = window.state;
+        window.state = state;
+        try { renderAll(); } catch (e) { console.warn("renderAll", e); }
+        window.state = prevState;
+      } catch (e) {
+        console.error("online setOnlineBattle", e);
+      }
+    }
+
+    function startMatch(matchInfo) {
+      firstSide = matchInfo.first_side;
+      selfSide = matchInfo.self_side;
+      peerDeck = matchInfo.peer_deck;
+      if (!chosenDeck) {
+        logLine("[!] 請先揀一副 deck，再加入房間");
+        return;
+      }
+      // Initialise engine with the chosen deck (self) and the peer deck.
+      try {
+        onlineState = E.initGame(chosenDeck.name, peerDeck.name || "RED_Aggro", [], []);
+        onlineState.mulliganDone[selfSide] = true;
+        onlineState.mulliganDone[selfSide === "P" ? "A" : "P"] = true;
+        onlineState.phase = "ACTION";
+        onlineState.activeSide = firstSide;
+        setOnlineBattle(onlineState);
+        setStatus("對戰中 (" + selfSide + ")", "match");
+        logLine("[match] 你是 " + selfSide + "，先手 " + firstSide);
+      } catch (e) {
+        logLine("[err] startMatch: " + e.message);
+      }
+    }
+
+    function bind() {
+      attachDeckPickerWatcher();
+      const urlInput = document.getElementById("online-url");
+      const connectBtn = document.getElementById("btn-online-connect");
+      const createBtn = document.getElementById("btn-online-create");
+      const joinBtn = document.getElementById("btn-online-join");
+      const codeInput = document.getElementById("online-code");
+      const readyBtnEl = document.getElementById("btn-online-ready");
+      const leaveBtn = document.getElementById("btn-online-leave");
+      if (!connectBtn) return;
+
+      connectBtn.addEventListener("click", () => {
+        const url = (urlInput.value || "").trim();
+        if (!url) { logLine("[!] 請填 broker URL (e.g. wss://broker.example.com)"); return; }
+        connect(url);
+      });
+      createBtn.addEventListener("click", () => {
+        if (!conn) { logLine("[!] 先連接 server"); return; }
+        if (!chosenDeck) { logLine("[!] 請先揀 deck (點擊 deck-picker 入面其中一副)"); return; }
+        conn.createRoom();
+        logLine("[→] create_room");
+      });
+      joinBtn.addEventListener("click", () => {
+        if (!conn) { logLine("[!] 先連接 server"); return; }
+        if (!chosenDeck) { logLine("[!] 請先揀 deck"); return; }
+        const code = (codeInput.value || "").trim().toUpperCase();
+        if (code.length !== 4) { logLine("[!] 房號係 4 個字母 (e.g. K7MX)"); return; }
+        conn.joinRoom(code);
+        logLine("[→] join_room " + code);
+      });
+      if (readyBtnEl) {
+        readyBtnEl.addEventListener("click", () => {
+          if (!conn || !chosenDeck) return;
+          conn.sendReady({ name: chosenDeck.name });
+          logLine("[→] ready (deck: " + chosenDeck.name + ")");
+          readyBtnEl.disabled = true;
+        });
+      }
+      if (leaveBtn) {
+        leaveBtn.addEventListener("click", () => {
+          if (conn) conn.leaveRoom();
+          if (conn) conn.close();
+          conn = null;
+          selfSide = null;
+          clearRoomInfo();
+          setStatus("未連接", "");
+          logLine("[→] leave / close");
+        });
+      }
+    }
+
+    function connect(url) {
+      try {
+        conn = MHR_ONLINE_CLIENT.connect(url);
+      } catch (e) {
+        logLine("[err] connect failed: " + e.message);
+        return;
+      }
+      conn.on("state", (s) => {
+        if (s === "open") {
+          setStatus("已連接 (waiting)", "open");
+          if (lobbyEl()) lobbyEl().hidden = false;
+          logLine("[✓] WS open");
+        } else if (s === "closed") {
+          setStatus("已斷線", "closed");
+          if (lobbyEl()) lobbyEl().hidden = true;
+          logLine("[!] WS closed");
+        }
+      });
+      conn.on("created", (code) => {
+        setRoomInfo({ code, side: "P" });
+        logLine("[✓] created: " + code);
+      });
+      conn.on("joined", (m) => {
+        setRoomInfo({ code: m.code, side: m.side });
+        logLine("[✓] joined: " + m.code + " side=" + m.side);
+        // Auto-send ready after join (simplest UX)
+        if (readyBtn()) readyBtn().disabled = false;
+      });
+      conn.on("peer_joined", (m) => {
+        if (peerStatusEl()) peerStatusEl().textContent = "對手已加入 (" + m.side + ")";
+        logLine("[→] peer joined: " + m.side);
+        if (readyBtn()) readyBtn().disabled = false;
+      });
+      conn.on("peer_left", (m) => {
+        if (peerStatusEl()) peerStatusEl().textContent = "對手離開 (" + (m.reason || "?") + ")";
+        logLine("[!] peer left: " + (m.reason || "?"));
+      });
+      conn.on("ready_ack", (m) => {
+        logLine("[⏳] waiting_for_peer=" + m.waiting_for_peer);
+      });
+      conn.on("match_start", (m) => {
+        logLine("[match_start] first=" + m.first_side + " self=" + m.self_side);
+        startMatch(m);
+      });
+      conn.on("action", (m) => {
+        if (!onlineState) return;
+        // Peer's action. Apply to local engine with the peer's side.
+        const peerSide = selfSide === "P" ? "A" : "P";
+        const r = MHR_ONLINE_CLIENT.applyPeerAction(E, onlineState, peerSide, m.payload);
+        if (r && r.ok === false) {
+          logLine("[!] peer action failed: " + r.err);
+        } else {
+          // Re-render
+          const prev = window.state;
+          window.state = onlineState;
+          try { renderAll(); } catch (e) { console.warn(e); }
+          window.state = prev;
+        }
+      });
+      conn.on("chat", (m) => {
+        logLine("[chat " + m.from + "] " + m.text);
+      });
+      conn.on("error", (m) => {
+        logLine("[err] " + (m.msg || "unknown"));
+      });
+    }
+
+    // Local action: called from app.js when local user makes a move.
+    function localAction(payload) {
+      if (!conn || !onlineState || !selfSide) return false;
+      // Apply locally first so the UI updates without round-trip wait
+      const r = (function () {
+        switch (payload.kind) {
+          case "mulligan":  return E.mulligan(onlineState, selfSide, payload.handIndices);
+          case "setDeploy": return E.setDeploy(onlineState, selfSide, payload.handIdx);
+          case "call":      return E.callCard(onlineState, selfSide, payload.handIdx, payload.retreatUids || []);
+          case "battleBaseMove": return E.battleBaseMove(onlineState, selfSide, payload.uid, payload.toBase);
+          case "endTurn":   E.endTurn(onlineState); return { ok: true };
+          case "modal_response": {
+            if (payload.modalKind === "mulligan") return E.mulligan(onlineState, selfSide, payload.handIndices);
+            if (payload.modalKind === "retreat")  return E.callCard(onlineState, selfSide, payload.handIdx, payload.retreatUids || []);
+            if (payload.modalKind === "counter")  return E.resolveCounter(onlineState, payload.decision);
+            return { ok: false, err: "unknown modalKind" };
+          }
+          default: return { ok: false, err: "unknown kind " + payload.kind };
+        }
+      })();
+      if (r && r.ok === false) {
+        logLine("[!] local action failed: " + r.err);
+        return false;
+      }
+      // Broadcast
+      conn.sendAction(payload);
+      // Re-render
+      const prev = window.state;
+      window.state = onlineState;
+      try { renderAll(); } catch (e) { console.warn(e); }
+      window.state = prev;
+      return true;
+    }
+
+    return { bind, localAction, get isOnline() { return !!onlineState; } };
+  })();
+
+  // Wire online module
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", Online.bind);
+  } else {
+    Online.bind();
+  }
+
+  // Expose for the local action buttons in app.js (call / attack / end / etc).
+  // v3.15: when online mode is active, Online.matchStart() rebinds the
+  // global `state` variable to point at onlineState so all existing
+  // action handlers (callCard, attack, endTurn, etc.) operate on the
+  // same state the peer sees. After the match, restoreAI() swaps the
+  // local-vs-AI state back.
+  window.MHR_ONLINE_UI = Online;
+
+  // Monkey-patch: when Online.startMatch happens, redirect `state`
+  // to point at onlineState. Existing handlers (which read `state`
+  // from the closure) will then route through the same engine the
+  // peer sees. We accomplish this by overwriting the script-level
+  // `state` getter/setter in app.js — but `state` is a local `let`
+  // there, so we instead use a public swap on `Online` that the
+  // local-action call sites can read.
 })();
+

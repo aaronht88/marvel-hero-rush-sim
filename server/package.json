@@ -1,0 +1,18 @@
+{
+  "name": "mhr-battle-sim-broker",
+  "version": "3.15.0",
+  "description": "WebSocket broker for Marvel Hero Rush online room (v3.15). Pure relay — no game state. Each client runs the engine locally and broadcasts action events.",
+  "type": "module",
+  "main": "broker.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node broker.js",
+    "dev":   "node broker.js"
+  },
+  "dependencies": {
+    "ws": "^8.16.0"
+  },
+  "license": "MIT"
+}
