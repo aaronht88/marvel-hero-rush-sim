@@ -1,0 +1,155 @@
+{
+  "outOfVoid": 7,
+  "intoVoid": 11,
+  "outVariants": [
+    "self | cost=discard 2 in HAND | cond=if_you_do, you_may",
+    "self | cost=prune 1 of yours | cond=if_you_do, once_per_turn",
+    "? | cost=(none — unconditional) | cond=you_may, once_per_turn",
+    "? | cost=(none — unconditional) | cond=if_you_do",
+    "? | cost=(none — unconditional) | cond=if_you_do, you_may",
+    "? | cost=discard (unspecified) | cond=if_you_do, once_per_turn",
+    "? | cost=discard self in HAND | cond=if_you_do"
+  ],
+  "buckets": {
+    "self | cost=discard 2 in HAND | cond=if_you_do, you_may": [
+      "BP01-007"
+    ],
+    "self | cost=prune 1 of yours | cond=if_you_do, once_per_turn": [
+      "PB01-011"
+    ],
+    "? | cost=(none — unconditional) | cond=you_may, once_per_turn": [
+      "SP01-021"
+    ],
+    "? | cost=(none — unconditional) | cond=if_you_do": [
+      "SP01-031"
+    ],
+    "? | cost=(none — unconditional) | cond=if_you_do, you_may": [
+      "SP01-035"
+    ],
+    "? | cost=discard (unspecified) | cond=if_you_do, once_per_turn": [
+      "SP01-066"
+    ],
+    "? | cost=discard self in HAND | cond=if_you_do": [
+      "SP01-077"
+    ]
+  },
+  "intoBuckets": {
+    "VOID entry trigger (card pruned)": [
+      "BP01-007"
+    ],
+    "prune self from RETREAT": [
+      "BP01-120"
+    ],
+    "prune own N (as a COST for something else)": [
+      "EB01-014",
+      "PB01-011"
+    ],
+    "other": [
+      "SP01-021",
+      "SP01-031",
+      "SP01-032",
+      "SP01-035",
+      "SP01-070",
+      "SP01-077",
+      "SP01-079"
+    ]
+  },
+  "cards": [
+    {
+      "card_no": "BP01-007",
+      "set": "BP01",
+      "name": "「Void Reforge」Vision",
+      "level": 6,
+      "dir": "BOTH",
+      "text": "TRIG【VOID】:When this card enters VOID from RETREAT, you may discard 2 cards in HAND. If you do, you place this card from VOID into your field, and your opponent's character in FRONT gets Power-1000 in this turn."
+    },
+    {
+      "card_no": "BP01-120",
+      "set": "BP01",
+      "name": "「Quantum Tunneling」Ant-Man",
+      "level": 3,
+      "dir": "INTO_VOID",
+      "text": "TRIG【RETREAT】：When this card enters RETREAT from the field, you prune this card in RETREAT. If you do, you move 1 of your characters with Lv3 and without 【Ant-Man】 in their names from VOID back to the top of your deck."
+    },
+    {
+      "card_no": "EB01-014",
+      "set": "EB01",
+      "name": "「Echo of Fate」Spider-Man",
+      "level": 6,
+      "dir": "INTO_VOID",
+      "text": "UNIQUE TRIG【FIELD】:When you attach this card to a character on the field, you move 1 of your characters with 【Web】 in their features from RETREAT or VOID back to your HAND. ACTI【HAND】:If you have any Weaknesses, you prune 5 of your characters with 【Web】 in their features in RETREAT. If you do, you place this card from HAND onto your BATTLE and retreat 1 of your opponent's characters on the field."
+    },
+    {
+      "card_no": "PB01-011",
+      "set": "PB01-B",
+      "name": "「Astral Visitor」Doctor Strange",
+      "level": 3,
+      "dir": "BOTH",
+      "text": "ACTI【VOID/ONCE PER TURN】:You prune 1 of your characters with Lv4 or above in RETREAT. If you do, you place this card from VOID into your field."
+    },
+    {
+      "card_no": "SP01-021",
+      "set": "SP01",
+      "name": "「The Web of Destiny」Spider-Man",
+      "level": 3,
+      "dir": "BOTH",
+      "text": "UNIQUE TRIG【BASE/ONCE PER TURN】:When your card with 【Web】 in its feature enters the field, you may attach 1 of your characters with 【Web】 in their features from HAND to 1 of the characters on the field. TRIG【VOID】:When this card enters VOID by your effect, you may place this card from VOID into your BASE."
+    },
+    {
+      "card_no": "SP01-031",
+      "set": "SP01",
+      "name": "「Straight and Narrow」Uncle Ben",
+      "level": 2,
+      "dir": "BOTH",
+      "text": "UNIQUE BLOCK TRIG【RETREAT】:When this card enters RETREAT from BATTLE by losing the fight, you prune the top 3 cards of your deck. If you do, you place 1 of your characters with the lowest Lv and 【Web】 in their features from VOID onto your BATTLE."
+    },
+    {
+      "card_no": "SP01-032",
+      "set": "SP01",
+      "name": "「Alliance Leader」Spider-Man 2099",
+      "level": 5,
+      "dir": "INTO_VOID",
+      "text": "UNIQUE AUTO【FIELD】:Each character on your opponent's field gets Power-X000. X is the number of that character's attached cards with 【Web】 in their features. TRIG【VOID】:When this card enters VOID by the effect of a card with 【Web】 in its feature, you may prune the top 3 cards of your deck. If you do, you draw 1 card."
+    },
+    {
+      "card_no": "SP01-035",
+      "set": "SP01",
+      "name": "「Mirror Fate」Prowler",
+      "level": 3,
+      "dir": "BOTH",
+      "text": "TRIG【BATTLE】:When your character with 【Human】 in its feature enters RETREAT from BATTLE by losing the fight, you may prune this card on BATTLE. If you do, you place 1 of your characters with Lv3 and 【Spider-Man】 in their names from VOID onto the field."
+    },
+    {
+      "card_no": "SP01-066",
+      "set": "SP01",
+      "name": "「Restoration of Multiverse」Doctor Strange",
+      "level": 4,
+      "dir": "OUT_OF_VOID",
+      "text": "UNIQUE ACTI【BATTLE/ONCE PER TURN】:You discard 1 of your cards in HAND. If you do, you place 1 of your characters with 【Multiverse】 in their features from VOID onto your BATTLE. If that character is with Lv4 or above, you discard 1 of your cards in HAND extra."
+    },
+    {
+      "card_no": "SP01-070",
+      "set": "SP01",
+      "name": "「Sense of Multiverse」Silk",
+      "level": 2,
+      "dir": "INTO_VOID",
+      "text": "TRIG【FIELD】:When you attach this card to a character on the field, you discard the top 3 cards of your deck. TRIG【FIELD】:When your character with 【Web】 in its feature enters VOID, you may prune this card on the field. If you do, you place that character onto your BATTLE. If that character is with Lv4 or above, you discard 1 of your cards in HAND extra."
+    },
+    {
+      "card_no": "SP01-077",
+      "set": "SP01",
+      "name": "「Reversal of Multiverse」Spider-Punk",
+      "level": 3,
+      "dir": "BOTH",
+      "text": "AUTO【FIELD】：The character this card is attached to can only attack your opponent's FRONT or the character on FRONT. COUNTER·ACTI【HAND】：You discard this card in HAND. If you do, you prune all your characters with 【Web】 in their features in RETREAT or you place all your characters with 【Web】 in their features from VOID into your RETREAT."
+    },
+    {
+      "card_no": "SP01-079",
+      "set": "SP01",
+      "name": "「Spider-Companion」Gwen Stacy",
+      "level": 1,
+      "dir": "INTO_VOID",
+      "text": "AUTO【FIELD】:If the character this card is attached to is with Lv3 or below, you cannot retreat that character to call a character. TRIG【VOID】:When this card enters VOID, 1 of your opponent's characters on BATTLE gets Power-1000 this turn."
+    }
+  ]
+}

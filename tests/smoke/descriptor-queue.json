@@ -1,0 +1,2370 @@
+{
+  "generated": 47,
+  "queued": 307,
+  "queue": [
+    {
+      "card_no": "BP01-001",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: X is the number of the cards you retreat by calling this car"
+      ],
+      "text": "TRIG【FIELD】：When this card enters the field by calling, you prune 1 of your opponent's cha"
+    },
+    {
+      "card_no": "BP01-001",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: X is the number of the cards you retreat by calling this car"
+      ],
+      "text": "TRIG【FIELD】：When this card enters the field by calling, you prune 1 of your opponent's cha"
+    },
+    {
+      "card_no": "BP01-001",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: X is the number of the cards you retreat by calling this car"
+      ],
+      "text": "TRIG【FIELD】：When this card enters the field by calling, you prune 1 of your opponent's cha"
+    },
+    {
+      "card_no": "BP01-003",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: X is the Power of this card."
+      ],
+      "text": "TRIG【WING】:When your turn ends, if this card did not attack in this turn, 1 of your oppone"
+    },
+    {
+      "card_no": "BP01-003",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: X is the Power of this card."
+      ],
+      "text": "TRIG【WING】:When your turn ends, if this card did not attack in this turn, 1 of your oppone"
+    },
+    {
+      "card_no": "BP01-003",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: X is the Power of this card."
+      ],
+      "text": "TRIG【WING】:When your turn ends, if this card did not attack in this turn, 1 of your oppone"
+    },
+    {
+      "card_no": "BP01-004",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "AUTO【FIELD】:If you have only red characters in the field, this card gets Lv+X and Power+X0"
+    },
+    {
+      "card_no": "BP01-004",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "AUTO【FIELD】:If you have only red characters in the field, this card gets Lv+X and Power+X0"
+    },
+    {
+      "card_no": "BP01-005",
+      "set": "BP01",
+      "reason": "partial parse — 2/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen your red character attacks,",
+        "cond-tail → no clause→op rule: 1 of your red characters in BATTLE gets Power+3000 in this t"
+      ],
+      "text": "TRIG【HAND】:When your red character attacks, you may discard this card in HAND. If you do, "
+    },
+    {
+      "card_no": "BP01-006",
+      "set": "BP01",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: f the number of your cards in HAND is odd,"
+      ],
+      "text": "AUTO【FIELD】:If the number of your cards in HAND is odd, this card gets R+2, otherwise this"
+    },
+    {
+      "card_no": "BP01-006",
+      "set": "BP01",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: f the number of your cards in HAND is odd,"
+      ],
+      "text": "AUTO【FIELD】:If the number of your cards in HAND is odd, this card gets R+2, otherwise this"
+    },
+    {
+      "card_no": "BP01-008",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: ：When this card enters the field,"
+      ],
+      "text": "TRIG【FIELD】：When this card enters the field, you may prune all the attaching cards of all "
+    },
+    {
+      "card_no": "BP01-009",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: f you have no cards in BASE, you prune 1 of your red charact"
+      ],
+      "text": "ACTI【BATTLE/ONCE PER TURN】:If you have no cards in BASE, you prune 1 of your red character"
+    },
+    {
+      "card_no": "BP01-010",
+      "set": "BP01",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: You show 1 of your set cards in BASE"
+      ],
+      "text": "ACTI【HAND】:You attach this card from HAND to 1 of your characters with Lv4 or above and 【M"
+    },
+    {
+      "card_no": "BP01-011",
+      "set": "BP01",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "stat_self parse fail: this card gets the second chance to attack charact"
+      ],
+      "text": "TRIG【FIELD】:When this card enters the field by calling, you draw 1 card. If you do, this c"
+    },
+    {
+      "card_no": "BP01-012",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen this card enters the field by calling, if you have red c"
+      ],
+      "text": "TRIG【BATTLE】:When this card enters the field by calling, if you have red characters in BAS"
+    },
+    {
+      "card_no": "BP01-013",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "TRIG【FIELD】:When this card enters the field by calling, you move 1 of your opponent's char"
+    },
+    {
+      "card_no": "BP01-014",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen this card enters the field by calling, if you have the c"
+      ],
+      "text": "TRIG【FIELD】:When this card enters the field by calling, if you have the characters with 【U"
+    },
+    {
+      "card_no": "BP01-015",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen this card enters the field by calling,"
+      ],
+      "text": "TRIG【FIELD】: When this card enters the field by calling, you may prune 1 of your opponent'"
+    },
+    {
+      "card_no": "BP01-016",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen your character with Lv4 or above enters the field by cal"
+      ],
+      "text": "TRIG【BATTLE/ONCE PER TURN】:When your character with Lv4 or above enters the field by calli"
+    },
+    {
+      "card_no": "BP01-017",
+      "set": "BP01",
+      "reason": "partial parse — 1/4 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen this card enters the field by calling,"
+      ],
+      "text": "TRIG【FIELD】:When this card enters the field by calling, you may prune 1 of your opponent's"
+    },
+    {
+      "card_no": "BP01-019",
+      "set": "BP01",
+      "reason": "partial parse — 2/4 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen this card attacks,",
+        "discard parse fail: you may discard the top card of your deck"
+      ],
+      "text": "TRIG【BATTLE/ONCE PER TURN】:When this card attacks, you may discard the top card of your de"
+    },
+    {
+      "card_no": "BP01-020",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen this card enters the field by calling, you prune 1 of yo"
+      ],
+      "text": "TRIG【FIELD】:When this card enters the field by calling, you prune 1 of your red characters"
+    },
+    {
+      "card_no": "BP01-021",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "TRIG【FIELD】:When this card enters the field by calling, you show the top 3 cards of your d"
+    },
+    {
+      "card_no": "BP01-022",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen this card enters the field by calling, if you have the c"
+      ],
+      "text": "TRIG【FIELD】:When this card enters the field by calling, if you have the characters with 【A"
+    },
+    {
+      "card_no": "BP01-024",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "AUTO【BATTLE】:All the R of your characters with 【Iron Man】 in their names in BATTLE change "
+    },
+    {
+      "card_no": "BP01-025",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "AUTO【BATTLE】: If you have only this card in BATTLE, this card gets the ability 【Double Att"
+    },
+    {
+      "card_no": "BP01-026",
+      "set": "BP01",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "cond-tail → no clause→op rule: you move this card from RETREAT back to the bottom of your d"
+      ],
+      "text": "TRIG【RETREAT】: When this card enters RETREAT from the field by calling, you may place the "
+    },
+    {
+      "card_no": "BP01-028",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "ACTI【HAND】:If your opponent has the characters in BASE, you place this card in from HAND i"
+    },
+    {
+      "card_no": "BP01-029",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "AUTO【FIELD】:If the original Levels of your 2 characters in WING are the same, all the R of"
+    },
+    {
+      "card_no": "BP01-031",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "AUTO【BATTLE】:All your characters with 【Machine】 in their features in WING get Power+1000. "
+    },
+    {
+      "card_no": "BP01-031",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "AUTO【BATTLE】:All your characters with 【Machine】 in their features in WING get Power+1000. "
+    },
+    {
+      "card_no": "BP01-032",
+      "set": "BP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE(AUTO【FIELD】:You can not have another character with the same name as this card in t"
+    },
+    {
+      "card_no": "BP01-032",
+      "set": "BP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE(AUTO【FIELD】:You can not have another character with the same name as this card in t"
+    },
+    {
+      "card_no": "BP01-034",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "TRIG【FIELD】:When this card enters the field by callling, you show the top 3 cards of your "
+    },
+    {
+      "card_no": "BP01-035",
+      "set": "BP01",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "cond-tail → no clause→op rule: that character may take BATTLE Move once."
+      ],
+      "text": "COUNTER·ACTI【FIELD/ONCE PER TURN】: You attach this card from the field to 1 of your charac"
+    },
+    {
+      "card_no": "BP01-035",
+      "set": "BP01",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "cond-tail → no clause→op rule: that character may take BATTLE Move once."
+      ],
+      "text": "COUNTER·ACTI【FIELD/ONCE PER TURN】: You attach this card from the field to 1 of your charac"
+    },
+    {
+      "card_no": "BP01-036",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "AUTO【BATTLE】：This card gets Power+X000. X is the number of your yellow characters in BATTL"
+    },
+    {
+      "card_no": "BP01-037",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen this card enters the field by calling,"
+      ],
+      "text": "TRIG【FIELD】:When this card enters the field by calling, you may place 1 of your characters"
+    },
+    {
+      "card_no": "BP01-038",
+      "set": "BP01",
+      "reason": "partial parse — 1/4 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen your opponent's turn starts, if you have the yellow char"
+      ],
+      "text": "TRIG【BATTLE】:When your opponent's turn starts, if you have the yellow character without 【W"
+    },
+    {
+      "card_no": "BP01-038",
+      "set": "BP01",
+      "reason": "partial parse — 1/4 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen your opponent's turn starts, if you have the yellow char"
+      ],
+      "text": "TRIG【BATTLE】:When your opponent's turn starts, if you have the yellow character without 【W"
+    },
+    {
+      "card_no": "BP01-039",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "ACTI【HAND】:If you have 3 yellow characters in BATTLE, you place this card from HAND into y"
+    },
+    {
+      "card_no": "BP01-039",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "ACTI【HAND】:If you have 3 yellow characters in BATTLE, you place this card from HAND into y"
+    },
+    {
+      "card_no": "BP01-040",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "ACTI【HAND】: You prune 3 of your characters with different name and 【Machine】 in their feat"
+    },
+    {
+      "card_no": "BP01-041",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "cond-tail → discard parse fail: you discard 1 of your cards in HAND."
+      ],
+      "text": "TRIG【BATTLE】：When this card attacks the weakness successfully, you draw 1 card. If you do,"
+    },
+    {
+      "card_no": "BP01-042",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "TRIG【FIELD】:When this card enters the field by calling, you place 1 of your yellow charact"
+    },
+    {
+      "card_no": "BP01-043",
+      "set": "BP01",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen this card enters the field by calling, you retreat 1 of "
+      ],
+      "text": "TRIG【FIELD】:When this card enters the field by calling, you retreat 1 of your characters w"
+    },
+    {
+      "card_no": "BP01-044",
+      "set": "BP01",
+      "reason": "partial parse — 1/4 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: ：When your opponent's character enters the field in your tur"
+      ],
+      "text": "TRIG【FIELD】：When your opponent's character enters the field in your turn, you may retreat "
+    },
+    {
+      "card_no": "BP01-045",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "TRIG【BATTLE/ONCE PER TURN】:When the Power of this card increases, 1 of your characters wit"
+    },
+    {
+      "card_no": "BP01-046",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "AUTO【HAND】:This card gets Lv-X. X is the number of your characters with 【Avengers】 in thei"
+    },
+    {
+      "card_no": "BP01-046",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "AUTO【HAND】:This card gets Lv-X. X is the number of your characters with 【Avengers】 in thei"
+    },
+    {
+      "card_no": "BP01-049",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "AUTO【BATTLE】:In your turn, the distance between this card and your opponent's character in"
+    },
+    {
+      "card_no": "BP01-050",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "TRIG【FIELD】:When this card enters the field by calling, 1 of your opponent's characters in"
+    },
+    {
+      "card_no": "BP01-052",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: our character with Lv4 or above and in its feature enters th"
+      ],
+      "text": "TRIG【HAND】:Your character with Lv4 or above and 【Machine】 in its feature enters the field,"
+    },
+    {
+      "card_no": "BP01-053",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: ：When this card attacks, if its target is the character with"
+      ],
+      "text": "TRIG【BATTLE】：When this card attacks, if its target is the character with Lv4 or above, thi"
+    },
+    {
+      "card_no": "BP01-054",
+      "set": "BP01",
+      "reason": "partial parse — 2/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen this card enters the field by calling,",
+        "discard parse fail: you may discard 1 of your characters with in their"
+      ],
+      "text": "TRIG【FIELD】:When this card enters the field by calling, you may discard 1 of your characte"
+    },
+    {
+      "card_no": "BP01-055",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: or every 3000 Power your opponent's character in FRONT has,"
+      ],
+      "text": "AUTO【BATTLE】:For every 3000 Power your opponent's character in FRONT has, this card gets R"
+    },
+    {
+      "card_no": "BP01-056",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: f the R of your opponent's character in FRONT is 1,"
+      ],
+      "text": "AUTO【BATTLE】:If the R of your opponent's character in FRONT is 1, this card gets Power+150"
+    },
+    {
+      "card_no": "BP01-057",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "TRIG【FIELD】:When this card enters the field by callling, you place 1 of your characters wi"
+    },
+    {
+      "card_no": "BP01-058",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: f the total value of R of your opponent's characters in BATT"
+      ],
+      "text": "AUTO【FIELD】:If the total value of R of your opponent's characters in BATTLE is 3 or above,"
+    },
+    {
+      "card_no": "BP01-059",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "TRIG【FIELD】：When this card enters the field by calling, this card gets the ability 【ASSAUL"
+    },
+    {
+      "card_no": "BP01-061",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: · You retreat 2 of your set cards in BASE"
+      ],
+      "text": "COUNTER·ACTI【HAND】:You retreat 2 of your set cards in BASE. If you do, you swap this card "
+    },
+    {
+      "card_no": "BP01-061",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: · You retreat 2 of your set cards in BASE"
+      ],
+      "text": "COUNTER·ACTI【HAND】:You retreat 2 of your set cards in BASE. If you do, you swap this card "
+    },
+    {
+      "card_no": "BP01-062",
+      "set": "BP01",
+      "reason": "partial parse — 2/3 clause(s) unmapped",
+      "unmapped": [
+        "cond-tail → no clause→op rule: 1 of your characters in BATTLE gets Power+1000 in this turn",
+        "no clause→op rule: This card cannot be affected by the effect of the characters"
+      ],
+      "text": "COUNTER·ACTI【FIELD/ONCE PER TURN】:This card takes BATTLE-BASE Move once. If you do, 1 of y"
+    },
+    {
+      "card_no": "BP01-062",
+      "set": "BP01",
+      "reason": "partial parse — 2/3 clause(s) unmapped",
+      "unmapped": [
+        "cond-tail → no clause→op rule: 1 of your characters in BATTLE gets Power+1000 in this turn",
+        "no clause→op rule: This card cannot be affected by the effect of the characters"
+      ],
+      "text": "COUNTER·ACTI【FIELD/ONCE PER TURN】:This card takes BATTLE-BASE Move once. If you do, 1 of y"
+    },
+    {
+      "card_no": "BP01-062",
+      "set": "BP01",
+      "reason": "partial parse — 2/3 clause(s) unmapped",
+      "unmapped": [
+        "cond-tail → no clause→op rule: 1 of your characters in BATTLE gets Power+1000 in this turn",
+        "no clause→op rule: This card cannot be affected by the effect of the characters"
+      ],
+      "text": "COUNTER·ACTI【FIELD/ONCE PER TURN】:This card takes BATTLE-BASE Move once. If you do, 1 of y"
+    },
+    {
+      "card_no": "BP01-064",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: n Battle Phase, if you have blue characters in BATTLE except"
+      ],
+      "text": "AUTO【BATTLE】:In Battle Phase, if you have blue characters in BATTLE except this card, this"
+    },
+    {
+      "card_no": "BP01-066",
+      "set": "BP01",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "cond-tail → no clause→op rule: you place that character into your field."
+      ],
+      "text": "TRIG【HAND】:When your character with Lv4 or below and 【Human】 in its feature enters RETREAT"
+    },
+    {
+      "card_no": "BP01-067",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen your opponent's character attacks,"
+      ],
+      "text": "TRIG【FIELD/ONCE PER TURN】:When your opponent's character attacks, you may change its targe"
+    },
+    {
+      "card_no": "BP01-069",
+      "set": "BP01",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: X is the Lv of that character in BATTLE"
+      ],
+      "text": "ACTI【FIELD/ONCE PER TURN】:You swap 1 of your characters with LvX+1 in HAND and 1 of your c"
+    },
+    {
+      "card_no": "BP01-070",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen your blue character enters the field,"
+      ],
+      "text": "TRIG【FIELD/ONCE PER TURN】:When your blue character enters the field, you may place the top"
+    },
+    {
+      "card_no": "BP01-071",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: his card gets Power+1000"
+      ],
+      "text": "AUTO【FRONT】:This card gets Power+1000.\nAUTO【WING】:This card gets R+2."
+    },
+    {
+      "card_no": "BP01-072",
+      "set": "BP01",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen your weakness is attacked,"
+      ],
+      "text": "TRIG【HAND】:When your weakness is attacked, you may prune this card in HAND. If you do, you"
+    },
+    {
+      "card_no": "BP01-072",
+      "set": "BP01",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen your weakness is attacked,"
+      ],
+      "text": "TRIG【HAND】:When your weakness is attacked, you may prune this card in HAND. If you do, you"
+    },
+    {
+      "card_no": "BP01-073",
+      "set": "BP01",
+      "reason": "partial parse — 2/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen you move your card back to the bottom of your deck,",
+        "no clause→op rule: X is the number of your cards with in their features in the "
+      ],
+      "text": "TRIG【FIELD/ONCE PER TURN】:When you move your card back to the bottom of your deck, this ca"
+    },
+    {
+      "card_no": "BP01-073",
+      "set": "BP01",
+      "reason": "partial parse — 2/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen you move your card back to the bottom of your deck,",
+        "no clause→op rule: X is the number of your cards with in their features in the "
+      ],
+      "text": "TRIG【FIELD/ONCE PER TURN】:When you move your card back to the bottom of your deck, this ca"
+    },
+    {
+      "card_no": "BP01-074",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "COUNTER·ACTI【BACK/ONCE PER TURN】:If the number of your cards in HAND is 4, you place 1 of "
+    },
+    {
+      "card_no": "BP01-074",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "COUNTER·ACTI【BACK/ONCE PER TURN】:If the number of your cards in HAND is 4, you place 1 of "
+    },
+    {
+      "card_no": "BP01-075",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "AUTO【FIELD】:All your characters with 【Fantastic Four】 in their features in HAND get Lv-1."
+    },
+    {
+      "card_no": "BP01-075",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "AUTO【FIELD】:All your characters with 【Fantastic Four】 in their features in HAND get Lv-1."
+    },
+    {
+      "card_no": "BP01-076",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "AUTO【FIELD】:This card gets Power+X000. X is the number of your characters with 【Loki】 in t"
+    },
+    {
+      "card_no": "BP01-077",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "cond-tail → no clause→op rule: you place the top card of your deck face down into your BASE"
+      ],
+      "text": "TRIG【FIELD】:When this card enters the field by calling, you draw 1 card. If you do, you pl"
+    },
+    {
+      "card_no": "BP01-078",
+      "set": "BP01",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "cond-tail → discard parse fail: you place that character into your BASE, otherwise"
+      ],
+      "text": "TRIG【RETREAT】：When this card enters RETREAT by losing the fight, you may show the top card"
+    },
+    {
+      "card_no": "BP01-079",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "AUTO【FIELD】:If your opponent has the characters with Power 5000 or higher in the field, yo"
+    },
+    {
+      "card_no": "BP01-080",
+      "set": "BP01",
+      "reason": "partial parse — 2/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen your opponent's character with Lv3 attacks, if the total",
+        "cond-tail → no clause→op rule: you retreat that character."
+      ],
+      "text": "TRIG【HAND】:When your opponent's character with Lv3 attacks, if the total value of Lv of yo"
+    },
+    {
+      "card_no": "BP01-081",
+      "set": "BP01",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen your blue character is attacked,"
+      ],
+      "text": "TRIG【HAND】:When your blue character is attacked, you may attach this card from HAND to you"
+    },
+    {
+      "card_no": "BP01-083",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "COUNTER(AUTO【HAND】: This card may be called in COUNTER PHASE or COUNTER STEP.)"
+    },
+    {
+      "card_no": "BP01-084",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "AUTO【BATTLE】:If the number of the characters in both BATTLE is the same, your character in"
+    },
+    {
+      "card_no": "BP01-085",
+      "set": "BP01",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: ：When the turn ends,"
+      ],
+      "text": "TRIG【FIELD】：When the turn ends, you may prune 1 of your characters in RETREAT. If you do, "
+    },
+    {
+      "card_no": "BP01-086",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "AUTO【FIELD】: Your character with 【Human】 in its feature in FRONT gets Power+500."
+    },
+    {
+      "card_no": "BP01-087",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "discard parse fail: · You discard 1 of your characters with in their f"
+      ],
+      "text": "COUNTER·ACTI【BATTLE/ONCE PER TURN】:You discard 1 of your characters with 【Avengers】 in the"
+    },
+    {
+      "card_no": "BP01-088",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: f your opponent has the characters with Power 5000 or higher"
+      ],
+      "text": "AUTO【BATTLE】:If your opponent has the characters with Power 5000 or higher in BATTLE, this"
+    },
+    {
+      "card_no": "BP01-089",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: f your opponent has only 1 character with Lv6 in BATTLE,"
+      ],
+      "text": "AUTO【BATTLE】:If your opponent has only 1 character with Lv6 in BATTLE, this card gets R+1 "
+    },
+    {
+      "card_no": "BP01-090",
+      "set": "BP01",
+      "reason": "partial parse — 2/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: ou prune this card in HAND",
+        "no clause→op rule: X is the total value of the Power of your characters in BATT"
+      ],
+      "text": "ACTI【HAND】:You prune this card in HAND. If you do, you skip your Battle Phase in this turn"
+    },
+    {
+      "card_no": "BP01-091",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "TRIG【FIELD/ONCE PER TURN】:When your opponent's set card in BASE increases, if you have onl"
+    },
+    {
+      "card_no": "BP01-091",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "TRIG【FIELD/ONCE PER TURN】:When your opponent's set card in BASE increases, if you have onl"
+    },
+    {
+      "card_no": "BP01-093",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "TRIG【WING】:When this card attacks, if 1 of your characters with Power 4000 or lower in WIN"
+    },
+    {
+      "card_no": "BP01-093",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "TRIG【WING】:When this card attacks, if 1 of your characters with Power 4000 or lower in WIN"
+    },
+    {
+      "card_no": "BP01-094",
+      "set": "BP01",
+      "reason": "partial parse — 2/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen your turn ends,",
+        "no clause→op rule: X is the number of your characters that did not attack in BA"
+      ],
+      "text": "TRIG【FIELD】:When your turn ends, you may retreat 1 of your opponent's characters with LvX "
+    },
+    {
+      "card_no": "BP01-095",
+      "set": "BP01",
+      "reason": "partial parse — 2/3 clause(s) unmapped",
+      "unmapped": [
+        "discard parse fail: hen this card enters RETREAT by discarding of effe",
+        "cond-tail → no clause→op rule: you move 1 of your opponent's characters with Lv3 or below f"
+      ],
+      "text": "TRIG【RETREAT】:When this card enters RETREAT by discarding of effect, you may prune this ca"
+    },
+    {
+      "card_no": "BP01-096",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "discard parse fail: · If you have the characters with in their names i"
+      ],
+      "text": "COUNTER·ACTI【FIELD/ONCE PER TURN】:If you have the characters with 【Captain America】 in the"
+    },
+    {
+      "card_no": "BP01-096",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "discard parse fail: · If you have the characters with in their names i"
+      ],
+      "text": "COUNTER·ACTI【FIELD/ONCE PER TURN】:If you have the characters with 【Captain America】 in the"
+    },
+    {
+      "card_no": "BP01-097",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: he R of your character in FRONT changes to 3"
+      ],
+      "text": "AUTO【BATTLE】:The R of your character in FRONT changes to 3. becomes 3."
+    },
+    {
+      "card_no": "BP01-097",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: he R of your character in FRONT changes to 3"
+      ],
+      "text": "AUTO【BATTLE】:The R of your character in FRONT changes to 3. becomes 3."
+    },
+    {
+      "card_no": "BP01-098",
+      "set": "BP01",
+      "reason": "partial parse — 1/4 clause(s) unmapped",
+      "unmapped": [
+        "discard parse fail: hen this card enters RETREAT by discarding of effe"
+      ],
+      "text": "TRIG【RETREAT】:When this card enters RETREAT by discarding of effect, you may attach this c"
+    },
+    {
+      "card_no": "BP01-099",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "TRIG【FIELD】:When your opponent's character with Lv4 or above enters the field, you may dis"
+    },
+    {
+      "card_no": "BP01-100",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: ( This card may be called in PHASE or STEP.)"
+      ],
+      "text": "COUNTER(AUTO【HAND】: This card may be called in COUNTER PHASE or COUNTER STEP.)\nTRIG【FIELD】"
+    },
+    {
+      "card_no": "BP01-101",
+      "set": "BP01",
+      "reason": "partial parse — 2/5 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen your weakness is attacked,",
+        "no clause→op rule: X is the number of the cards you retreat by this effect."
+      ],
+      "text": "TRIG【FIELD/ONCE PER TURN】:When your weakness is attacked, you may retreat up to 3 of your "
+    },
+    {
+      "card_no": "BP01-101",
+      "set": "BP01",
+      "reason": "partial parse — 2/5 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen your weakness is attacked,",
+        "no clause→op rule: X is the number of the cards you retreat by this effect."
+      ],
+      "text": "TRIG【FIELD/ONCE PER TURN】:When your weakness is attacked, you may retreat up to 3 of your "
+    },
+    {
+      "card_no": "BP01-104",
+      "set": "BP01",
+      "reason": "partial parse — 2/3 clause(s) unmapped",
+      "unmapped": [
+        "discard parse fail: hen this card enters RETREAT by discarding of effe",
+        "no clause→op rule: You move 1 of your characters from RETREAT back to the botto"
+      ],
+      "text": "TRIG【RETREAT】:When this card enters RETREAT by discarding of effect, you may move 1 of eac"
+    },
+    {
+      "card_no": "BP01-105",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "TRIG【FIELD/ONCE PER TURN】:When your character attacks, if its target is the character with"
+    },
+    {
+      "card_no": "BP01-106",
+      "set": "BP01",
+      "reason": "partial parse — 2/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen this card enters the field by calling,",
+        "discard parse fail: you may discard 1 of your green characters in HAND"
+      ],
+      "text": "TRIG【FIELD】:When this card enters the field by calling, you may discard 1 of your green ch"
+    },
+    {
+      "card_no": "BP01-106",
+      "set": "BP01",
+      "reason": "partial parse — 2/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen this card enters the field by calling,",
+        "discard parse fail: you may discard 1 of your green characters in HAND"
+      ],
+      "text": "TRIG【FIELD】:When this card enters the field by calling, you may discard 1 of your green ch"
+    },
+    {
+      "card_no": "BP01-107",
+      "set": "BP01",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: f you have the green characters with Power 4000 or higher in"
+      ],
+      "text": "AUTO【BATTLE】:If you have the green characters with Power 4000 or higher in BATTLE, all you"
+    },
+    {
+      "card_no": "BP01-108",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "ACTI【FIELD/ONCE PER TURN】:You discard 1 of your characters with 【Avengers】 in their featur"
+    },
+    {
+      "card_no": "BP01-109",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "TRIG【FIELD】:When this card enters the field, your opponent places 1 of their cards from HA"
+    },
+    {
+      "card_no": "BP01-110",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "AUTO【BASE】:If you have no characters in BATTLE, the Lv of this card changes to 5."
+    },
+    {
+      "card_no": "BP01-112",
+      "set": "BP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "TRIG【FIELD】:When this card enters the field, you retreat 1 of your opponent's set cards in"
+    },
+    {
+      "card_no": "BP01-116",
+      "set": "BP01",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen your opponent's character in WING attacks,"
+      ],
+      "text": "TRIG【FIELD】:When your opponent's character in WING attacks, you may move 1 of your charact"
+    },
+    {
+      "card_no": "BP01-118",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "cond-tail → discard parse fail: you discard 1 of your cards in HAND."
+      ],
+      "text": "TRIG【FIELD】:When this card takes BATTLE-BASE Move, you draw 1 card. If you do, you discard"
+    },
+    {
+      "card_no": "BP01-119",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "discard parse fail: hen this card enters RETREAT by discarding of effe"
+      ],
+      "text": "TRIG【RETREAT】:When this card enters RETREAT by discarding of effect, you may swap this car"
+    },
+    {
+      "card_no": "BP01-119",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "discard parse fail: hen this card enters RETREAT by discarding of effe"
+      ],
+      "text": "TRIG【RETREAT】:When this card enters RETREAT by discarding of effect, you may swap this car"
+    },
+    {
+      "card_no": "BP01-120",
+      "set": "BP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "cond-tail → no clause→op rule: you move 1 of your characters with Lv3 and without in their "
+      ],
+      "text": "TRIG【RETREAT】：When this card enters RETREAT from the field, you prune this card in RETREAT"
+    },
+    {
+      "card_no": "EB01-006",
+      "set": "EB01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "TRIG【BATTLE】:When your opponent's character with Lv6 enters the field, both of this card a"
+    },
+    {
+      "card_no": "EB01-007",
+      "set": "EB01",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: ou retreat 1 of your characters with Lv3 and in their featur"
+      ],
+      "text": "ACTI【BATTLE/ONCR PER TURN】:You retreat 1 of your characters with Lv3 and 【Avengers】 in the"
+    },
+    {
+      "card_no": "EB01-008",
+      "set": "EB01",
+      "reason": "partial parse — 2/3 clause(s) unmapped",
+      "unmapped": [
+        "stat_self parse fail: this card gets Power+X000 in this turn",
+        "no clause→op rule: X is the number of your characters in VOID."
+      ],
+      "text": "TRIG【FIELD/ONCE PER TURN】:When this card takes BATTLE-BASE Move, this card gets Power+X000"
+    },
+    {
+      "card_no": "EB01-009",
+      "set": "EB01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen this card wins the fight,"
+      ],
+      "text": "TRIG【BATTLE】:When this card wins the fight, you may retreat both of this card and 1 of you"
+    },
+    {
+      "card_no": "EB01-010",
+      "set": "EB01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen your character with Lv4 or above enters the field by cal"
+      ],
+      "text": "TRIG【BATTLE/ONCE PER TURN】:When your character with Lv4 or above enters the field by calli"
+    },
+    {
+      "card_no": "EB01-011",
+      "set": "EB01",
+      "reason": "no trig/slot tag",
+      "text": "COUNTER"
+    },
+    {
+      "card_no": "EB01-012",
+      "set": "EB01",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "cond-tail → no clause→op rule: you place that character into your field."
+      ],
+      "text": "TRIG【HAND】:When your character with Lv4 or below and 【Human】 in its feature enters RETREAT"
+    },
+    {
+      "card_no": "EB01-013",
+      "set": "EB01",
+      "reason": "partial parse — 2/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen your red character attacks,",
+        "cond-tail → no clause→op rule: 1 of your red characters in BATTLE gets Power+3000 in this t"
+      ],
+      "text": "TRIG【HAND】:When your red character attacks, you may discard this card in HAND. If you do, "
+    },
+    {
+      "card_no": "EB01-014",
+      "set": "EB01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nTRIG【FIELD】:When you attach this card to a character on the field, you move 1 of yo"
+    },
+    {
+      "card_no": "EB01-014",
+      "set": "EB01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nTRIG【FIELD】:When you attach this card to a character on the field, you move 1 of yo"
+    },
+    {
+      "card_no": "PB01-001",
+      "set": "PB01-A",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "TRIG【BATTLE】:When this card wins the fight, all your characters with 【GOTG】 in their featu"
+    },
+    {
+      "card_no": "PB01-002",
+      "set": "PB01-A",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "TRIG【BATTLE】:When this card attacks, if its target was attacked before in this turn, you r"
+    },
+    {
+      "card_no": "PB01-003",
+      "set": "PB01-A",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE(AUTO【FIELD】:You can not have another character with the same name as this card in t"
+    },
+    {
+      "card_no": "PB01-004",
+      "set": "PB01-A",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "AUTO【BATTLE】:This card gets R+X and Power+X000. X is the number of your characters with 【G"
+    },
+    {
+      "card_no": "PB01-005",
+      "set": "PB01-A",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "ACTI【HAND】:If you have 2 or more characters with 【GOTG】 in their features in BATTLE, you p"
+    },
+    {
+      "card_no": "PB01-006",
+      "set": "PB01-A",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "AUTO【BATTLE】:This card gets Power-X000. X is the number of your cards in HAND."
+    },
+    {
+      "card_no": "PB01-007",
+      "set": "PB01-B",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "TRIG【BATTLE】：When this card attacks, if its target is the character with higher Power than"
+    },
+    {
+      "card_no": "PB01-008",
+      "set": "PB01-B",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "AUTO【HAND】:If you have only yellow characters in BATTLE, this card gets the ability 【COUNT"
+    },
+    {
+      "card_no": "PB01-009",
+      "set": "PB01-B",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "ACTI【HAND】:You retreat 6 of your cards in BASE. If you do, you place this card from HAND i"
+    },
+    {
+      "card_no": "PB01-010",
+      "set": "PB01-B",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "ACTI【HAND】:If the number of your set cards in BASE is more than your opponent's, you place"
+    },
+    {
+      "card_no": "PB01-011",
+      "set": "PB01-B",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "ACTI【VOID/ONCE PER TURN】:You prune 1 of your characters with Lv4 or above in RETREAT. If y"
+    },
+    {
+      "card_no": "SD01-001",
+      "set": "SD01",
+      "reason": "partial parse — 1/4 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: X is the total value of Lv of the cards you retreat by this "
+      ],
+      "text": "TRIG【BATTLE/ONCE PER TURN】: When this card is attached, if your opponent has characters wi"
+    },
+    {
+      "card_no": "SD01-001",
+      "set": "SD01",
+      "reason": "partial parse — 1/4 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: X is the total value of Lv of the cards you retreat by this "
+      ],
+      "text": "TRIG【BATTLE/ONCE PER TURN】: When this card is attached, if your opponent has characters wi"
+    },
+    {
+      "card_no": "SD01-001",
+      "set": "SD01",
+      "reason": "partial parse — 1/4 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: X is the total value of Lv of the cards you retreat by this "
+      ],
+      "text": "TRIG【BATTLE/ONCE PER TURN】: When this card is attached, if your opponent has characters wi"
+    },
+    {
+      "card_no": "SD01-004",
+      "set": "SD01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "AUTO【BATTLE】:In your opponent's Battle Phase, this card gets Power+X000. X is the number o"
+    },
+    {
+      "card_no": "SD01-005",
+      "set": "SD01",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen this card enters the field by calling,"
+      ],
+      "text": "TRIG【FIELD】: When this card enters the field by calling, you may retreat 2 of your cards i"
+    },
+    {
+      "card_no": "SD01-006",
+      "set": "SD01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "cond-tail → no clause→op rule: you retreat 1 of your characters in BATTLE, 1 of your cards "
+      ],
+      "text": "ACTI【HAND】:You discard this card in HAND. If you do, you retreat 1 of your characters in B"
+    },
+    {
+      "card_no": "SD01-007",
+      "set": "SD01",
+      "reason": "partial parse — 2/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen this card enters the field by calling,",
+        "discard parse fail: you may discard 1 of your cards in HAND"
+      ],
+      "text": "TRIG【FIELD】:When this card enters the field by calling, you may discard 1 of your cards in"
+    },
+    {
+      "card_no": "SD01-008",
+      "set": "SD01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: f both of you and your opponent have no characters with Lv4 "
+      ],
+      "text": "AUTO【HAND】:If both of you and your opponent have no characters with Lv4 or above in the fi"
+    },
+    {
+      "card_no": "SD01-009",
+      "set": "SD01",
+      "reason": "partial parse — 2/4 clause(s) unmapped",
+      "unmapped": [
+        "discard parse fail: ou discard 1 of your cards in HAND except this car",
+        "cond-tail → no clause→op rule: you place 2 of your characters with the same Lv as that set "
+      ],
+      "text": "ACTI【HAND】:You discard 1 of your cards in HAND except this card. If you do, you attach thi"
+    },
+    {
+      "card_no": "SD01-011",
+      "set": "SD01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "COUNTER(AUTO【HAND】: This card may be called in COUNTER PHASE or COUNTER STEP.)"
+    },
+    {
+      "card_no": "SD01-015",
+      "set": "SD01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen this card enters the field by calling, you prune 1 of yo"
+      ],
+      "text": "TRIG【FIELD】: When this card enters the field by calling, you prune 1 of your red character"
+    },
+    {
+      "card_no": "SD01-017",
+      "set": "SD01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "AUTO【BATTLE】: If you have only this card in BATTLE, this card gets the ability 【Double Att"
+    },
+    {
+      "card_no": "SD01-018",
+      "set": "SD01",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "cond-tail → no clause→op rule: you move this card from RETREAT back to the bottom of your d"
+      ],
+      "text": "TRIG【RETREAT】: When this card enters RETREAT from the field by calling, you may place the "
+    },
+    {
+      "card_no": "SD02-001",
+      "set": "SD02",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE(AUTO【FIELD】:You can not have another character with the same name as this card in t"
+    },
+    {
+      "card_no": "SD02-001",
+      "set": "SD02",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE(AUTO【FIELD】:You can not have another character with the same name as this card in t"
+    },
+    {
+      "card_no": "SD02-001",
+      "set": "SD02",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE(AUTO【FIELD】:You can not have another character with the same name as this card in t"
+    },
+    {
+      "card_no": "SD02-002",
+      "set": "SD02",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE(AUTO【FIELD】:You can not have another character with the same name as this card in t"
+    },
+    {
+      "card_no": "SD02-003",
+      "set": "SD02",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: his card is not going to be retreated by Both Lose"
+      ],
+      "text": "AUTO【FRONT】:This card is not going to be retreated by Both Lose.\nAUTO【BACK】:Your opponent'"
+    },
+    {
+      "card_no": "SD02-004",
+      "set": "SD02",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "COUNTER(AUTO【HAND】: This card may be called in COUNTER PHASE or COUNTER STEP.)"
+    },
+    {
+      "card_no": "SD02-005",
+      "set": "SD02",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "discard parse fail: ：You discard the top 3 cards of your deck"
+      ],
+      "text": "ACTI【BASE/ONCE PER TURN】：You discard the top 3 cards of your deck. If you do, you draw 1 c"
+    },
+    {
+      "card_no": "SD02-006",
+      "set": "SD02",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen this card enters the field by calling,"
+      ],
+      "text": "TRIG【BATTLE】:When this card enters the field by calling, you may attach 2 of your characte"
+    },
+    {
+      "card_no": "SD02-007",
+      "set": "SD02",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "ACTI【HAND】:If you have only yellow characters in RETREAT, and the number of them is 9 or m"
+    },
+    {
+      "card_no": "SD02-008",
+      "set": "SD02",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "ACTI【BASE/ONCE PER TURN】:1 of your characters in BATTLE gets R+1 in this turn. If you do, "
+    },
+    {
+      "card_no": "SD02-010",
+      "set": "SD02",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "TRIG【BATTLE】：When this card enters the field by calling, you place 1 of your characters wi"
+    },
+    {
+      "card_no": "SD02-011",
+      "set": "SD02",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "TRIG【BACK/ONCE PER TURN】:When your character with original Lv3 or below loses the fight, y"
+    },
+    {
+      "card_no": "SD02-014",
+      "set": "SD02",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen this card attacks, if its target is the character with L"
+      ],
+      "text": "TRIG【BATTLE】:When this card attacks, if its target is the character with Lv4 or above, thi"
+    },
+    {
+      "card_no": "SD02-015",
+      "set": "SD02",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "TRIG【FIELD】： When this card enters the field by calling, you place 1 of your characters wi"
+    },
+    {
+      "card_no": "SD02-016",
+      "set": "SD02",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "TRIG【FIELD】：When this card enters the field by calling, this card gets the ability 【ASSAUL"
+    },
+    {
+      "card_no": "SD02-018",
+      "set": "SD02",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: f the R of your opponent's character in FRONT is 1,"
+      ],
+      "text": "AUTO【BATTLE】: If the R of your opponent's character in FRONT is 1, this card gets Power+15"
+    },
+    {
+      "card_no": "SD03-001",
+      "set": "SD03",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "COUNTER(AUTO【HAND】: This card may be called in COUNTER PHASE or COUNTER STEP.)\nTRIG【FIELD】"
+    },
+    {
+      "card_no": "SD03-001",
+      "set": "SD03",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "COUNTER(AUTO【HAND】: This card may be called in COUNTER PHASE or COUNTER STEP.)\nTRIG【FIELD】"
+    },
+    {
+      "card_no": "SD03-001",
+      "set": "SD03",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "COUNTER(AUTO【HAND】: This card may be called in COUNTER PHASE or COUNTER STEP.)\nTRIG【FIELD】"
+    },
+    {
+      "card_no": "SD03-002",
+      "set": "SD03",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "TRIG【FIELD】:When this card enters the field, you move 1 of your opponent's characters with"
+    },
+    {
+      "card_no": "SD03-003",
+      "set": "SD03",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "cond-tail → no clause→op rule: you retreat this card."
+      ],
+      "text": "TRIG【FIELD】: When this card takes BATTLE-BASE Move, you may place 1 of your characters wit"
+    },
+    {
+      "card_no": "SD03-004",
+      "set": "SD03",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: his card gets R+2"
+      ],
+      "text": "AUTO【BACK】: This card gets R+2.\nAUTO【BASE】: This card gets Lv+1."
+    },
+    {
+      "card_no": "SD03-006",
+      "set": "SD03",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE(AUTO【FIELD】:You can not have another character with the same name as this card in t"
+    },
+    {
+      "card_no": "SD03-007",
+      "set": "SD03",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "cond-tail → no clause→op rule: you place the top 3 cards of your deck face down into your B"
+      ],
+      "text": "TRIG【FIELD】: When this card takes BATTLE-BASE Move, you may prune this card in the field. "
+    },
+    {
+      "card_no": "SD03-008",
+      "set": "SD03",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "ACTI【BATTLE/TWICE PER TURN】:You retreat 1 of your set cards in BASE.If you do, 1 of your c"
+    },
+    {
+      "card_no": "SD03-009",
+      "set": "SD03",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen your character wins the fight,"
+      ],
+      "text": "TRIG【FIELD/ONCE PER TURN】:When your character wins the fight, you may swap this card in th"
+    },
+    {
+      "card_no": "SD03-010",
+      "set": "SD03",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen your opponent's character with Lv6 enters the field,"
+      ],
+      "text": "TRIG【HAND】:When your opponent's character with Lv6 enters the field, you may place this ca"
+    },
+    {
+      "card_no": "SD03-011",
+      "set": "SD03",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: ：All your opponent's characters in WING get Power-1000"
+      ],
+      "text": "AUTO【FRONT】：All your opponent's characters in WING get Power-1000.\nAUTO【WING】:Your opponen"
+    },
+    {
+      "card_no": "SD03-014",
+      "set": "SD03",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "COUNTER(AUTO【HAND】: This card may be called in COUNTER PHASE or COUNTER STEP.)"
+    },
+    {
+      "card_no": "SD03-015",
+      "set": "SD03",
+      "reason": "partial parse — 2/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen your opponent's character with Lv3 attacks,if the total ",
+        "cond-tail → no clause→op rule: you retreat that character."
+      ],
+      "text": "TRIG【HAND】:When your opponent's character with Lv3 attacks,if the total value of Lv of you"
+    },
+    {
+      "card_no": "SD03-016",
+      "set": "SD03",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen your blue character is attacked,"
+      ],
+      "text": "TRIG【HAND】: When your blue character is attacked, you may attach this card from HAND to yo"
+    },
+    {
+      "card_no": "SD03-017",
+      "set": "SD03",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "discard parse fail: · You discard 1 of your characters with in their f"
+      ],
+      "text": "COUNTER·ACTI【BATTLE/ONCE PER TURN】: You discard 1 of your characters with 【Avengers】 in th"
+    },
+    {
+      "card_no": "SD03-018",
+      "set": "SD03",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: ：When the turn ends,"
+      ],
+      "text": "TRIG【FIELD】：When the turn ends, you may prune 1 of your characters in RETREAT. If you do, "
+    },
+    {
+      "card_no": "SD04-002",
+      "set": "SD04",
+      "reason": "partial parse — 2/3 clause(s) unmapped",
+      "unmapped": [
+        "discard parse fail: hen this card enters the field, you discard the to",
+        "discard parse fail: X is the total value of Lv of the cards you discar"
+      ],
+      "text": "TRIG【FIELD】:When this card enters the field, you discard the top 2 cards of your deck. If "
+    },
+    {
+      "card_no": "SD04-003",
+      "set": "SD04",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "cond-tail → no clause→op rule: you move 1 of your characters with the highest Lv and 1 of y"
+      ],
+      "text": "TRIG【RETREAT】:When this card enters RETREAT from the field, you prune this card in RETREAT"
+    },
+    {
+      "card_no": "SD04-004",
+      "set": "SD04",
+      "reason": "no trig/slot tag",
+      "text": "BLOCK（COUNTER·ACTI【BATTLE/ONCE PER TURN】: If your opponent's character may attack this car"
+    },
+    {
+      "card_no": "SD04-005",
+      "set": "SD04",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "cond-tail → no clause→op rule: 1 of your characters with Lv3 or below in the field gets the"
+      ],
+      "text": "TRIG【RETREAT】: When this card enters RETREAT from the field, you prune this card in RETREA"
+    },
+    {
+      "card_no": "SD04-008",
+      "set": "SD04",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "TRIG【RETREAT】:When this card enters RETREAT by discarding of effect, you place the top 2 c"
+    },
+    {
+      "card_no": "SD04-009",
+      "set": "SD04",
+      "reason": "partial parse — 2/3 clause(s) unmapped",
+      "unmapped": [
+        "discard parse fail: hen this card enters RETREAT by discarding of effe",
+        "cond-tail → no clause→op rule: your opponent place the top card of their deck face down int"
+      ],
+      "text": "TRIG【RETREAT】:When this card enters RETREAT by discarding of effect, you may place this ca"
+    },
+    {
+      "card_no": "SD04-010",
+      "set": "SD04",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "COUNTER(AUTO【HAND】: This card may be called in COUNTER PHASE or COUNTER STEP.)"
+    },
+    {
+      "card_no": "SD04-011",
+      "set": "SD04",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "ACTI【BATTLE/ONCE PER TURN】:The R of 1 of your characters in BATTLE changes to 2 in this tu"
+    },
+    {
+      "card_no": "SD04-014",
+      "set": "SD04",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "discard parse fail: hen this card enters RETREAT by discarding of effe"
+      ],
+      "text": "TRIG【RETREAT】:When this card enters RETREAT by discarding of effect, you may swap this car"
+    },
+    {
+      "card_no": "SD04-018",
+      "set": "SD04",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "cond-tail → discard parse fail: you discard 1 of your cards in HAND."
+      ],
+      "text": "TRIG【FIELD】: When this card takes BATTLE-BASE Move, you draw 1 card. If you do, you discar"
+    },
+    {
+      "card_no": "SP01-001",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nTRIG【RETREAT】:When this card enters RETREAT from the field, you may discard 1 of yo"
+    },
+    {
+      "card_no": "SP01-001",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nTRIG【RETREAT】:When this card enters RETREAT from the field, you may discard 1 of yo"
+    },
+    {
+      "card_no": "SP01-002",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nTRIG【BATTLE/ONCE PER TURN】:When this card would have a card attached to it, you rev"
+    },
+    {
+      "card_no": "SP01-002",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nTRIG【BATTLE/ONCE PER TURN】:When this card would have a card attached to it, you rev"
+    },
+    {
+      "card_no": "SP01-003",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nACTI【RETREAT】:If the number of your characters on BATTLE is less than your opponent"
+    },
+    {
+      "card_no": "SP01-003",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nACTI【RETREAT】:If the number of your characters on BATTLE is less than your opponent"
+    },
+    {
+      "card_no": "SP01-004",
+      "set": "SP01",
+      "reason": "partial parse — 3/4 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen your opponent's character with Lv3 or below and in its f",
+        "cond-tail → no clause→op rule: you prune that opponent's character",
+        "cond-tail → no clause→op rule: 1 of your characters on the field gets R+1 this turn."
+      ],
+      "text": "TRIG【HAND】:When your opponent's character with Lv3 or below and 【Human】 in its features en"
+    },
+    {
+      "card_no": "SP01-005",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nCOUNTER·ACTI【HAND】:If you have any Weaknesses, you retreat all your cards with 【Bus"
+    },
+    {
+      "card_no": "SP01-005",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nCOUNTER·ACTI【HAND】:If you have any Weaknesses, you retreat all your cards with 【Bus"
+    },
+    {
+      "card_no": "SP01-006",
+      "set": "SP01",
+      "reason": "partial parse — 2/3 clause(s) unmapped",
+      "unmapped": [
+        "cond-tail → no clause→op rule: you prune 1 of your opponent's charcaters with LvX on BATTLE",
+        "no clause→op rule: X is the total Lv values of the cards pruned by this effect."
+      ],
+      "text": "ACTI【BATTLE/ONCE PER TURN】:You prune this card on BATTLE, as well as either one other char"
+    },
+    {
+      "card_no": "SP01-007",
+      "set": "SP01",
+      "reason": "partial parse — 3/4 clause(s) unmapped",
+      "unmapped": [
+        "cond-tail → no clause→op rule: that character gets R+1 extra",
+        "no clause→op rule: COUNTER·ACTI 1 of your characters on the field gets Power+20",
+        "cond-tail → no clause→op rule: you retreat this card."
+      ],
+      "text": "AUTO【FIELD】:The character this card is attached to gets the ability 【ASSAULT】. If that cha"
+    },
+    {
+      "card_no": "SP01-008",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nTRIG【FIELD/ONCE PER TURN】:When your character with 【Human】 in its feature enters RE"
+    },
+    {
+      "card_no": "SP01-009",
+      "set": "SP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "cond-tail → discard parse fail: you discard the top 2 cards of your opponent's dec"
+      ],
+      "text": "ACTI【BATTLE/ONCE PER TURN】:You attach 1 of your attached cards on the field to this card o"
+    },
+    {
+      "card_no": "SP01-010",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nACTI【BATTLE/ONCE PER TURN】:You reveal 1 of your opponent's cards in HAND randomly. "
+    },
+    {
+      "card_no": "SP01-011",
+      "set": "SP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "ACTI【BATTLE/ONCE PER TURN】:You discard X of your cards in HAND. If you do, this card gets "
+    },
+    {
+      "card_no": "SP01-011",
+      "set": "SP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "ACTI【BATTLE/ONCE PER TURN】:You discard X of your cards in HAND. If you do, this card gets "
+    },
+    {
+      "card_no": "SP01-012",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nACTI【BATTLE/ONCE PER TURN】:You retreat 1 of your characters with 【Human】 in their f"
+    },
+    {
+      "card_no": "SP01-013",
+      "set": "SP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "AUTO【BACK】:For each character with Lv6 you have on the field, any Power-reductions to all "
+    },
+    {
+      "card_no": "SP01-015",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nTRIG【BATTLE】:When the character this card is attached to attacks, you may prune the"
+    },
+    {
+      "card_no": "SP01-016",
+      "set": "SP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen the number of your cards in BASE increases,"
+      ],
+      "text": "TRIG【BATTLE/ONCE PER TURN】:When the number of your cards in BASE increases, this card gets"
+    },
+    {
+      "card_no": "SP01-018",
+      "set": "SP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "AUTO【BATTLE】:In Battle Phase, this card gets Power+X000. X is the number of abilities your"
+    },
+    {
+      "card_no": "SP01-019",
+      "set": "SP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "ACTI【WING/ONCE PER TURN】:You retreat this card on WING and one other character with R2 or "
+    },
+    {
+      "card_no": "SP01-020",
+      "set": "SP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "ACTI【BASE/ONCE PER TURN】:You cover 1 of your opponent's characters with LvX or below and 【"
+    },
+    {
+      "card_no": "SP01-021",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nTRIG【BASE/ONCE PER TURN】:When your card with 【Web】 in its feature enters the field,"
+    },
+    {
+      "card_no": "SP01-021",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nTRIG【BASE/ONCE PER TURN】:When your card with 【Web】 in its feature enters the field,"
+    },
+    {
+      "card_no": "SP01-021",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nTRIG【BASE/ONCE PER TURN】:When your card with 【Web】 in its feature enters the field,"
+    },
+    {
+      "card_no": "SP01-021",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nTRIG【BASE/ONCE PER TURN】:When your card with 【Web】 in its feature enters the field,"
+    },
+    {
+      "card_no": "SP01-021",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nTRIG【BASE/ONCE PER TURN】:When your card with 【Web】 in its feature enters the field,"
+    },
+    {
+      "card_no": "SP01-022",
+      "set": "SP01",
+      "reason": "partial parse — 1/5 clause(s) unmapped",
+      "unmapped": [
+        "stat_self parse fail: this card gets the ability this turn."
+      ],
+      "text": "TRIG【FIELD】:When you attach this card to a character on the field, that character gets the"
+    },
+    {
+      "card_no": "SP01-022",
+      "set": "SP01",
+      "reason": "partial parse — 1/5 clause(s) unmapped",
+      "unmapped": [
+        "stat_self parse fail: this card gets the ability this turn."
+      ],
+      "text": "TRIG【FIELD】:When you attach this card to a character on the field, that character gets the"
+    },
+    {
+      "card_no": "SP01-022",
+      "set": "SP01",
+      "reason": "partial parse — 1/5 clause(s) unmapped",
+      "unmapped": [
+        "stat_self parse fail: this card gets the ability this turn."
+      ],
+      "text": "TRIG【FIELD】:When you attach this card to a character on the field, that character gets the"
+    },
+    {
+      "card_no": "SP01-022",
+      "set": "SP01",
+      "reason": "partial parse — 1/5 clause(s) unmapped",
+      "unmapped": [
+        "stat_self parse fail: this card gets the ability this turn."
+      ],
+      "text": "TRIG【FIELD】:When you attach this card to a character on the field, that character gets the"
+    },
+    {
+      "card_no": "SP01-022",
+      "set": "SP01",
+      "reason": "partial parse — 1/5 clause(s) unmapped",
+      "unmapped": [
+        "stat_self parse fail: this card gets the ability this turn."
+      ],
+      "text": "TRIG【FIELD】:When you attach this card to a character on the field, that character gets the"
+    },
+    {
+      "card_no": "SP01-023",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "BLOCK\nTRIG【FIELD】:When you attach this card to a character with 【Knull】 in its name on the"
+    },
+    {
+      "card_no": "SP01-023",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "BLOCK\nTRIG【FIELD】:When you attach this card to a character with 【Knull】 in its name on the"
+    },
+    {
+      "card_no": "SP01-026",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nACTI【FIELD/ONCE PER TURN】:If the character this card is attached to is with 【Human】"
+    },
+    {
+      "card_no": "SP01-027",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nAUTO【BATTLE】:For each character with a different name from this card and 【Web】 in i"
+    },
+    {
+      "card_no": "SP01-027",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nAUTO【BATTLE】:For each character with a different name from this card and 【Web】 in i"
+    },
+    {
+      "card_no": "SP01-029",
+      "set": "SP01",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "cond-tail → no clause→op rule: that character gets R+1 this turn."
+      ],
+      "text": "AUTO【FIELD】:If the character this card is attached to is with Lv4 and has only 1 attached "
+    },
+    {
+      "card_no": "SP01-030",
+      "set": "SP01",
+      "reason": "partial parse — 1/5 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: You prune 1 of your characters with in their features in HAN"
+      ],
+      "text": "TRIG【FIELD】:When you attach this card to a character on the field, you may prune this card"
+    },
+    {
+      "card_no": "SP01-030",
+      "set": "SP01",
+      "reason": "partial parse — 1/5 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: You prune 1 of your characters with in their features in HAN"
+      ],
+      "text": "TRIG【FIELD】:When you attach this card to a character on the field, you may prune this card"
+    },
+    {
+      "card_no": "SP01-031",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE BLOCK\nTRIG【RETREAT】:When this card enters RETREAT from BATTLE by losing the fight, "
+    },
+    {
+      "card_no": "SP01-032",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nAUTO【FIELD】:Each character on your opponent's field gets Power-X000. X is the numbe"
+    },
+    {
+      "card_no": "SP01-032",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nAUTO【FIELD】:Each character on your opponent's field gets Power-X000. X is the numbe"
+    },
+    {
+      "card_no": "SP01-033",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nAUTO【FIELD】:The character this card is attached to gets R+1 and Power+1000.\nAUTO【BA"
+    },
+    {
+      "card_no": "SP01-034",
+      "set": "SP01",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: You prune 1 of your characters with in their features in RET"
+      ],
+      "text": "TRIG【FIELD】:When you attach this card to a character on the field, you retreat all the att"
+    },
+    {
+      "card_no": "SP01-035",
+      "set": "SP01",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "cond-tail → no clause→op rule: you place 1 of your characters with Lv3 and in their names f"
+      ],
+      "text": "TRIG【BATTLE】:When your character with 【Human】 in its feature enters RETREAT from BATTLE by"
+    },
+    {
+      "card_no": "SP01-036",
+      "set": "SP01",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: You prune this card on the field"
+      ],
+      "text": "AUTO【FIELD】:The character this card is attached to gets Power+1000.\nCOUNTER·ACTI【FIELD/ONC"
+    },
+    {
+      "card_no": "SP01-038",
+      "set": "SP01",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: ou retreat this card on BATTLE"
+      ],
+      "text": "ACTI【BATTLE/ONCE PER TURN】:You retreat this card on BATTLE. If you do, 1 of your opponent'"
+    },
+    {
+      "card_no": "SP01-039",
+      "set": "SP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "TRIG【BATTLE】:When this card enters the field from RETREAT, if you have 3 or fewer cards in"
+    },
+    {
+      "card_no": "SP01-040",
+      "set": "SP01",
+      "reason": "partial parse — 3/4 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: he Lv of this card changes to the R of this card",
+        "no clause→op rule: You prune 1 of your characters with in their names on BATTLE",
+        "no clause→op rule: X is the Lv value of the character pruned by this effect."
+      ],
+      "text": "AUTO【FIELD】:The Lv of this card changes to the R of this card.\nACTI【HAND】:You prune 1 of y"
+    },
+    {
+      "card_no": "SP01-041",
+      "set": "SP01",
+      "reason": "partial parse — 2/4 clause(s) unmapped",
+      "unmapped": [
+        "cond-tail → no clause→op rule: you move 1 of your opponent's characters with Power4000 or l",
+        "cond-tail → no clause→op rule: you prune that character."
+      ],
+      "text": "AUTO【BATTLE】:Your opponent's character on FRONT gets R-X. X is the number of this card's a"
+    },
+    {
+      "card_no": "SP01-041",
+      "set": "SP01",
+      "reason": "partial parse — 2/4 clause(s) unmapped",
+      "unmapped": [
+        "cond-tail → no clause→op rule: you move 1 of your opponent's characters with Power4000 or l",
+        "cond-tail → no clause→op rule: you prune that character."
+      ],
+      "text": "AUTO【BATTLE】:Your opponent's character on FRONT gets R-X. X is the number of this card's a"
+    },
+    {
+      "card_no": "SP01-042",
+      "set": "SP01",
+      "reason": "partial parse — 2/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: ou prune the top 1 card of your deck",
+        "cond-tail → no clause→op rule: if this card's owner is your opponent, you prune the bottom "
+      ],
+      "text": "ACTI【BATTLE/ONCE PER TURN】:You prune the top 1 card of your deck. If you do, you draw 2 ca"
+    },
+    {
+      "card_no": "SP01-042",
+      "set": "SP01",
+      "reason": "partial parse — 2/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: ou prune the top 1 card of your deck",
+        "cond-tail → no clause→op rule: if this card's owner is your opponent, you prune the bottom "
+      ],
+      "text": "ACTI【BATTLE/ONCE PER TURN】:You prune the top 1 card of your deck. If you do, you draw 2 ca"
+    },
+    {
+      "card_no": "SP01-043",
+      "set": "SP01",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "discard parse fail: · You discard 1 of your cards in HAND"
+      ],
+      "text": "COUNTER·ACTI【BACK/ONCE PER TURN】:You discard 1 of your cards in HAND. If you do, you may p"
+    },
+    {
+      "card_no": "SP01-043",
+      "set": "SP01",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "discard parse fail: · You discard 1 of your cards in HAND"
+      ],
+      "text": "COUNTER·ACTI【BACK/ONCE PER TURN】:You discard 1 of your cards in HAND. If you do, you may p"
+    },
+    {
+      "card_no": "SP01-044",
+      "set": "SP01",
+      "reason": "partial parse — 1/4 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen this card enters the field,"
+      ],
+      "text": "TRIG【BATTLE】:When this card enters the field, you may cover 1 of the characters with origi"
+    },
+    {
+      "card_no": "SP01-044",
+      "set": "SP01",
+      "reason": "partial parse — 1/4 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen this card enters the field,"
+      ],
+      "text": "TRIG【BATTLE】:When this card enters the field, you may cover 1 of the characters with origi"
+    },
+    {
+      "card_no": "SP01-045",
+      "set": "SP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "AUTO【BATTLE】:All the R of your characters on BATTLE change to X. X is the number of your c"
+    },
+    {
+      "card_no": "SP01-045",
+      "set": "SP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "AUTO【BATTLE】:All the R of your characters on BATTLE change to X. X is the number of your c"
+    },
+    {
+      "card_no": "SP01-046",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nTRIG【BATTLE】:When this card enters the field, you prune 1 of your opponent's charac"
+    },
+    {
+      "card_no": "SP01-047",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nAUTO【FIELD】:This card gets R+X and Power+X000. X is the number of this card's attac"
+    },
+    {
+      "card_no": "SP01-048",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nCOUNTER·ACTI【BASE/ONCE PER TURN】:You retreat 1 of your characters with 【Human】 in t"
+    },
+    {
+      "card_no": "SP01-049",
+      "set": "SP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "ACTI【BATTLE/ONCE PER TURN】:The player who has fewer characters on BATTLE than their oppone"
+    },
+    {
+      "card_no": "SP01-050",
+      "set": "SP01",
+      "reason": "partial parse — 1/4 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen this card enters the field by calling,"
+      ],
+      "text": "TRIG【FIELD】:When this card enters the field by calling, you may place 1 of your opponent's"
+    },
+    {
+      "card_no": "SP01-051",
+      "set": "SP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "AUTO【BATTLE】:If your opponent has the characters with Lv1 on the field, this card gets the"
+    },
+    {
+      "card_no": "SP01-052",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "AIR STRIKE\nAUTO【BATTLE】:Any Power-reductions to this card are doubled."
+    },
+    {
+      "card_no": "SP01-052",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "AIR STRIKE\nAUTO【BATTLE】:Any Power-reductions to this card are doubled."
+    },
+    {
+      "card_no": "SP01-053",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "BLOCK\nTRIG【HAND】:When your opponent's character with 【Human】 in its feature and original P"
+    },
+    {
+      "card_no": "SP01-054",
+      "set": "SP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "cond-tail → no clause→op rule: you prune that character."
+      ],
+      "text": "TRIG【BATTLE】:When your opponent's character takes BATTLE-BASE Move, that character gets Po"
+    },
+    {
+      "card_no": "SP01-055",
+      "set": "SP01",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "discard parse fail: you may discard 3 of your cards in HAND"
+      ],
+      "text": "TRIG【FIELD/ONCE PER TURN】:When this card takes BATTLE-BASE Move, you may discard 3 of your"
+    },
+    {
+      "card_no": "SP01-057",
+      "set": "SP01",
+      "reason": "partial parse — 2/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen your opponent's character with Lv2 and in its feature en",
+        "cond-tail → no clause→op rule: you retreat that character."
+      ],
+      "text": "TRIG【HAND】:When your opponent's character with Lv2 and 【Human】 in its feature enters the f"
+    },
+    {
+      "card_no": "SP01-058",
+      "set": "SP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "ACTI【FRONT/ONCE PER TURN】:If your opponent has the characters on WING, you discard the bot"
+    },
+    {
+      "card_no": "SP01-059",
+      "set": "SP01",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "cond-tail → no clause→op rule: that character gets Power+1000 this turn"
+      ],
+      "text": "ACTI【HAND】:You attach this card from HAND to 1 of the characters with 【Human】 in their fea"
+    },
+    {
+      "card_no": "SP01-060",
+      "set": "SP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "cond-tail → no clause→op rule: you place 1 of your characters with the same Lv as that set "
+      ],
+      "text": "TRIG【FIELD/ONCE PER TURN】:When this card takes BATTLE-BASE Move, you reveal 1 of your set "
+    },
+    {
+      "card_no": "SP01-061",
+      "set": "SP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "ACTI【HAND】:In your turn, if you did not call a character, and the number of your set cards"
+    },
+    {
+      "card_no": "SP01-061",
+      "set": "SP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "ACTI【HAND】:In your turn, if you did not call a character, and the number of your set cards"
+    },
+    {
+      "card_no": "SP01-062",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nACTI【BASE/ONCE PER TURN】:You prune 1 of your characters with 【Human】 in their featu"
+    },
+    {
+      "card_no": "SP01-062",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nACTI【BASE/ONCE PER TURN】:You prune 1 of your characters with 【Human】 in their featu"
+    },
+    {
+      "card_no": "SP01-063",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nTRIG【HAND】:When your character with 【Web】 in its feature enters the field, you may "
+    },
+    {
+      "card_no": "SP01-063",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nTRIG【HAND】:When your character with 【Web】 in its feature enters the field, you may "
+    },
+    {
+      "card_no": "SP01-063",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nTRIG【HAND】:When your character with 【Web】 in its feature enters the field, you may "
+    },
+    {
+      "card_no": "SP01-063",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nTRIG【HAND】:When your character with 【Web】 in its feature enters the field, you may "
+    },
+    {
+      "card_no": "SP01-063",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nTRIG【HAND】:When your character with 【Web】 in its feature enters the field, you may "
+    },
+    {
+      "card_no": "SP01-064",
+      "set": "SP01",
+      "reason": "partial parse — 1/5 clause(s) unmapped",
+      "unmapped": [
+        "stat_self parse fail: this card gets the ability this turn"
+      ],
+      "text": "ACTI【FIELD/ONCE PER TURN】：You swap this card on the field and the character this card is a"
+    },
+    {
+      "card_no": "SP01-064",
+      "set": "SP01",
+      "reason": "partial parse — 1/5 clause(s) unmapped",
+      "unmapped": [
+        "stat_self parse fail: this card gets the ability this turn"
+      ],
+      "text": "ACTI【FIELD/ONCE PER TURN】：You swap this card on the field and the character this card is a"
+    },
+    {
+      "card_no": "SP01-065",
+      "set": "SP01",
+      "reason": "partial parse — 1/5 clause(s) unmapped",
+      "unmapped": [
+        "stat_self parse fail: this card gets the ability this turn"
+      ],
+      "text": "ACTI【FIELD/ONCE PER TURN】：You swap this card on the field and the character this card is a"
+    },
+    {
+      "card_no": "SP01-065",
+      "set": "SP01",
+      "reason": "partial parse — 1/5 clause(s) unmapped",
+      "unmapped": [
+        "stat_self parse fail: this card gets the ability this turn"
+      ],
+      "text": "ACTI【FIELD/ONCE PER TURN】：You swap this card on the field and the character this card is a"
+    },
+    {
+      "card_no": "SP01-066",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nACTI【BATTLE/ONCE PER TURN】:You discard 1 of your cards in HAND. If you do, you plac"
+    },
+    {
+      "card_no": "SP01-067",
+      "set": "SP01",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: he character this card is attched to loses its effects"
+      ],
+      "text": "AUTO【FIELD】:The character this card is attched to loses its effects.\nTRIG【BATTLE】:When thi"
+    },
+    {
+      "card_no": "SP01-067",
+      "set": "SP01",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: he character this card is attched to loses its effects"
+      ],
+      "text": "AUTO【FIELD】:The character this card is attched to loses its effects.\nTRIG【BATTLE】:When thi"
+    },
+    {
+      "card_no": "SP01-069",
+      "set": "SP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "COUNTER·ACTI【BASE/ONCE PER TURN】:1 of your characters with 【Web】 in their features on the "
+    },
+    {
+      "card_no": "SP01-069",
+      "set": "SP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "COUNTER·ACTI【BASE/ONCE PER TURN】:1 of your characters with 【Web】 in their features on the "
+    },
+    {
+      "card_no": "SP01-070",
+      "set": "SP01",
+      "reason": "partial parse — 2/5 clause(s) unmapped",
+      "unmapped": [
+        "cond-tail → no clause→op rule: you place that character onto your BATTLE",
+        "cond-tail → discard parse fail: you discard 1 of your cards in HAND extra."
+      ],
+      "text": "TRIG【FIELD】:When you attach this card to a character on the field, you discard the top 3 c"
+    },
+    {
+      "card_no": "SP01-071",
+      "set": "SP01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE\nTRIG【BATTLE】:When the Power of the character this card is attached to is decreased "
+    },
+    {
+      "card_no": "SP01-073",
+      "set": "SP01",
+      "reason": "partial parse — 1/2 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: f your opponent has the characters with in their features on"
+      ],
+      "text": "AUTO【BATTLE】:If your opponent has the characters with 【Web】 in their features on BATTLE, t"
+    },
+    {
+      "card_no": "SP01-074",
+      "set": "SP01",
+      "reason": "partial parse — 2/3 clause(s) unmapped",
+      "unmapped": [
+        "discard parse fail: You discard 1 of your characters with in their fea",
+        "cond-tail → no clause→op rule: you retreat 1 of your opponent's set cards in BASE randomly."
+      ],
+      "text": "TRIG【FIELD】:When you attach this card to a character on the field, you discard the top 2 c"
+    },
+    {
+      "card_no": "SP01-074",
+      "set": "SP01",
+      "reason": "partial parse — 2/3 clause(s) unmapped",
+      "unmapped": [
+        "discard parse fail: You discard 1 of your characters with in their fea",
+        "cond-tail → no clause→op rule: you retreat 1 of your opponent's set cards in BASE randomly."
+      ],
+      "text": "TRIG【FIELD】:When you attach this card to a character on the field, you discard the top 2 c"
+    },
+    {
+      "card_no": "SP01-075",
+      "set": "SP01",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: ou prune 1 of your characters with in their features in HAND"
+      ],
+      "text": "ACTI【BACK/ONCE PER TURN】:You prune 1 of your characters with 【Human】 in their features in "
+    },
+    {
+      "card_no": "SP01-076",
+      "set": "SP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "ACTI【RETREAT】:You retreat 1 of your cards with 【Human】 in their features on BATTLE. If you"
+    },
+    {
+      "card_no": "SP01-077",
+      "set": "SP01",
+      "reason": "partial parse — 1/3 clause(s) unmapped",
+      "unmapped": [
+        "cond-tail → no clause→op rule: you prune all your characters with in their features in RETR"
+      ],
+      "text": "AUTO【FIELD】：The character this card is attached to can only attack your opponent's FRONT o"
+    },
+    {
+      "card_no": "SP01-078",
+      "set": "SP01",
+      "reason": "no op clauses (conditions only or unparsed)",
+      "text": "ACTI【BASE/ONCE PER TURN】:You place 1 of your characters with 【Web】 in their features from "
+    },
+    {
+      "card_no": "SP01-080",
+      "set": "SP01",
+      "reason": "partial parse — 1/4 clause(s) unmapped",
+      "unmapped": [
+        "no clause→op rule: hen this card enters the field by calling,"
+      ],
+      "text": "TRIG【BATTLE】:When this card enters the field by calling, you may move 1 of your opponent's"
+    },
+    {
+      "card_no": "TB01-001",
+      "set": "TB01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE COUNTER\nTRIG【FIELD】：When this card enters the field by calling, you may prune 1 of "
+    },
+    {
+      "card_no": "TB01-001",
+      "set": "TB01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE COUNTER\nTRIG【FIELD】：When this card enters the field by calling, you may prune 1 of "
+    },
+    {
+      "card_no": "TB01-001",
+      "set": "TB01",
+      "reason": "no trig/slot tag",
+      "text": "UNIQUE COUNTER\nTRIG【FIELD】：When this card enters the field by calling, you may prune 1 of "
+    }
+  ]
+}

@@ -1,0 +1,411 @@
+{
+  "totals": {
+    "cards": 367,
+    "clauses": 951,
+    "classified": 875,
+    "unclassified": 76
+  },
+  "byMod": {
+    "prune": 76,
+    "retreat_own": 122,
+    "discard": 47,
+    "stat_opp_chars": 51,
+    "when_condition": 134,
+    "stat_self": 64,
+    "if_you_do": 64,
+    "set_card": 74,
+    "attach": 94,
+    "draw": 29,
+    "can_attack_again": 3,
+    "you_may": 32,
+    "cannot_same_name": 8,
+    "effect_persistent": 8,
+    "swap": 15,
+    "put_top_deck": 1,
+    "move_grant": 22,
+    "immune_low_lv": 3,
+    "power_counter": 13,
+    "this_turn_only": 3,
+    "stat_exact": 2,
+    "reveal": 1,
+    "to_void": 8,
+    "return_to_hand": 1
+  },
+  "shapes": {
+    "prune": 46,
+    "retreat_own": 71,
+    "discard": 29,
+    "stat_opp_chars": 31,
+    "when_condition": 77,
+    "stat_self": 28,
+    "if_you_do": 24,
+    "set_card": 52,
+    "attach": 51,
+    "draw": 12,
+    "can_attack_again": 2,
+    "you_may": 21,
+    "cannot_same_name": 1,
+    "effect_persistent": 3,
+    "swap": 8,
+    "put_top_deck": 1,
+    "move_grant": 11,
+    "immune_low_lv": 1,
+    "power_counter": 6,
+    "this_turn_only": 3,
+    "stat_exact": 1,
+    "reveal": 1,
+    "to_void": 3,
+    "return_to_hand": 1
+  },
+  "unclassifiedShapes": [
+    {
+      "shape": "this card gets the ability this turn.",
+      "n": 5,
+      "examples": [
+        "SP01-022",
+        "SP01-022",
+        "SP01-022"
+      ]
+    },
+    {
+      "shape": "this card gets the ability this turn",
+      "n": 4,
+      "examples": [
+        "SP01-064",
+        "SP01-064",
+        "SP01-065"
+      ]
+    },
+    {
+      "shape": "VAR is the Power of this card.",
+      "n": 3,
+      "examples": [
+        "BP01-003",
+        "BP01-003",
+        "BP01-003"
+      ]
+    },
+    {
+      "shape": "VAR is the number of your opponent's characters in BATTLE.",
+      "n": 3,
+      "examples": [
+        "BP01-004",
+        "BP01-004",
+        "SD01-004"
+      ]
+    },
+    {
+      "shape": "VAR is the Power of, N of your opponent's characters in the field.",
+      "n": 3,
+      "examples": [
+        "SD03-001",
+        "SD03-001",
+        "SD03-001"
+      ]
+    },
+    {
+      "shape": "VAR is the Lv value of the character pruned by this effect.",
+      "n": 3,
+      "examples": [
+        "SP01-040",
+        "SP01-062",
+        "SP01-062"
+      ]
+    },
+    {
+      "shape": "All your characters with in their features in WING get Power±N",
+      "n": 2,
+      "examples": [
+        "BP01-031",
+        "BP01-031"
+      ]
+    },
+    {
+      "shape": "VAR is the number of your characters with in their features in the field.",
+      "n": 2,
+      "examples": [
+        "BP01-046",
+        "BP01-046"
+      ]
+    },
+    {
+      "shape": "VAR is the number of your cards with in their features in the field.",
+      "n": 2,
+      "examples": [
+        "BP01-073",
+        "BP01-073"
+      ]
+    },
+    {
+      "shape": "All your characters with in their features in HAND get Lv±N.",
+      "n": 2,
+      "examples": [
+        "BP01-075",
+        "BP01-075"
+      ]
+    },
+    {
+      "shape": "VAR is the Power of that character",
+      "n": 2,
+      "examples": [
+        "BP01-093",
+        "BP01-093"
+      ]
+    },
+    {
+      "shape": "becomes N.",
+      "n": 2,
+      "examples": [
+        "BP01-097",
+        "BP01-097"
+      ]
+    },
+    {
+      "shape": "VAR is the number of your opponent's characters on BATTLE.",
+      "n": 2,
+      "examples": [
+        "SP01-011",
+        "SP01-011"
+      ]
+    },
+    {
+      "shape": "VAR is the Power value of the character pruned by this effect.",
+      "n": 2,
+      "examples": [
+        "SP01-023",
+        "SP01-023"
+      ]
+    },
+    {
+      "shape": "AUTO For each character with a different name from this card and in its feature in your VOID,",
+      "n": 2,
+      "examples": [
+        "SP01-027",
+        "SP01-027"
+      ]
+    },
+    {
+      "shape": "AUTO Each character on your opponent's field gets Power±N000",
+      "n": 2,
+      "examples": [
+        "SP01-032",
+        "SP01-032"
+      ]
+    },
+    {
+      "shape": "All the R of your characters on BATTLE change to VAR",
+      "n": 2,
+      "examples": [
+        "SP01-045",
+        "SP01-045"
+      ]
+    },
+    {
+      "shape": "VAR is the number of your characters with original Power500 on BATTLE.",
+      "n": 2,
+      "examples": [
+        "SP01-045",
+        "SP01-045"
+      ]
+    },
+    {
+      "shape": "AUTO Any Power±Nreductions to this card are doubled.",
+      "n": 2,
+      "examples": [
+        "SP01-052",
+        "SP01-052"
+      ]
+    },
+    {
+      "shape": "The character this card is attched to loses its effects",
+      "n": 2,
+      "examples": [
+        "SP01-067",
+        "SP01-067"
+      ]
+    },
+    {
+      "shape": "N of your characters with in their features on the field gets R+N and Power±N this turn",
+      "n": 2,
+      "examples": [
+        "SP01-069",
+        "SP01-069"
+      ]
+    },
+    {
+      "shape": "All the R of your characters with in their names in BATTLE change to N.",
+      "n": 1,
+      "examples": [
+        "BP01-024"
+      ]
+    },
+    {
+      "shape": "VAR is the number of your yellow characters in BATTLE except this card.",
+      "n": 1,
+      "examples": [
+        "BP01-036"
+      ]
+    },
+    {
+      "shape": "VAR is the value of Power increasing this time.",
+      "n": 1,
+      "examples": [
+        "BP01-045"
+      ]
+    },
+    {
+      "shape": "In your turn, the distance between this card and your opponent's character in BACK changes to N.",
+      "n": 1,
+      "examples": [
+        "BP01-049"
+      ]
+    },
+    {
+      "shape": "For every N Power your opponent's character in FRONT has,",
+      "n": 1,
+      "examples": [
+        "BP01-055"
+      ]
+    },
+    {
+      "shape": "VAR is the Lv of that character in BATTLE",
+      "n": 1,
+      "examples": [
+        "BP01-069"
+      ]
+    },
+    {
+      "shape": "Your character with in its feature in FRONT gets Power±N.",
+      "n": 1,
+      "examples": [
+        "BP01-086"
+      ]
+    },
+    {
+      "shape": "VAR is the total value of the Power of your characters in BATTLE.",
+      "n": 1,
+      "examples": [
+        "BP01-090"
+      ]
+    },
+    {
+      "shape": "VAR is the number of your characters in VOID.",
+      "n": 1,
+      "examples": [
+        "EB01-008"
+      ]
+    },
+    {
+      "shape": "VAR is the number of your characters with in their features in BATTLE except this card.",
+      "n": 1,
+      "examples": [
+        "PB01-004"
+      ]
+    },
+    {
+      "shape": "VAR is the number of your cards in HAND.",
+      "n": 1,
+      "examples": [
+        "PB01-006"
+      ]
+    },
+    {
+      "shape": "In your opponent's Battle Phase,",
+      "n": 1,
+      "examples": [
+        "SD01-004"
+      ]
+    },
+    {
+      "shape": "This card is not going to be retreated by Both Lose",
+      "n": 1,
+      "examples": [
+        "SD02-003"
+      ]
+    },
+    {
+      "shape": "VAR is the total Lv values of the cards pruned by this effect.",
+      "n": 1,
+      "examples": [
+        "SP01-006"
+      ]
+    },
+    {
+      "shape": "For each character with Lv6 you have on the field, any Power±Nreductions to all your characters on BATTLE are reduced by N.",
+      "n": 1,
+      "examples": [
+        "SP01-013"
+      ]
+    },
+    {
+      "shape": "In Battle Phase,",
+      "n": 1,
+      "examples": [
+        "SP01-018"
+      ]
+    },
+    {
+      "shape": "VAR is the number of abilities your opponent's characters on BATTLE have.",
+      "n": 1,
+      "examples": [
+        "SP01-018"
+      ]
+    },
+    {
+      "shape": "You cover, N of your opponent's characters with LvX or below and in their features in BASE",
+      "n": 1,
+      "examples": [
+        "SP01-020"
+      ]
+    },
+    {
+      "shape": "VAR is the Lv value of this card",
+      "n": 1,
+      "examples": [
+        "SP01-020"
+      ]
+    },
+    {
+      "shape": "The Lv of this card changes to the R of this card",
+      "n": 1,
+      "examples": [
+        "SP01-040"
+      ]
+    },
+    {
+      "shape": "The player who has fewer characters on BATTLE than their opponent draws N card",
+      "n": 1,
+      "examples": [
+        "SP01-049"
+      ]
+    },
+    {
+      "shape": "this card gets the ability",
+      "n": 1,
+      "examples": [
+        "SP01-051"
+      ]
+    },
+    {
+      "shape": "this card gets the ability .",
+      "n": 1,
+      "examples": [
+        "SP01-051"
+      ]
+    },
+    {
+      "shape": "VAR is the original R of that character.",
+      "n": 1,
+      "examples": [
+        "SP01-053"
+      ]
+    },
+    {
+      "shape": "VAR is the number of your opponent's characters on WING.",
+      "n": 1,
+      "examples": [
+        "SP01-058"
+      ]
+    }
+  ]
+}
