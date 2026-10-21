@@ -300,15 +300,15 @@
     const p = state.players[side];
     while (p.hand.length < n) {
       if (p.deck.length === 0) {
-        // Deck-out: opponent wins
-        const opp = side === "P" ? "A" : "P";
-        if (!state.winner) {
-          log(state, `${p.name} 牌組耗盡！${state.players[opp].name} 獲勝（deck-out）`, opp);
-          state.winner = opp;
-        }
+        // v3.18: deck 空 = 官方 P8 勝利條件「敵方卡組為 0 張」。
+        // 唔再喺呢度自己設 winner —— 統一交畀 checkWin()，因為 deck 可以
+        // 因為其他原因（prune top N）歸零，唔止抽牌。
+        checkWin(state);
         return;
       }
       p.hand.push(p.deck.shift());
+      checkWin(state);   // 抽出最後一張後，敵方即刻達到「卡組為 0」
+      if (state.winner) return;
     }
   }
 
@@ -316,14 +316,12 @@
     const p = state.players[side];
     for (let i = 0; i < n; i++) {
       if (p.deck.length === 0) {
-        const opp = side === "P" ? "A" : "P";
-        if (!state.winner) {
-          log(state, `${p.name} 牌組耗盡！${state.players[opp].name} 獲勝（deck-out）`, opp);
-          state.winner = opp;
-        }
+        checkWin(state);
         return;
       }
       p.hand.push(p.deck.shift());
+      checkWin(state);
+      if (state.winner) return;
     }
   }
 
@@ -459,8 +457,15 @@
   // Returns Lv a card occupies on field (default card.level).
   // Some cards have AUTO Lv-modifiers — we apply `_lvMod` if set
   // by those effects (real implementation is partial).
+  // v3.18 — 蓋卡一律計作 Lv1（官方規則書 P14 名詞 3）
+  //   「若玩家進行Lv4或以上角色的號召，則該玩家可以撤退1張或以上蓋卡來滿足
+  //    該角色的所有或部分號召需求，此時每張蓋卡作為1張Lv1的卡牌。」
+  // 原文明確講「作為 1 張 Lv1」，而且冇任何時機限制（唔限上回合蓋放）。
+  // 之前 callCard() 用 inline `c._faceDown ? 1 : cardEffectiveLv(c)` 補救，
+  // 但所有其他讀 Lv 嘅地方（filter `Lv<=N`、效果條件）都會漏 → 統一收喺呢度。
   function cardEffectiveLv(card) {
     if (!card) return 0;
+    if (card._faceDown) return 1;                 // 蓋卡 = Lv1，唔受 _lvMod 影響
     return card.level + (card._lvMod || 0);
   }
 
@@ -867,14 +872,43 @@
     checkWin(state);
   }
 
+  // =============================================================
+  // v3.18 — 勝利條件（官方規則書 P8）
+  //
+  // 「若我方滿足以下其中一個條件，則我方獲得遊戲勝利，此時遊戲結束。
+  //    ◆我方時間線存在 9 張衝擊卡。
+  //    ◆敵方卡組為 0 張。」
+  //
+  // 注意措辭：條件係「**敵方**卡組為 0」，即係對手卡組歸零 → 我方贏。
+  // 呢個唔係「抽唔到牌所以輸」，而係一個獨立嘅勝利條件，所以：
+  //   - 檢查時機 = 任何可以令 deck 變 0 嘅操作之後（唔淨係抽牌）
+  //   - 卡組剩 1 張但效果要求抽 2 張 → 抽完變 0 → 即刻觸發（唔關抽唔抽得成事）
+  //   - primal top N of deck 令 deck 變 0 → 一樣觸發
+  // =============================================================
   function checkWin(state) {
     if (state.winner) return;
-    if (state.players.P.timeline.length >= RUSH_TO_WIN) {
+    const P = state.players.P, A = state.players.A;
+    // 條件 1：時間線 9 張衝擊卡
+    if (P.timeline.length >= RUSH_TO_WIN) {
       state.winner = "P";
-      log(state, `時間線滿 9 張，Player 獲勝！`);
-    } else if (state.players.A.timeline.length >= RUSH_TO_WIN) {
+      log(state, `Player 時間線存在 9 張衝擊卡 → Player 獲勝`);
+      return;
+    }
+    if (A.timeline.length >= RUSH_TO_WIN) {
       state.winner = "A";
-      log(state, `時間線滿 9 張，AI 獲勝！`);
+      log(state, `AI 時間線存在 9 張衝擊卡 → AI 獲勝`);
+      return;
+    }
+    // 條件 2：敵方卡組為 0 張
+    if (P.deck.length === 0) {
+      state.winner = "A";
+      log(state, `Player 卡組為 0 張 → AI 獲勝（官方規則 P8）`, "A");
+      return;
+    }
+    if (A.deck.length === 0) {
+      state.winner = "P";
+      log(state, `AI 卡組為 0 張 → Player 獲勝（官方規則 P8）`, "P");
+      return;
     }
   }
 

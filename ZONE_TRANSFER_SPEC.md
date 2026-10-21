@@ -308,23 +308,56 @@ V2 嘅成本係 prune → prune 會令卡進 VOID → 可能觸發「進 VOID」
 
 **規則**：`zone_transfer` 要喺 op 開始前 snapshot `sourceCard`，全程用 snapshot，唔好中途 re-lookup。
 
-### 5.2 V4：`orderBy: lowest_lv` 有並列
+### 5.2 V4：`orderBy: lowest_lv` 有並列 → 預設控制方揀
 
-兩張都係最低 Lv 時，官方規則書**冇明文**。建議：由控制方揀（`playerChooses: true`），並喺 spec 標記為**待官方釋疑**。
+兩張都係最低 Lv 時，官方規則書**冇明文**。
 
-### 5.3 牌組不足
+**決定（Aaron 2026-10-21）：卡效冇特別講 → 預設由控制方揀。**
 
-V4 `prune top 3` 但牌組只有 2 張。規則書冇講 prune 超出上限點算。
+即係 `orderBy` 唔會自動 tie-break，而係當有多個合法目標（無論係 Lv 並列與否）就 `playerChooses: true`。呢個同規則書一貫做法一致 —— 效果文字冇指定嘅選擇權，歸控制方。
 
-**保守做法**：`prune top N of deck` = 抽到幾多 prune 幾多（`min(N, deck.length)`），全部進 VOID，唔失敗。呢個同「抽牌不足即輸」唔同 —— prune 唔涉及抽牌。
+### 5.3 牌組不足 —— 規則書 P8 已答，唔再係開放問題
 
-> ⚠️ **待確認**：呢個係假設，需要 Aaron 對照官方或實卡 FAQ 確認。
+**P8 勝利條件原文：**
 
-### 5.4 同一個 op 移多張卡（V7 `all`）
+> 若我方滿足以下其中一個條件，則我方獲得遊戲勝利，此時遊戲結束。
+> ◆我方時間線存在 9 張衝擊卡。
+> ◆**敵方卡組為 0 張。**
 
-`prune all (Web) in RETREAT` 可能 0 張。0 張唔算失敗（效果仍然「完成」），但 `If you do` 鏈要判定為**成功**（因為 prune 指令已執行）。
+所以 `prune top 3 of deck` 而牌組只剩 2 張：
 
-> ⚠️ **待確認**：`prune all` 移 0 張，`If you do` 算唔算成立？
+1. prune 2 張（`min(N, deck.length)`）
+2. deck 變 0
+3. **即刻觸發「敵方卡組為 0」→ 對手獲勝**
+
+即係 prune 唔會「失敗」，但會**直接令自己輸**。玩家要有心理準備：V4（Uncle Ben）呢個成本有可能自殺。
+
+> **v3.18 code 修正**：舊 `checkWin()` 完全冇檢查卡組歸零，只在 `drawN`/`drawTo` 內部順手設 winner。已改成 `checkWin()` 統一檢查，並喺每次 `deck.shift()` 之後呼叫 —— 因為 deck 可以因為 prune 而歸零，唔止抽牌。
+
+### 5.4 `prune all` 移 0 張 → `If you do` 算唔算成立？
+
+**規則書冇明文覆蓋呢個情況。**
+
+受影響卡：SP01-077「Reversal of Multiverse」Spider-Punk
+
+```
+you prune all your characters with 【Web】 in their features in RETREAT
+or
+you place all your characters with 【Web】 in their features from VOID into your RETREAT
+```
+
+如果 RETREAT 冇 Web 角色 → prune 0 張。
+
+**兩個可能解讀：**
+
+| 解讀 | 「If you do」判定 | 影響 |
+|---|---|---|
+| A. 指令已執行（即使 0 張）| 成立 | 另一邊 `or` 分支亦唔會觸發 |
+| B. 冇實際動作 = 未做到 | 不成立 | 效果整體冇效 |
+
+**建議取 A**（「指令已執行」語義）—— 因為 `prune all N` 係一個**完整的指令**，唔係「嘗試 prune 並需成功」。如果取 B，玩家會出現「明明寫 all 但因為冇目標而靜靜哋冇事發生」嘅怪異體驗。
+
+> ⚠️ **仍需 Aaron 決定或查官方 FAQ**。console 實卡玩家如果有 FAQ 可以確認。
 
 ---
 
@@ -393,12 +426,32 @@ attach/detach 唔止改 state，仲要改：
 
 ---
 
-## 10. 待確認問題（需要 Aaron 決定或查官方 FAQ）
+## 10. 待確認問題（2026-10-21 更新：由 4 條減到 1 條）
 
-1. `prune top N of deck` 而牌組不足 N 張 → 點算？（§5.3 假設：prune 幾多算幾多）
-2. `prune all` 移 0 張 → `If you do` 算唔算成立？（§5.4）
-3. `orderBy: lowest_lv` 並列 → 由邊個揀？（§5.2 假設：控制方）
-4. `to: "base"` 之後，該卡**當回合**可唔可以即刻用 Lv1 支付其他號召？（規則書講「可以撤退1張或以上蓋卡來滿足」，但冇講時機限制）
+### 已解決（規則書有答案）
+
+| # | 問題 | 答案 | 來源 |
+|---|---|---|---|
+| ~~1~~ | `prune top N` 牌組不足 | prune `min(N, deck.length)`；deck 變 0 → **對手即刻贏** | P8 |
+| ~~3~~ | `orderBy` 並列邊個揀 | **預設控制方**（卡效冇講就歸控制方）| Aaron 指示 |
+| ~~4~~ | 蓋卡當回合可否即用 Lv1 | **可以**，無時機限制 | P14 名詞 3 |
+
+### 仍未解決（1 條）
+
+**`prune all` 移 0 張時，`If you do` 算唔算成立？**
+
+- 受影響：SP01-077（V7，`or` 二選一其中一邊）
+- 規則書冇覆蓋「0 張」情況
+- 建議取「指令已執行 = 成立」（解讀 A，見 §5.4）
+- **需要 Aaron 決定，或查官方 FAQ / 實卡玩家**
+
+### 補充：蓋卡 Lv1 cost 的原文依據
+
+**P14 名詞 3：**
+
+> ◆若玩家進行Lv4或以上角色的號召，則該玩家可以撤退1張或以上蓋卡來滿足該角色的所有或部分號召需求，此時**每張蓋卡作為1張Lv1的卡牌**。
+
+原文**冇任何時機限制**（例如「上回合蓋放」），所以當回合蓋放嘅卡即刻可以當 Lv1 用。`retreatUids` 計數時每張 `_faceDown` 卡算 Lv1。
 
 ---
 
