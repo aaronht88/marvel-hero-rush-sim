@@ -119,10 +119,37 @@
     state.log.push({ side: side || null, msg });
   }
 
+  // =============================================================
+  // v3.16 — Seedable RNG (card-game skill: "Unseeded shuffle in a game that
+  // needs replays/undo → can't reproduce. Use a seeded RNG.")
+  // 之前全部用 Math.random()，令 (a) 測試 flaky (b) 無法 replay (c) 無法 debug。
+  // 換成 mulberry32 — 細、快、夠用於 TCG 洗牌。
+  // Math.random() 保留喺 _uid 生成（同樣要 seed？→ uid 改用同一 rng 更好，
+  // 但 _uid 唔影響 game outcome，所以保留 Math.random 避免 online replay
+  // 因為 uid collision 而失效）。
+  // =============================================================
+  let _rng = null;
+  function makeRng(seed) {
+    let a = seed >>> 0;
+    return function () {
+      a |= 0; a = (a + 0x6d2b79f5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  // setSeed(n) — deterministic mode：之後所有 shuffle 用同一 stream
+  // setSeed(null) — 回到 Math.random()（production default）
+  function setSeed(n) {
+    _rng = (n === null || n === undefined) ? null : makeRng(n);
+    return _rng ? `seeded:${n}` : "unseeded";
+  }
+  function rand() { return _rng ? _rng() : Math.random(); }
+
   // Fisher-Yates shuffle（共用；mulligan / newPlayer / buildRushDeck 一致）
   function fisherYates(arr) {
     for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = Math.floor(rand() * (i + 1));
       [arr[i], arr[j]] = [arr[j], arr[i]];
     }
     return arr;
@@ -164,15 +191,10 @@
     if (ownPool.length + bpPool.length === 0) {
       return Array.from({ length: RUSH_DECK_SIZE }, () => ({ _uid: "rp" + Math.random().toString(36).slice(2, 8) }));
     }
-    // Shuffle each pool independently.
-    const shuffle = arr => {
-      const a = arr.slice();
-      for (let i = a.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [a[i], a[j]] = [a[j], a[i]];
-      }
-      return a;
-    };
+    // Shuffle each pool independently. NOTE: copy first — ownPool/bpPool are
+// module-level caches; fisherYates mutates in place and would corrupt them
+    // across games (and break seeded-RNG determinism between calls).
+    const shuffle = arr => fisherYates(arr.slice());
     const ownShuffled = shuffle(ownPool);
     const bpShuffled = shuffle(bpPool);
     const out = [];
@@ -1114,6 +1136,43 @@
   // =============================================================
   // PUBLIC API
   // =============================================================
+  // =============================================================
+  // v3.16 — Zone invariant assert (card-game skill pitfall #1:
+  // "A card existing in two zones at once → duplication/loss bugs.
+  //  Enforce 'exactly one zone'; assert by identity/unique instance id,
+  //  NOT == (equal dicts with duplicate card_no false-positive).")
+  // collectZoneCards(state) — 每張卡 instance 只應該出現喺一個 zone
+  // assertZoneInvariant(state) — 開發/debug 用；回傳 {ok, dupes:[...]}
+  // =============================================================
+  function collectZoneCards(p) {
+    const out = [];
+    function push(arr, zone) { if (Array.isArray(arr)) arr.forEach(c => { if (c) out.push({ zone, card: c }); }); }
+    push(p.deck, "deck"); push(p.hand, "hand"); push(p.rushDeck, "rushDeck");
+    push(p.retreat, "retreat"); push(p.voidZone, "voidZone");
+    push(p.base && p.base.faceDown, "base.faceDown");
+    const b = p.battle || {};
+    if (b.front) out.push({ zone: "battle.front", card: b.front });
+    if (b.back) out.push({ zone: "battle.back", card: b.back });
+    (b.wing || []).forEach((w, i) => { if (w) out.push({ zone: `battle.wing[${i}]`, card: w }); });
+    // NOTE: don't shadow the module-level `uid` counter — name it hostUid
+    Object.keys(p.attached || {}).forEach(hostUid => push(p.attached[hostUid], `attached:${hostUid}`));
+    return out;
+  }
+  function assertZoneInvariant(state) {
+    const seen = new Map();   // _uid -> [zoneName,...]
+    (["P", "A"]).forEach(side => {
+      collectZoneCards(state.players[side]).forEach(({ zone, card }) => {
+        if (!card) return;
+        const k = card._uid || ("#" + side + ":" + card.card_no);
+        if (!seen.has(k)) seen.set(k, []);
+        seen.get(k).push(zone + "@" + side);
+      });
+    });
+    const dupes = [];
+    seen.forEach((zones, uid) => { if (zones.length > 1) dupes.push({ uid, zones }); });
+    return { ok: dupes.length === 0, total: seen.size, dupes };
+  }
+
   global.MHR_ENGINE = {
     initGame,
     mulligan,
@@ -1157,5 +1216,9 @@
     HAND_SIZE_MAX,
     BASE_SIZE_MAX,
     RUSH_DECK_SIZE,
+    // v3.16 (card-game skill)
+    setSeed,
+    assertZoneInvariant,
+    collectZoneCards,
   };
 })(window);
