@@ -314,6 +314,139 @@
     emitLog(state, `[效果未實裝] op:${opDef.op}（M2+ 補齊）`, side);
     return { ok: false, stub: true };
   }
+  // =============================================================
+  // v3.17 — CHOICE / CONDITIONAL-CHAIN primitives
+  //
+  // Audit (2026-10-21) found the two dominant blockers preventing effect
+  // coverage from scaling past the 15 hand-written descriptors:
+  //   "you may"     — 123 of 448 cards. Was silently swallowed by
+  //                    /(?:may )?/ in the legacy regex path: the engine
+  //                    ALWAYS executed the effect, so the player never got
+  //                    a choice. resolveOptionalEffect() was referenced in a
+  //                    comment but never implemented, and "OPTIONAL" was
+  //                    never logged anywhere.
+  //   "If you do"   — 180 of 448 cards. Conditional chains: the effect only
+  //                    proceeds if the PREVIOUS clause succeeded. A flat op
+  //                    list cannot express this.
+  //
+  // Both are now first-class descriptor primitives.
+  // =============================================================
+
+  // --- pending-choice plumbing -------------------------------------
+  // Effects that need a player decision are NOT executed inside runEffects
+  // (the engine is synchronous and the UI is not). Instead we park a
+  // "pending choice" on the state and let app.js render a prompt. Resolving
+  // it calls back into resumeChoice() with the player's answer.
+  function parkChoice(state, side, payload) {
+    if (!state.pendingChoices) state.pendingChoices = [];
+    state.pendingChoices.push(Object.assign({ side }, payload));
+    emitLog(state, `［選擇］${payload.prompt}`, side);
+    return { ok: true, pending: true };
+  }
+  function hasPending(state, side) {
+    return !!(state.pendingChoices && state.pendingChoices.some(c => c.side === side));
+  }
+
+  // op: { op:"optional", prompt, then:[...] }
+  // Asks the player whether to take the optional effect. When `auto` is set
+  // in the descriptor (used by AI / headless sim) it resolves immediately to
+  // auto rather than parking a prompt.
+  function opOptional(state, side, opDef, ctx) {
+    const inner = opDef.then || [];
+    // `auto` present → headless resolution (AI / batch sim): true = take it,
+    // false = decline it. Must be checked with `!== undefined` because
+    // `false` is a meaningful value, not "unset".
+    if (opDef.auto !== undefined) {
+      if (!opDef.auto) {
+        emitLog(state, `${ctx.source ? shortName(ctx.source) : ""}：放棄可選效果`, side);
+        return { ok: true, declined: true };
+      }
+      return runOpList(state, side, inner, ctx, opDef);
+    }
+    return parkChoice(state, side, {
+      kind: "optional",
+      prompt: opDef.prompt || "是否發動此效果？",
+      cardUid: ctx.source && ctx.source._uid,
+      cardName: ctx.source ? shortName(ctx.source) : "",
+      then: inner,
+      ctxSnapshot: snapshotCtx(ctx),
+    });
+  }
+
+  // op: { op:"if_you_do", do:[...], else:[...] }
+  // Runs `do`; if every op in it succeeds, `then` (or `do`'s own continuation)
+  // proceeds. `else` fires when the do-block fails.
+  function opIfYouDo(state, side, opDef, ctx) {
+    const r = runOpList(state, side, opDef.do || [], ctx, opDef);
+    if (r.ok) {
+      if (opDef.then) return runOpList(state, side, opDef.then, ctx, opDef);
+      return r;
+    }
+    if (opDef.else) return runOpList(state, side, opDef.else, ctx, opDef);
+    return { ok: false, err: r.err };
+  }
+
+  // Run a list of ops as an atomic-ish batch. Returns {ok, err}.
+  function runOpList(state, side, list, ctx, ownerOp) {
+    for (const o of list || []) {
+      const def = Object.assign({}, o);
+      def._sourceName = (ctx.source && shortName(ctx.source)) || "";
+      def._ctx = ctx;
+      const fn = OPS[def.op];
+      if (!fn) return { ok: false, err: `unknown op ${def.op}` };
+      const r = fn(state, side, def, ctx);
+      if (!r.ok) return r;
+      if (r.pending) return r;   // choice parked — stop the chain
+    }
+    return { ok: true };
+  }
+
+  // ctx contains card references; we cannot serialise them into a parked
+  // choice safely, so we store the source uid + minimal scalar fields.
+  function snapshotCtx(ctx) {
+    const out = {};
+    Object.keys(ctx).forEach(k => {
+      const v = ctx[k];
+      if (v == null) return;
+      const t = typeof v;
+      if (t === "number" || t === "boolean" || t === "string") out[k] = v;
+      else if (k === "source") out.sourceUid = v._uid;
+    });
+    return out;
+  }
+
+  // Called by app.js when the player answers a parked choice.
+  function resolveChoice(state, side, answer) {
+    if (!state.pendingChoices) return { ok: false, err: "no pending choice" };
+    const idx = state.pendingChoices.findIndex(c => c.side === side);
+    if (idx < 0) return { ok: false, err: "no pending choice for side " + side };
+    const ch = state.pendingChoices[idx];
+    state.pendingChoices.splice(idx, 1);
+    if (!answer.accept) {
+      emitLog(state, `${ch.cardName || ""}：放棄可選效果`, side);
+      return { ok: true, declined: true };
+    }
+    // rehydrate ctx
+    const ctx = Object.assign({}, ch.ctxSnapshot || {});
+    if (ch.cardUid) {
+      const p = state.players[side];
+      ctx.source = findCardByUid(state, side, ch.cardUid) || null;
+    }
+    const r = runOpList(state, side, ch.then || [], ctx, { op: "optional" });
+    refreshAutos(state);
+    return r;
+  }
+
+  function findCardByUid(state, side, uid) {
+    const p = state.players[side];
+    const scan = [].concat(
+      battleAll(p), p.hand.slice(), p.deck.slice(), p.retreat.slice(),
+      p.voidZone.slice(), p.base.faceDown.slice(), p.rushDeck.slice()
+    );
+    for (const c of scan) if (c && c._uid === uid) return c;
+    return null;
+  }
+
   const OPS = {
     draw: opDraw,
     power_mod: opPowerMod,
@@ -323,7 +456,10 @@
     r_mod: opRMod,
     lv_mod: opLvMod,
     cover_self: opCoverSelf,
-    // stubs
+    // v3.17 choice / conditional-chain
+    optional: opOptional,
+    if_you_do: opIfYouDo,
+    // stubs (declared so descriptors stay honest — they log, don't silently pass)
     move: opStub,
     discard: opStub,
     attach: opStub,
@@ -418,8 +554,13 @@
 
     // 排序 — active player first (caller 已是 active)，再按 timestamp（M1：hand 順序）
     // （多卡同時觸發排序留 M2）
+    // v3.17: once a choice is parked we must STOP firing further effects for this
+    // side — official rules resolve one decision at a time, and letting other
+    // effects resolve while a prompt is open would reorder the game log.
+    let pendingSeen = false;
 
     for (const { card, idx, eff } of candidates) {
+      if (pendingSeen) break;
       // once-per-turn gate 二次檢查（apply 過程可能再次入 queue）
       if (eff.once && flags.oncePerTurnUids[card._uid + "::" + idx]) continue;
 
@@ -442,17 +583,17 @@
       const costOk = resolveCost(state, side, eff.cost, ctx);
       if (!costOk.ok) continue;
 
-      // 3) ops (atomic batch)
-      let allOk = true;
-      for (const opDef of eff.ops) {
-        opDef._sourceName = shortName(card);
-        opDef._ctx = ctx;
-        const fn = OPS[opDef.op];
-        if (!fn) { allOk = false; break; }
-        const r = fn(state, side, opDef, ctx);
-        if (!r.ok) { allOk = false; break; }
+      // 3) ops (atomic batch) — v3.17 routes through runOpList so that nested
+      // optional/if_you_do blocks share exactly one execution path (and so a
+      // parked choice short-circuits the rest of the list).
+      const opRes = runOpList(state, side, eff.ops, ctx, { op: "root" });
+      if (!opRes.ok) continue;
+      // a pending choice means the rest of this effect waits for the player
+      if (opRes.pending) {
+        if (eff.once) flags.oncePerTurnUids[card._uid + "::" + idx] = true;
+        pendingSeen = true;
+        break;
       }
-      if (!allOk) continue;
 
       // 4) once-per-turn
       if (eff.once) flags.oncePerTurnUids[card._uid + "::" + idx] = true;
@@ -538,7 +679,12 @@
   global.MHR_EFFECTS = {
     runEffects,
     refreshAutos,
+    // v3.17 — choice / conditional-chain API (app.js renders the prompt,
+    // then calls resolveChoice(state, side, {accept:bool}))
+    hasPendingChoice: hasPending,
+    resolveChoice,
+    pendingChoices: state => (state && state.pendingChoices) || [],
     // exported for test
-    _internal: { resolveVar, evalCond, matchTrigger, OPS, collectTargets },
+    _internal: { resolveVar, evalCond, matchTrigger, OPS, collectTargets, runOpList, snapshotCtx, findCardByUid },
   };
 })(window);

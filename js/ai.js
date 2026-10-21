@@ -13,6 +13,22 @@
   }
 
   // M4: 參數化 side — 測試 harness 可以用同一套 AI 自動打雙方（P vs A 全自動對戰驗證）
+  // v3.17 — 「you may」optional choice is a PLAYER decision. The AI never
+    // initiates it (only the human side's on-play effects fire from aiActions
+    // when it calls one of OUR cards — rare), but a parked choice would
+    // otherwise stall the turn. Auto-decline anything parked for this side,
+    // with a bounded loop so a self-reparking effect can't spin forever.
+    function aiResolveChoices(state, side, maxRounds) {
+      const FX = global.MHR_EFFECTS;
+      if (!FX || !FX.hasPendingChoice) return 0;
+      let n = 0, limit = maxRounds || 8;
+      while (FX.hasPendingChoice(state, side) && n < limit) {
+        FX.resolveChoice(state, side, { accept: false });
+        n++;
+      }
+      return n;
+    }
+
   function aiTurnFor(state, side) {
     aiActions(state, side);
     if (state.winner) return;
@@ -23,6 +39,8 @@
     if (state.winner) return;
     // (6) 回合結束
     E.endTurn(state);
+    // v3.17: clear anything parked during our own turn before handing over
+    aiResolveChoices(state, side);
   }
 
   // v3.9: 抽離 ACTION 階段行動（基地部署/號召/戰基移動），畀手動模式分步播放 AI 回合
@@ -187,5 +205,5 @@
     return results;
   }
 
-  global.MHR_AI = { aiTurn, aiTurnFor, aiActions, aiBattlePhase, aiMulligan, runAutoSim };
+  global.MHR_AI = { aiTurn, aiTurnFor, aiActions, aiBattlePhase, aiMulligan, runAutoSim, aiResolveChoices };
 })(window);

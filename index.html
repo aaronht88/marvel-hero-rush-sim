@@ -2,16 +2,16 @@
 <html lang="zh-HK">
 <head>
 <meta charset="UTF-8">
-<title>Marvel Hero Rush TCG — Battle Simulator v3.16</title>
+<title>Marvel Hero Rush TCG — Battle Simulator v3.17</title>
 <meta name="viewport" content="width=1480">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=3.16">
+<link rel="stylesheet" href="css/styles.css?v=3.17">
 <!-- Card data is committed locally (js/cards.js) so the sim is
      self-contained and works under any GitHub Pages subpath. -->
-<script src="js/cards.js?v=3.16"></script>
-<script src="js/mhr-decks.js?v=3.16"></script>
+<script src="js/cards.js?v=3.17"></script>
+<script src="js/mhr-decks.js?v=3.17"></script>
 </head>
 <body>
 
@@ -29,7 +29,7 @@
       <a class="mhr-nav-link active" href="index.html">⚔ 對戰</a>
       <a class="mhr-nav-link" href="archive.html">📖 圖鑑</a>
     </nav>
-    <span class="version-badge">v3.16</span>
+    <span class="version-badge">v3.17</span>
     <button id="btn-sound-toggle" class="sound-toggle" title="音效切換">音效</button>
   </header>
   <main class="setup-main">
@@ -52,6 +52,7 @@
       <a class="link-muted" href="README.md" target="_blank">README / 規則假設</a>
     </div>
 
+    <!-- v3.17: 「you may」choice + 「If you do」conditional chain -->
     <!-- v3.16: seeded RNG + zone invariant assert (card-game skill) -->
     <!-- v3.15: Online room -->
     <section class="online-room" id="onlineRoom">
@@ -287,6 +288,19 @@
   <!-- Win modal moved out of battle-screen — see body-level placement below -->
   </section>
 
+  <!-- v3.17: 「你may」可選效果選擇 overlay — body-level per v3.9.8c
+       (a fixed-position modal inside a display:none .screen collapses to 0×0) -->
+  <div id="choice-modal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-title" id="choice-modal-title">可選效果</div>
+      <div class="modal-body" id="choice-modal-body"></div>
+      <div class="modal-actions">
+        <button class="btn-action" id="choice-no">放棄</button>
+        <button class="btn-primary" id="choice-yes">發動</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal overlays at body-level — they must live OUTSIDE the
        .screen containers because each .screen defaults to display:none
        and a fixed-position modal inheriting from a display:none ancestor
@@ -375,15 +389,15 @@
 </div>
 
 <!-- Order matters: data → effects-data → engine → effects → ai → app -->
-<script src="js/data.js?v=3.16"></script>
-<script src="js/effects-data.js?v=3.16"></script>
-<script src="js/engine.js?v=3.16"></script>
-<script src="js/effects.js?v=3.16"></script>
-<script src="js/audio.js?v=3.16"></script>
-<script src="js/ai.js?v=3.16"></script>
-<script src="js/online-protocol.js?v=3.16"></script>
-<script src="js/online.js?v=3.16"></script>
-<script src="js/app.js?v=3.16"></script>
+<script src="js/data.js?v=3.17"></script>
+<script src="js/effects-data.js?v=3.17"></script>
+<script src="js/engine.js?v=3.17"></script>
+<script src="js/effects.js?v=3.17"></script>
+<script src="js/audio.js?v=3.17"></script>
+<script src="js/ai.js?v=3.17"></script>
+<script src="js/online-protocol.js?v=3.17"></script>
+<script src="js/online.js?v=3.17"></script>
+<script src="js/app.js?v=3.17"></script>
 <script>
   // Wire sound toggle after DOM ready
   document.getElementById("btn-sound-toggle").addEventListener("click", () => {

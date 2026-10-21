@@ -791,6 +791,46 @@
     if (state && !state.winner && state.activeSide === "A" && !view.autoPlay) scheduleAI();
   }
 
+  // ===== v3.17: 「你may」選擇 modal（optional effect choice）=====
+  // The engine parks a choice instead of auto-executing (see effects.js
+  // opOptional). This renders it as a yes/no prompt. Kept in its own overlay
+  // so it can never collide with the COUNTER / call / deploy modals, which all
+  // share #modal.
+  function openChoiceModal() {
+    if (!state || !window.MHR_EFFECTS) return false;
+    const pend = window.MHR_EFFECTS.pendingChoices(state).filter(c => c.side === "P")[0];
+    if (!pend) return false;
+    view._choiceOpen = true;
+    const modal = document.getElementById("choice-modal");
+    document.getElementById("choice-modal-title").textContent = "可選效果";
+    document.getElementById("choice-modal-body").innerHTML =
+      `<p style="margin-top:0"><strong>${pend.cardName || "某張卡"}</strong>：${pend.prompt}</p>`;
+    document.getElementById("choice-yes").disabled = false;
+    document.getElementById("choice-no").disabled = false;
+    modal.classList.remove("hidden");
+    return true;
+  }
+  function closeChoiceModal() {
+    view._choiceOpen = false;
+    const m = document.getElementById("choice-modal");
+    if (m) m.classList.add("hidden");
+  }
+  function answerChoice(accept) {
+    if (!state || !window.MHR_EFFECTS) return;
+    window.MHR_EFFECTS.resolveChoice(state, "P", { accept: !!accept });
+    closeChoiceModal();
+    render();
+    // A declined/accepted optional may unblock an ACTI or the AI turn.
+    if (state && !state.winner && state.activeSide === "A" && !view.autoPlay) scheduleAI();
+  }
+  document.getElementById("choice-yes").addEventListener("click", () => answerChoice(true));
+  document.getElementById("choice-no").addEventListener("click", () => answerChoice(false));
+  // safety: if the choice modal is up, block the generic cancel handler from
+  // wiping modal state that belongs to another flow
+  document.getElementById("choice-modal").addEventListener("click", (e) => {
+    if (e.target.id === "choice-modal") answerChoice(false);
+  });
+
   // ===== v3.9.2: 卡資料 hover banner（duels.ink 式：參數 chips + 效果說明，唔帶 art） =====
   const HOVER_OK = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(hover: hover)").matches;
   function cardBannerHTML(card) {
@@ -1849,6 +1889,9 @@
     renderHand();
     renderActions();
     renderLog();
+    // v3.17: surface a parked "you may" choice as a prompt. Must come after the
+    // board renders so the log entry is already visible behind the modal.
+    if (!view._choiceOpen && !view.autoPlay) openChoiceModal();
     // v3.0: side-effects
     if (state) {
       checkRushPointBurst("P");
