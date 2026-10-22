@@ -621,20 +621,30 @@
 
   function retreatCard(state, side, card, reason) {
     const p = state.players[side];
-    if (p.battle.front === card) p.battle.front = null;
-    else if (p.battle.back === card) p.battle.back = null;
+    let fromZone = "field";
+    if (p.battle.front === card) { p.battle.front = null; fromZone = "front"; }
+    else if (p.battle.back === card) { p.battle.back = null; fromZone = "back"; }
     else {
       const wi = p.battle.wing.indexOf(card);
-      if (wi >= 0) p.battle.wing[wi] = null;
+      if (wi >= 0) { p.battle.wing[wi] = null; fromZone = "wing"; }
     }
     // also remove from base if face-down
     const bi = p.base.faceDown.indexOf(card);
-    if (bi >= 0) p.base.faceDown.splice(bi, 1);
+    if (bi >= 0) { p.base.faceDown.splice(bi, 1); fromZone = "base"; }
 
     const att = p.attached[card._uid] || [];
     delete p.attached[card._uid];
     p.retreat.push(card, ...att);
     log(state, `${p.name} ${shortName(card)} → RETREAT（${reason || "retreat"}）`, side);
+    notifyZoneChange(state, side, card, fromZone, "retreat");
+  }
+
+  // v3.20 Z6 — effects.js 提供 notifyZoneChange；engine 只做轉發（lazy，
+  // 因為 engine.js 先於 effects.js 載入）
+  function notifyZoneChange(state, side, card, from, to) {
+    if (global.MHR_EFFECTS && global.MHR_EFFECTS.notifyZoneChange) {
+      global.MHR_EFFECTS.notifyZoneChange(state, side, card, from, to);
+    }
   }
 
   // =============================================================
@@ -1108,16 +1118,23 @@
 
   function pruneCard(state, side, card) {
     const p = state.players[side];
-    if (p.battle.front === card) p.battle.front = null;
-    else if (p.battle.back === card) p.battle.back = null;
+    // v3.20 Z6: 記住來源 zone，TRIG【VOID】要知「由邊度入嚟」
+    let fromZone = "field";
+    if (p.battle.front === card) { p.battle.front = null; fromZone = "front"; }
+    else if (p.battle.back === card) { p.battle.back = null; fromZone = "back"; }
     else {
       const wi = p.battle.wing.indexOf(card);
-      if (wi >= 0) p.battle.wing[wi] = null;
+      if (wi >= 0) { p.battle.wing[wi] = null; fromZone = "wing"; }
+      else if (p.base.faceDown.indexOf(card) >= 0) { p.base.faceDown.splice(p.base.faceDown.indexOf(card), 1); fromZone = "base"; }
+      else if (p.retreat.indexOf(card) >= 0) { p.retreat.splice(p.retreat.indexOf(card), 1); fromZone = "retreat"; }
+      else if (p.hand.indexOf(card) >= 0) { p.hand.splice(p.hand.indexOf(card), 1); fromZone = "hand"; }
+      else if (p.deck.indexOf(card) >= 0) { p.deck.splice(p.deck.indexOf(card), 1); fromZone = "deck"; }
     }
     const att = p.attached[card._uid] || [];
     delete p.attached[card._uid];
     p.voidZone.push(card, ...att);
     log(state, `${p.name} ${shortName(card)} → VOID（裁剪）`, side);
+    notifyZoneChange(state, side, card, fromZone, "void");
   }
 
   // COUNTER·ACTI: discard from HAND to apply Power-N to attacker
@@ -1261,5 +1278,8 @@
     setSeed,
     assertZoneInvariant,
     collectZoneCards,
+    // v3.20: pruneCard / retreatCard export 供測試同 effects.js 使用
+    pruneCard,
+    retreatCard,
   };
 })(window);

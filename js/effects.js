@@ -70,11 +70,38 @@
   }
 
   // ---- filter ----
-  // 簡單 field-value filter：{ lv:"<=", n:3 } / { power:">", var:"X" }
+  // 兩種 shape 都接受：
+  //   nested: { lv: { op:"<=", n:3 } }              ← effects.js 原生
+  //   flat:   { lv: ">=", n: 4, feature: "Web" }    ← 更易讀，Z1/Z2 descriptor 用
+  // flat 形式嘅語義：`n` 係「跟住比較符嗰個數值」，`op`（或 <key>Op）係比較符。
   function passFilter(card, filter, ctx, state, side) {
     if (!filter) return true;
+
+    // ---- flat 形式 ----
+    if (typeof filter.n !== "undefined") {
+      const cmp = filter.op || "==";
+      // 數值 key：lv / power / r（用 filter.n 比較）
+      const NUMKEYS = ["lv", "power", "r"];
+      for (const k of NUMKEYS) {
+        if (typeof filter[k] !== "undefined" && typeof filter[k] !== "object") {
+          // filter[k] 可能係比較符（{lv:'>=',n:4}）或者直接係數值（{lv:4}）
+          const isOp = typeof filter[k] === "string" && /^[<>=!]/.test(filter[k]);
+          const op = isOp ? filter[k] : cmp;
+          const want = isOp ? filter.n : filter[k];
+          if (!compareOp(op, readField(card, k), want)) return false;
+        }
+      }
+      if (filter.feature && !splitFeatures(card).includes(filter.feature)) return false;
+      if (filter.name && String(card.name || "").indexOf(filter.name) < 0) return false;
+      return true;
+    }
+
+    // ---- nested 形式 ----
     for (const k of Object.keys(filter)) {
       const spec = filter[k];
+      if (k === "feature") { if (!splitFeatures(card).includes(spec)) return false; continue; }
+      if (k === "name") { if (String(card.name || "").indexOf(spec) < 0) return false; continue; }
+      if (k === "zone" || k === "orderBy") continue;
       const op = typeof spec === "object" && spec !== null ? spec.op || spec[0] : null;
       const val = typeof spec === "object" && spec !== null
         ? (spec.var ? resolveVar(state, side, spec.var, ctx) : spec.n)
@@ -646,11 +673,18 @@
     const flags = state.turnFlags[side];
     if (!flags) return; // 唔識 call — 防呆
 
-    // 收集候選 effects：場上/手上所有 descriptor blocks (skip 蓋卡)
+    // 收集候選 effects：場上/手上/撤退/虛空 所有 descriptor blocks (skip 蓋卡)
+    // v3.20 Z6: 之前只掃 battleAll(p) + hand，所以 TRIG【VOID】/【RETREAT】 呢類
+    // 「卡喺 VOID/RETREAT 區時觸發」嘅效果永遠唔會被掃到 —— 即使 event 排咗隊。
+    // 規則書 P15 效果類型：「若卡牌處於對應區域，則滿足條件時觸發」，所以
+    // 候選池一定要包埋 RETREAT 同 VOID。
     const candidates = [];
     const allCards = [].concat(
       battleAll(p),
-      p.hand.slice()
+      p.hand.slice(),
+      p.retreat.slice(),
+      p.voidZone.slice(),
+      p.base.faceDown.slice()
     );
     allCards.forEach(card => {
       if (!card) return; // 防止 splice/shift 留低 undefined entry
@@ -726,23 +760,152 @@
 
     // 5) AUTO refresh — 若事件改變場上 power/lv/r 狀態，統一 recompute
     refreshAutos(state);
+
+    // 6) v3.20 Z6 — flush any events this resolution generated
+    if (!pendingSeen) flushPendingEvents(state, side);
+  }
+
+  // =============================================================
+  // v3.20 Z6 — EVENT QUEUE (cascading triggers)
+  //
+  // 問題：效果執行中途產生嘅 zone 變動本身會觸發其他效果。實例：
+  //   V2 PB01-011 成本 = prune 自己一張 Lv4+ 卡（喺 RETREAT）
+  //   → 該卡「進入 VOID」→ 可能觸發 TRIG【VOID】（例如 V1/V3）
+  // 之前完全冇 queue，所以呢類連鎖永遠唔會 fire。
+  //
+  // 但亦唔可以喺 op 執行中途遞歸 —— 會令 Z1 atomic 失效（validate 通過但
+  // apply 期間爆第二個效果，state 半途中間壞）。
+  //
+  // 做法：op 產生嘅事件推入 state.pendingEvents，等當前 runEffects 完成
+  // 所有 candidate 之後，統一 flush。用 depth guard 防止無限連鎖。
+  // =============================================================
+  const MAX_EVENT_DEPTH = 8;
+
+  function enqueueEvent(state, side, event) {
+    if (!state.pendingEvents) state.pendingEvents = [];
+    if (state.pendingEvents.length > 200) return;   // 安全上限
+    state.pendingEvents.push({ side, event });
+  }
+
+  function flushPendingEvents(state, side) {
+    if (!state.pendingEvents || !state.pendingEvents.length) return 0;
+    const depth = state._eventDepth || 0;
+    if (depth >= MAX_EVENT_DEPTH) {
+      emitLog(state, `[警告] 效果連鎖超過 ${MAX_EVENT_DEPTH} 層，停止`, side);
+      state.pendingEvents.length = 0;
+      return 0;
+    }
+    state._eventDepth = depth + 1;
+    let n = 0;
+    // 逐層處理：每輪只處理當前 snapshot，令連鎖有明確次序
+    let guard = 0;
+    while (state.pendingEvents.length && guard++ < 50) {
+      const batch = state.pendingEvents.splice(0, state.pendingEvents.length);
+      for (const { side: evSide, event } of batch) {
+        runEffects(state, evSide, event);
+        n++;
+        if (state.winner) break;
+      }
+      if (state.winner) break;
+    }
+    state._eventDepth = depth;
+    return n;
+  }
+
+  // zone 變動時嘅 helper：某張卡由 from 入 to，會產生咩事件
+  // 由 engine.js（pruneCard / doRetreat / callCard）同 effects.js 共用。
+  function notifyZoneChange(state, side, card, from, to) {
+    if (!card) return;
+    // 進入 VOID → TRIG【VOID】
+    if (to === "void") {
+      const src = (card.effect || "").indexOf("RETREAT") >= 0 ? "RETREAT" : from;
+      enqueueEvent(state, side, { kind: "enter_void", card, from, source: card });
+    }
+    // 進入 RETREAT → TRIG【RETREAT】
+    if (to === "retreat") {
+      enqueueEvent(state, side, { kind: "enter_retreat", card, from, source: card });
+    }
+    // 進入場 → TRIG【FIELD】（非 by_calling，避免同 callCard 重複）
+    if (to === "front" || to === "back" || to === "wing") {
+      enqueueEvent(state, side, { kind: "enter_field", card, byCalling: false, source: card });
+    }
+  }
+
+  // 每個 slot 對應「卡要喺邊個 zone 才算處於該位置」（TRIG/ACTI 需要）
+  // 規則書 P6：戰區 = FRONT/WING/BACK；場 = 戰區 + BASE
+  function slotZoneMatches(card, slot, p, state) {
+    if (!card || !slot) return true;          // 冇 slot 限制
+    const S = String(slot).toUpperCase();
+    const zones = [];
+    if (p.battle.front && p.battle.front._uid === card._uid) zones.push("FRONT");
+    if (p.battle.back && p.battle.back._uid === card._uid) zones.push("BACK");
+    if (p.battle.wing.some(c => c && c._uid === card._uid)) zones.push("WING");
+    if ((p.base.faceDown || []).some(c => c && c._uid === card._uid)) zones.push("BASE");
+    if ((p.hand || []).some(c => c && c._uid === card._uid)) zones.push("HAND");
+    if ((p.retreat || []).some(c => c && c._uid === card._uid)) zones.push("RETREAT");
+    if ((p.voidZone || []).some(c => c && c._uid === card._uid)) zones.push("VOID");
+    if ((p.deck || []).some(c => c && c._uid === card._uid)) zones.push("DECK");
+    if (!zones.length) return false;          // 卡唔在任何 zone
+
+    if (S === "FIELD") return zones.some(z => z === "FRONT" || z === "BACK" || z === "WING" || z === "BASE");
+    if (S === "BATTLE") return zones.some(z => z === "FRONT" || z === "BACK" || z === "WING");
+    return zones.indexOf(S) >= 0;
   }
 
   function matchTrigger(eff, event, card, p) {
     if (!event || !event.kind) return false;
     const trig = eff.trig;
     const slot = eff.slot;
+    const evCard = event.card || event.source;
 
-    // TRIG【FIELD】 by enter_field
-    if (trig === "TRIG" && slot === "FIELD" && event.kind === "enter_field") return true;
-    // AUTO【FIELD/FRONT/WING/BACK/BASE...】 by phase/field events（S3：slot 佔位檢查）
-    if (trig === "AUTO" && (event.kind === "phase_change" || event.kind === "state_change")) {
-      return cardOccupies(p, card, slot);
+    // v3.20 Z6 — 自我觸發守衛：enter_void / enter_retreat / enter_field 只應該
+    // 觸發「該張卡自己」嘅效果，唔係場上所有同 slot 嘅卡。
+    // 例外：TRIG【FIELD】監視「其他卡入場」嘅效果（例如 SP01-021 Web）需要
+    // 見到 event.card 唔同自己，所以下面分開處理。
+    const isSelfEvent = evCard && card && evCard._uid === card._uid;
+
+    switch (event.kind) {
+      case "enter_field":
+        if (trig === "TRIG" && slot === "FIELD") {
+          // 自己入場（callCard 路徑）或睇住其他卡入場
+          if (isSelfEvent) {
+            // by_calling 由 cond 判（eff.cond 有 if:by_calling）
+            return true;
+          }
+          return true;   // 監視型；cond 會再篩
+        }
+        if (trig === "TRIG" && slot === "BATTLE") return isSelfEvent;
+        return false;
+
+      case "enter_void":
+        if (trig === "TRIG" && slot === "VOID") {
+          if (!isSelfEvent) return false;
+          return slotZoneMatches(card, "VOID", p);
+        }
+        if (trig === "TRIG" && slot === "FIELD") return false;
+        return false;
+
+      case "enter_retreat":
+        if (trig === "TRIG" && slot === "RETREAT") {
+          if (!isSelfEvent) return false;
+          return slotZoneMatches(card, "RETREAT", p);
+        }
+        if (trig === "TRIG" && slot === "BATTLE") return isSelfEvent;
+        return false;
+
+      case "phase_change":
+      case "state_change":
+        if (trig === "AUTO") return cardOccupies(p, card, slot);
+        return false;
+
+      case "counter":
+        if (trig === "COUNTER_ACTI" && slot === "HAND") return true;
+        if (trig === "COUNTER") return true;
+        return false;
+
+      default:
+        return false;
     }
-    // COUNTER_ACTI【HAND】 by counter
-    if (trig === "COUNTER_ACTI" && slot === "HAND" && event.kind === "counter") return true;
-
-    return false;
   }
 
   // AUTO slot 佔位檢查：卡要實際喺該位置先至生效（FRONT/WING/BACK/BASE/HAND...）
@@ -980,6 +1143,10 @@
       const toLabel = { front: "先鋒", back: "後衛", wing: "側翼", base: "基地",
                         retreat: "撤退區", void: "虛空區", hand: "手牌", deck: "牌組" }[to] || to;
       emitLog(state, `${p.name} ${shortName(c)} ${from} → ${toLabel}`, side);
+      // v3.20 Z6: 轉移本身亦會產生連鎖觸發（例如 V2 成本 prune → 卡入 VOID
+      // → 觸發該卡 TRIG【VOID】）
+      var _notifyOwner = (toOwner === p) ? side : (side === "P" ? "A" : "P");
+      notifyZoneChange(state, _notifyOwner, c, realZone, to);
     }
 
     // 4) after[] ── v3.19：回傳 transferred 供二階段條件用（V6）
@@ -1280,6 +1447,10 @@
     refreshAutos,
     // v3.19: engine 注入 P8 勝利檢查器（effects.js 唔直接依賴 engine 內部）
     setWinChecker,
+    // v3.20 Z6: engine 嘅 pruneCard/retreatCard 轉發 zone 變動嚟呢度，
+    // 排入 pendingEvents，令 TRIG【VOID】/【RETREAT】/【FIELD】 可以連鎖觸發
+    notifyZoneChange,
+    flushPendingEvents,
     // v3.17 — choice / conditional-chain API (app.js renders the prompt,
     // then calls resolveChoice(state, side, {accept:bool}))
     hasPendingChoice: hasPending,
@@ -1287,6 +1458,8 @@
     pendingChoices: state => (state && state.pendingChoices) || [],
     // exported for test
     _internal: { resolveVar, evalCond, matchTrigger, OPS, collectTargets, runOpList, snapshotCtx, findCardByUid,
-                 resolveCost, COST_VALIDATORS, COST_APPLIERS },
+                 resolveCost, COST_VALIDATORS, COST_APPLIERS,
+                 passFilter, readField, compareOp, splitFeatures, slotZoneMatches,
+                 enqueueEvent, flushPendingEvents, notifyZoneChange },
   };
 })(window);
