@@ -2,31 +2,31 @@
   "generatedFor": "MHR v3.16 coverage audit",
   "totals": {
     "cards": 448,
-    "DSL": 33,
-    "REGEX": 125,
-    "STUB": 209,
+    "DSL": 51,
+    "REGEX": 121,
+    "STUB": 195,
     "NONE": 81
   },
   "bySet": {
     "BP01": {
       "total": 183,
-      "DSL": 18,
-      "REGEX": 49,
-      "STUB": 86,
+      "DSL": 28,
+      "REGEX": 47,
+      "STUB": 78,
       "NONE": 30
     },
     "EB01": {
       "total": 15,
-      "DSL": 0,
-      "REGEX": 3,
-      "STUB": 7,
+      "DSL": 2,
+      "REGEX": 2,
+      "STUB": 6,
       "NONE": 5
     },
     "PB01-A": {
       "total": 6,
-      "DSL": 0,
+      "DSL": 1,
       "REGEX": 1,
-      "STUB": 5,
+      "STUB": 4,
       "NONE": 0
     },
     "PB01-B": {
@@ -38,9 +38,9 @@
     },
     "SD01": {
       "total": 21,
-      "DSL": 1,
+      "DSL": 2,
       "REGEX": 10,
-      "STUB": 7,
+      "STUB": 6,
       "NONE": 3
     },
     "SD02": {
@@ -52,23 +52,23 @@
     },
     "SD03": {
       "total": 21,
-      "DSL": 1,
+      "DSL": 2,
       "REGEX": 7,
-      "STUB": 10,
+      "STUB": 9,
       "NONE": 3
     },
     "SD04": {
       "total": 21,
-      "DSL": 0,
+      "DSL": 1,
       "REGEX": 9,
-      "STUB": 9,
+      "STUB": 8,
       "NONE": 3
     },
     "SP01": {
       "total": 152,
-      "DSL": 9,
-      "REGEX": 36,
-      "STUB": 73,
+      "DSL": 11,
+      "REGEX": 35,
+      "STUB": 72,
       "NONE": 34
     },
     "TB01": {
@@ -82,11 +82,11 @@
   "byWhy": {
     "deck_top": 6,
     "prune": 10,
-    "move_base": 4,
     "powmod_self": 29,
     "draw": 25,
     "counter_kw": 39,
-    "range_self": 9,
+    "range_self": 7,
+    "move_base": 2,
     "powmod_foe": 3
   },
   "stubList": [
@@ -307,24 +307,6 @@
       "effect": "UNIQUE(AUTO【FIELD】:You can not have another character with the same name as this card in the field. This effect can not be lost.)\nTRIG【HAND】:When your yellow character is in Both Lose, you may place this card from HAND into your BATTLE. If you do, 1 of your opponent's characters in BATTLE gets Power-1000 in this turn."
     },
     {
-      "card_no": "BP01-033",
-      "set": "BP01",
-      "name": "「Covering Fire」War Machine",
-      "level": 4,
-      "power": "2500",
-      "rarity": "UR",
-      "effect": "TRIG【BACK】:When your character with 【Avengers】 in its feature attacks, 1 of your opponent's characters in BATTLE gets Power-500 in this turn."
-    },
-    {
-      "card_no": "BP01-033",
-      "set": "BP01",
-      "name": "「Covering Fire」War Machine",
-      "level": 4,
-      "power": "2500",
-      "rarity": "MR",
-      "effect": "TRIG【BACK】:When your character with 【Avengers】 in its feature attacks, 1 of your opponent's characters in BATTLE gets Power-500 in this turn."
-    },
-    {
       "card_no": "BP01-034",
       "set": "BP01",
       "name": "「Genius Burden」Iron Man",
@@ -532,24 +514,6 @@
       "effect": "TRIG【HAND】:When your weakness is attacked, you may prune this card in HAND. If you do, you move 1 of your characters without 【Invisible Woman】 in their names from RETREAT back to the bottom of your deck and 1 of your opponent's characters in BATTLE gets R-2 in this turn."
     },
     {
-      "card_no": "BP01-075",
-      "set": "BP01",
-      "name": "「Power Support」The Thing",
-      "level": 4,
-      "power": "5000",
-      "rarity": "SR",
-      "effect": "AUTO【FIELD】:All your characters with 【Fantastic Four】 in their features in HAND get Lv-1."
-    },
-    {
-      "card_no": "BP01-075",
-      "set": "BP01",
-      "name": "「Power Support」The Thing",
-      "level": 4,
-      "power": "5000",
-      "rarity": "MR",
-      "effect": "AUTO【FIELD】:All your characters with 【Fantastic Four】 in their features in HAND get Lv-1."
-    },
-    {
       "card_no": "BP01-078",
       "set": "BP01",
       "name": "「Deadly Airdrop」Falcon",
@@ -586,15 +550,6 @@
       "effect": "TRIG【HAND】:When your blue character is attacked, you may attach this card from HAND to your opponent's attacking character.\nAUTO【FIELD】:The R of the character attached by this card changes to 1."
     },
     {
-      "card_no": "BP01-082",
-      "set": "BP01",
-      "name": "「Sensory Deprivation」Daredevil",
-      "level": 3,
-      "power": "3500",
-      "rarity": "R",
-      "effect": "AUTO【BATTLE】:Your opponent's character with 【Human】 in its feature in FRONT gets Power-500."
-    },
-    {
       "card_no": "BP01-084",
       "set": "BP01",
       "name": "「Freedom View」New Captain America",
@@ -611,15 +566,6 @@
       "power": "2500",
       "rarity": "R",
       "effect": "TRIG【FIELD】：When the turn ends, you may prune 1 of your characters in RETREAT. If you do, 1 of your characters in the field takes BATTLE-BASE Move once."
-    },
-    {
-      "card_no": "BP01-086",
-      "set": "BP01",
-      "name": "「Tactical Instruction」Daredevil",
-      "level": 4,
-      "power": "4500",
-      "rarity": "R",
-      "effect": "AUTO【FIELD】: Your character with 【Human】 in its feature in FRONT gets Power+500."
     },
     {
       "card_no": "BP01-090",
@@ -730,15 +676,6 @@
       "effect": "TRIG【FIELD/ONCE PER TURN】:When your weakness is attacked, you may retreat up to 3 of your set cards in BASE. If you do, you may place 1 of your characters with original LvX from HAND into your BATTLE. X is the number of the cards you retreat by this effect."
     },
     {
-      "card_no": "BP01-103",
-      "set": "BP01",
-      "name": "「Tactical Intimidation」Winter Soldier",
-      "level": 3,
-      "power": "4000",
-      "rarity": "SR",
-      "effect": "TRIG【FIELD】:When this card takes BATTLE-BASE Move, you may move your opponent's character from FRONT to your opponent's BACK."
-    },
-    {
       "card_no": "BP01-104",
       "set": "BP01",
       "name": "「Time Reversal」Scarlet Witch",
@@ -811,15 +748,6 @@
       "effect": "TRIG【FIELD/ONCE PER TURN】:When your opponent's character in BACK attacks, this card may take BATTLE-BASE Move once."
     },
     {
-      "card_no": "BP01-115",
-      "set": "BP01",
-      "name": "「Weaver of Lies」Loki",
-      "level": 6,
-      "power": "6000",
-      "rarity": "R",
-      "effect": "AUTO【FIELD】:Your opponent's character in BACK gets Lv-2."
-    },
-    {
       "card_no": "BP01-116",
       "set": "BP01",
       "name": "「Rearguard Retreat」Falcon",
@@ -863,15 +791,6 @@
       "power": "1500",
       "rarity": "R",
       "effect": "TRIG【RETREAT】：When this card enters RETREAT from the field, you prune this card in RETREAT. If you do, you move 1 of your characters with Lv3 and without 【Ant-Man】 in their names from VOID back to the top of your deck."
-    },
-    {
-      "card_no": "EB01-006",
-      "set": "EB01",
-      "name": "「Super Strike」Hulk",
-      "level": 6,
-      "power": "6000",
-      "rarity": "ER",
-      "effect": "TRIG【BATTLE】:When your opponent's character with Lv6 enters the field, both of this card and that character get Power-1000 in this turn."
     },
     {
       "card_no": "EB01-007",
@@ -926,15 +845,6 @@
       "power": "2000",
       "rarity": "ER",
       "effect": "UNIQUE\nTRIG【FIELD】:When you attach this card to a character on the field, you move 1 of your characters with 【Web】 in their features from RETREAT or VOID back to your HAND.\nACTI【HAND】:If you have any Weaknesses, you prune 5 of your characters with 【Web】 in their features in RETREAT. If you do, you place this card from HAND onto your BATTLE and retreat 1 of your opponent's characters on the field."
-    },
-    {
-      "card_no": "PB01-001",
-      "set": "PB01-A",
-      "name": "「Destroyer」Drax",
-      "level": 6,
-      "power": "6000",
-      "rarity": "PR",
-      "effect": "TRIG【BATTLE】:When this card wins the fight, all your characters with 【GOTG】 in their features in BATTLE except this card get R+1 in this turn."
     },
     {
       "card_no": "PB01-002",
@@ -998,15 +908,6 @@
       "power": "4500",
       "rarity": "PR",
       "effect": "ACTI【HAND】:If the number of your set cards in BASE is more than your opponent's, you place this card from HAND into your opponent's BATTLE.\nTRIG【BATTLE】:When this card enters the field, you retreat 1 of your characters with Power 4500 or lower in BATTLE."
-    },
-    {
-      "card_no": "SD01-003",
-      "set": "SD01",
-      "name": "「Fire Support」War Machine",
-      "level": 2,
-      "power": "3500",
-      "rarity": "GR",
-      "effect": "TRIG【BATTLE/ONCE PER TURN】: When the R or the Power of your character increase, 1 of your opponent's characters in BATTLE gets Power-1000 in this turn."
     },
     {
       "card_no": "SD01-006",
@@ -1162,15 +1063,6 @@
       "effect": "TRIG【FIELD】: When this card takes BATTLE-BASE Move, you may place 1 of your characters with 【Avengers】 in their features from HAND onto your BATTLE. If you do, you retreat this card."
     },
     {
-      "card_no": "SD03-005",
-      "set": "SD03",
-      "name": "「Base Regroup」Captain America",
-      "level": 2,
-      "power": "2500",
-      "rarity": "SR",
-      "effect": "TRIG【FIELD/ONCE PER TURN】: When this card takes BATTLE-BASE Move, you may move 1 of your set cards from BASE back to your HAND."
-    },
-    {
       "card_no": "SD03-008",
       "set": "SD03",
       "name": "「Freedom Inspirer」New Captain America",
@@ -1304,15 +1196,6 @@
       "power": "2500",
       "rarity": "R",
       "effect": "TRIG【RETREAT】: When this card enters RETREAT from the field, you prune this card in RETREAT. If you do, 1 of your characters in the field takes BATTLE-BASE Move once."
-    },
-    {
-      "card_no": "SD04-016",
-      "set": "SD04",
-      "name": "「Weaver of Lies」Loki",
-      "level": 6,
-      "power": "6000",
-      "rarity": "R",
-      "effect": "AUTO【FIELD】:Your opponent's character in BACK gets Lv-2."
     },
     {
       "card_no": "SP01-001",
@@ -1718,15 +1601,6 @@
       "power": "1000",
       "rarity": "R",
       "effect": "TRIG【FIELD/ONCE PER TURN】:When this card takes BATTLE-BASE Move, you may discard 3 of your cards in HAND. If you do, you attach 1 of your characters with 【Machine】 in their features from RETREAT to this card."
-    },
-    {
-      "card_no": "SP01-056",
-      "set": "SP01",
-      "name": "「Spider-Archenemy」Rhino",
-      "level": 3,
-      "power": "3500",
-      "rarity": "R",
-      "effect": "TRIG【FIELD/ONCE PER TURN】:When this card takes BATTLE-BASE Move, you retreat 1 of your opponent's set cards in BASE randomly."
     },
     {
       "card_no": "SP01-057",

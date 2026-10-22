@@ -1458,7 +1458,137 @@
     showAttackerPicker();
   });
 
-  // v3.21 Z4 — 起動效果：揀要用邊個可起動效果
+  // ===== v3.24: BUG REPORT =====
+  // 目的：玩嘅時候撞到問題，一鍵收集所有需要嘅資料，唔使再靠「你截圖我睇 log」。
+  // 收集：描述 + 遊戲 state snapshot + 完整 log + console error + 環境 + 版本。
+  // 輸出：copy 去剪貼簿 或 存成 .txt 檔案。
+  const bugLog = { errors: [], warns: [] };
+  (function hookConsole() {
+    const origErr = console.error, origWarn = console.warn;
+    console.error = function () {
+      try { bugLog.errors.push(Array.from(arguments).map(x => String(x && x.stack || x)).join(" ")); } catch (_) {}
+      return origErr.apply(console, arguments);
+    };
+    console.warn = function () {
+      try { bugLog.warns.push(Array.from(arguments).map(x => String(x)).join(" ")); } catch (_) {}
+      return origWarn.apply(console, arguments);
+    };
+    window.addEventListener("error", e => {
+      try { bugLog.errors.push(`[window.onerror] ${e.message} @ ${e.filename}:${e.lineno}`); } catch (_) {}
+    });
+  })();
+
+  function gameVersion() {
+    const badge = document.querySelector(".version-badge");
+    const title = document.title || "";
+    return (badge && badge.textContent.trim()) || (title.match(/v\d+\.\d+/) || ["?"])[0];
+  }
+
+  function stateSnapshot() {
+    if (!state) return { note: "no active game" };
+    const pz = p => ({
+      deck: p.deck.length, hand: p.hand.map(c => c && c.card_no),
+      retreat: p.retreat.map(c => c && c.card_no),
+      void: p.voidZone.map(c => c && c.card_no),
+      base: p.base.faceDown.map(c => c && (c.card_no + (c._faceDown ? "(set)" : ""))),
+      battle: {
+        front: p.battle.front && p.battle.front.card_no,
+        back: p.battle.back && p.battle.back.card_no,
+        wing: (p.battle.wing || []).map(c => c && c.card_no),
+      },
+      timeline: p.timeline.length,
+    });
+    return {
+      turn: state.turn, phase: state.phase, activeSide: state.activeSide,
+      winner: state.winner, firstPlayer: state.firstPlayer,
+      pendingChoices: (state.pendingChoices || []).map(c => ({
+        side: c.side, kind: c.kind || "optional", prompt: c.prompt,
+        cardName: c.cardName, nOptions: (c.options || []).length, isChooseOne: !!c.isChooseOne,
+      })),
+      pendingEvents: (state.pendingEvents || []).map(e => e.event && e.event.kind),
+      P: pz(state.players.P), A: pz(state.players.A),
+    };
+  }
+
+  function buildBugReport(desc) {
+    const snap = stateSnapshot();
+    const lines = [
+      "=== MHR Battle Sim — Bug Report ===",
+      "時間     : " + new Date().toISOString(),
+      "版本     : " + gameVersion(),
+      "URL      : " + location.href,
+      "UA       : " + navigator.userAgent,
+      "",
+      "--- 描述 ---",
+      (desc || "(未填)").trim(),
+      "",
+      "--- 遊戲狀態 ---",
+      JSON.stringify(snap, null, 2),
+      "",
+      "--- 遊戲 log（最後 80 條）---",
+      state ? state.log.slice(-80).map(l => `[${l.side || "-"}] ${l.msg}`).join("\n") : "(no game)",
+      "",
+      "--- console.error（" + bugLog.errors.length + "）---",
+      bugLog.errors.slice(-30).join("\n") || "(none)",
+      "",
+      "--- console.warn（" + bugLog.warns.length + "）---",
+      bugLog.warns.slice(-20).join("\n") || "(none)",
+      "",
+    ];
+    return lines.join("\n");
+  }
+
+  function openBugModal() {
+    const modal = document.getElementById("bug-modal");
+    const snap = stateSnapshot();
+    const n = state ? state.log.length : 0;
+    document.getElementById("bug-meta").textContent =
+      `state ✓ · log ${n} 條 · error ${bugLog.errors.length} · warn ${bugLog.warns.length} · ${gameVersion()}`;
+    document.getElementById("bug-preview").textContent = buildBugReport(document.getElementById("bug-desc").value);
+    modal.classList.remove("hidden");
+    document.getElementById("bug-desc").focus();
+  }
+  function closeBugModal() {
+    document.getElementById("bug-modal").classList.add("hidden");
+  }
+
+  const bugBtn = document.getElementById("btn-bug");
+  if (bugBtn) {
+    bugBtn.addEventListener("click", openBugModal);
+    document.getElementById("bug-cancel").addEventListener("click", closeBugModal);
+    document.getElementById("bug-desc").addEventListener("input", () => {
+      document.getElementById("bug-preview").textContent = buildBugReport(document.getElementById("bug-desc").value);
+    });
+    document.getElementById("bug-copy").addEventListener("click", async () => {
+      const txt = buildBugReport(document.getElementById("bug-desc").value);
+      try {
+        await navigator.clipboard.writeText(txt);
+        document.getElementById("bug-copy").textContent = "已複製 ✓";
+        setTimeout(() => { document.getElementById("bug-copy").textContent = "複製"; }, 1500);
+      } catch (e) {
+        // clipboard 可能被封（非 https / 權限），退回 textarea 全選
+        const ta = document.getElementById("bug-desc");
+        ta.value = txt;
+        ta.select();
+        console.warn("clipboard 不可用，已將報告放入文字框");
+      }
+    });
+    document.getElementById("bug-save").addEventListener("click", () => {
+      const txt = buildBugReport(document.getElementById("bug-desc").value);
+      const blob = new Blob([txt], { type: "text/plain;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `mhr-bug-${Date.now()}.txt`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      closeBugModal();
+    });
+    document.getElementById("bug-modal").addEventListener("click", e => {
+      if (e.target.id === "bug-modal") closeBugModal();
+    });
+  }
+
+  // ===== v3.21 Z4 — 起動效果：揀要用邊個可起動效果 =====
   document.getElementById("btn-acti").addEventListener("click", () => {
     if (!state || state.activeSide !== "P" || state.phase !== "ACTION") return;
     const list = window.MHR_EFFECTS.collectActivatable(state, "P");

@@ -991,18 +991,35 @@
   // =============================================================
 
   // 由 zone key 攞玩家身上對應嘅陣列 + 位置（單槽 zone 要特殊處理）
+  // v3.24: 支援 deck_top / deck_bottom 做目的地（「move X back to the bottom
+  // of your deck」類效果 —— 41 張標記缺 move 嘅卡之中有 8 張係呢種）
   const SINGLE_SLOTS = { front: "front", back: "back" };
   function zoneList(p, zone) {
     switch (zone) {
-      case "deck": return p.deck;
+      case "deck": case "deck_top": case "deck_bottom": return p.deck;
       case "hand": return p.hand;
       case "retreat": return p.retreat;
       case "voidZone": case "void": return p.voidZone;
       case "base": return p.base.faceDown;
       case "wing": return p.battle.wing;
+      // v3.24 BUGFIX: front / back 漏咗 —— zoneList 之前只覆蓋 wing，
+      // 所以 from:'front' 嘅 zone_transfer 會攞到空 pool（靜靜哋冇事發生）。
+      case "front": return p.battle.front ? [p.battle.front] : [];
+      case "back": return p.battle.back ? [p.battle.back] : [];
+      // v3.24: 'field' = FRONT+WING+BACK（規則書 P6「战区」），
+      // 'battle' 係同義詞 —— descriptor 好自然會寫呢兩個
+      case "field": case "battle":
+        return [].concat(
+          p.battle.front ? [p.battle.front] : [],
+          p.battle.wing.filter(Boolean),
+          p.battle.back ? [p.battle.back] : []
+        );
       default: return null;
     }
   }
+
+  // 'field'/'battle' 係虛擬 zone（三個實體槽）—— 冇單一 zoneHasRoom / addToZone
+  function isVirtualZone(z) { return z === "field" || z === "battle"; }
 
   // 由某個 zone 移除一張卡（identity `_uid`，唔用 `==`）
   function removeFromZoneById(p, zone, card) {
@@ -1049,7 +1066,8 @@
       // 規則書 P6：基地區上限 6 張
       return p.base.faceDown.length < (state && state.baseLimit ? state.baseLimit : 6);
     }
-    return true;   // deck/hand/retreat/void 無上限
+    // deck / deck_top / deck_bottom / hand / retreat / void 無上限
+    return true;
   }
 
   function addToZone(p, zone, card) {
@@ -1061,6 +1079,17 @@
       p.battle.wing[i] = card;
       return true;
     }
+    // v3.24: 'field' = 自動揀第一個空戰區（front → wing → back）
+    if (zone === "field" || zone === "battle") {
+      if (!p.battle.front) { p.battle.front = card; return true; }
+      const wi = p.battle.wing.findIndex(c => !c);
+      if (wi >= 0) { p.battle.wing[wi] = card; return true; }
+      if (!p.battle.back) { p.battle.back = card; return true; }
+      return false;   // 戰場滿
+    }
+    // v3.24: 牌組頂／底有次序語義
+    if (zone === "deck_top") { p.deck.unshift(card); return true; }
+    if (zone === "deck_bottom") { p.deck.push(card); return true; }
     const list = zoneList(p, zone);
     if (!list) return false;
     list.push(card);
@@ -1086,6 +1115,18 @@
     } else {
       // chosen / chosen_filtered：由 from zone 攞全部再篩
       pool = zoneList(fromOwner, opDef.from) ? zoneList(fromOwner, opDef.from).slice() : [];
+      // v3.24 BUGFIX: 冇 filter + 冇 playerChooses 嘅 'chosen'，舊 code 直接
+      // 揀 pool[0] —— 即係「手牌第 1 張」而唔係效果講嘅嗰張。呢類效果
+      // （move this card / move that character）其實係指 ctx.source 或
+      // ctx.eventCard，所以優先由 ctx 定位。
+      if (!opDef.subjectFilter && !opDef.playerChooses) {
+        const preferUid = (ctx && (ctx.eventCard && ctx.eventCard._uid)) ||
+                          (ctx && ctx.source && ctx.source._uid);
+        if (preferUid) {
+          const hit = pool.find(c => c && c._uid === preferUid);
+          if (hit) pool = [hit];
+        }
+      }
     }
 
     // filter
@@ -1158,13 +1199,20 @@
     // 2) validate —— 目的地有位，而且每張卡真係喺 from zone
     const fromOwner = opDef.fromOwner === "opp" ? state.players[side === "P" ? "A" : "P"] : p;
     const toOwner  = opDef.toOwner === "opp" ? state.players[side === "P" ? "A" : "P"] : p;
+    // v3.24: deck / deck_top / deck_bottom 係同一個 physical zone
+    const zoneFamily = z => (z === "deck" || z === "deck_top" || z === "deck_bottom")
+      ? "deck" : (z === "void" ? "void" : z);
     for (const c of targets) {
       const realZone = findZoneOf(fromOwner, c);
       if (!realZone) return { ok: false, err: `目標卡 ${shortName(c)} 唔在任何 zone` };
-      if (realZone !== from && !(from === "wing" && realZone === "wing")) {
+      // 虛擬 zone（field/battle）包含 front/wing/back
+      const inFrom = isVirtualZone(from)
+        ? ["front", "wing", "back"].includes(realZone)
+        : zoneFamily(realZone) === zoneFamily(from);
+      if (!inFrom) {
         return { ok: false, err: `目標卡 ${shortName(c)} 喺 ${realZone}，唔係 ${from}` };
       }
-      if (!zoneHasRoom(toOwner, to, state)) {
+      if (!isVirtualZone(to) && !zoneHasRoom(toOwner, to, state)) {
         return { ok: false, err: `目的地 ${to} 已滿` };
       }
     }
