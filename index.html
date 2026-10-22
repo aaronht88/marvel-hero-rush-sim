@@ -2,16 +2,16 @@
 <html lang="zh-HK">
 <head>
 <meta charset="UTF-8">
-<title>Marvel Hero Rush TCG — Battle Simulator v3.24</title>
+<title>Marvel Hero Rush TCG — Battle Simulator v3.25</title>
 <meta name="viewport" content="width=1480">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=3.24">
+<link rel="stylesheet" href="css/styles.css?v=3.25">
 <!-- Card data is committed locally (js/cards.js) so the sim is
      self-contained and works under any GitHub Pages subpath. -->
-<script src="js/cards.js?v=3.24"></script>
-<script src="js/mhr-decks.js?v=3.24"></script>
+<script src="js/cards.js?v=3.25"></script>
+<script src="js/mhr-decks.js?v=3.25"></script>
 </head>
 <body>
 
@@ -29,7 +29,7 @@
       <a class="mhr-nav-link active" href="index.html">⚔ 對戰</a>
       <a class="mhr-nav-link" href="archive.html">📖 圖鑑</a>
     </nav>
-    <span class="version-badge">v3.24</span>
+    <span class="version-badge">v3.25</span>
     <button id="btn-sound-toggle" class="sound-toggle" title="音效切換">音效</button>
   </header>
   <main class="setup-main">
@@ -52,6 +52,7 @@
       <a class="link-muted" href="README.md" target="_blank">README / 規則假設</a>
     </div>
 
+    <!-- v3.25: mulligan hover card effect + hoverOk TDZ fix -->
     <!-- v3.24: batch-2 move descriptors + bug report UI + virtual zone (field/battle) -->
     <!-- v3.23: batch-1 descriptors (11 simple stat_mod) + filter/excludeSelf/divisor ops -->
     <!-- v3.22: Z4 ACTI activation + choice UI (yes/no, choose_one, pick_card) -->
@@ -427,18 +428,18 @@
 </div>
 
 <!-- Order matters: data → effects-data → engine → effects → ai → app -->
-<script src="js/data.js?v=3.24"></script>
-<script src="js/effects-data.js?v=3.24"></script>
-<script src="js/effects-data-void.js?v=3.24"></script>
-<script src="js/effects-data-batch1.js?v=3.24"></script>
-<script src="js/effects-data-batch2.js?v=3.24"></script>
-<script src="js/engine.js?v=3.24"></script>
-<script src="js/effects.js?v=3.24"></script>
-<script src="js/audio.js?v=3.24"></script>
-<script src="js/ai.js?v=3.24"></script>
-<script src="js/online-protocol.js?v=3.24"></script>
-<script src="js/online.js?v=3.24"></script>
-<script src="js/app.js?v=3.24"></script>
+<script src="js/data.js?v=3.25"></script>
+<script src="js/effects-data.js?v=3.25"></script>
+<script src="js/effects-data-void.js?v=3.25"></script>
+<script src="js/effects-data-batch1.js?v=3.25"></script>
+<script src="js/effects-data-batch2.js?v=3.25"></script>
+<script src="js/engine.js?v=3.25"></script>
+<script src="js/effects.js?v=3.25"></script>
+<script src="js/audio.js?v=3.25"></script>
+<script src="js/ai.js?v=3.25"></script>
+<script src="js/online-protocol.js?v=3.25"></script>
+<script src="js/online.js?v=3.25"></script>
+<script src="js/app.js?v=3.25"></script>
 <script>
   // Wire sound toggle after DOM ready
   document.getElementById("btn-sound-toggle").addEventListener("click", () => {

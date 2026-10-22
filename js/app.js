@@ -124,6 +124,10 @@
       name.textContent = `Lv${c.level || "-"} · ${E.fullName(c)}`;
       card.appendChild(art);
       card.appendChild(name);
+      // v3.25: mulligan 時 hover 就見到卡效 —— 之前要撳開 detail modal 先睇到，
+      // 但要決定換唔換牌，正正就係要知效果。重用 #card-pop banner（唔帶 art，
+      // 只顯示 Lv/P/R/attribute/feature/rarity + 完整效果文本）。
+      bindCardHover(card, c);
       card.addEventListener("click", () => {
         if (view._mulliganSelected.has(i)) view._mulliganSelected.delete(i);
         else view._mulliganSelected.add(i);
@@ -929,7 +933,17 @@
   });
 
   // ===== v3.9.2: 卡資料 hover banner（duels.ink 式：參數 chips + 效果說明，唔帶 art） =====
-  const HOVER_OK = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(hover: hover)").matches;
+  // v3.25: HOVER_OK 改做 lazy function。之前係 module-level `const`，但
+  // bindCardHover 會喺 mulligan overlay 渲染時（早過呢個 const 初始化）被 call，
+  // 撞 TDZ → ReferenceError，令整個 mulligan 畫面爆。function 內先計就冇時序問題。
+  let _hoverOkCache = null;
+  function hoverOk() {
+    if (_hoverOkCache === null) {
+      _hoverOkCache = typeof window !== "undefined" && window.matchMedia
+        ? window.matchMedia("(hover: hover)").matches : false;
+    }
+    return _hoverOkCache;
+  }
   function cardBannerHTML(card) {
     const lv = card.level != null ? card.level : "—";
     const pw = DATA.numPower ? DATA.numPower(card.power) : (card.power || 0);
@@ -963,7 +977,7 @@
     if (pop) pop.hidden = true;
   }
   function bindCardHover(el, card) {
-    if (!el || !card || !HOVER_OK) return;
+    if (!el || !card || !hoverOk()) return;
     el.addEventListener("mouseenter", () => showCardPop(card, el));
     el.addEventListener("mouseleave", hideCardPop);
   }
