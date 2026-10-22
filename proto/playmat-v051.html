@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MHR Playmat v05.1 — Adaptive</title>
+<link rel="stylesheet" href="v051.css">
+</head>
+<body>
+
+<div id="mat">
+  <div class="bg-base"></div>
+  <div class="bg-grid"></div>
+  <div class="bg-grid-major"></div>
+  <div class="tint tint-p1"></div>
+  <div class="tint tint-p2"></div>
+  <div class="axis"></div>
+
+  <div class="layout">
+
+    <!-- ============ P1 Battle Log（左上） ============ -->
+    <div class="panel log-p1 framed chamfer framed-slot">
+      <div class="pt">Battle Log</div>
+      <div class="log-lines">
+        <div class="hl">P1 號召 Iron Man → FRONT</div>
+        <div>P2 抽 2 張</div>
+        <div>P1 攻擊 P2 WING</div>
+        <div>傷害 3500 vs 2800</div>
+        <div>P2 撤退 1 張</div>
+      </div>
+    </div>
+
+    <!-- ============ P1 手牌（頂中） ============ -->
+    <div class="hand-row" id="hand-row"></div>
+
+    <!-- ============ P1 rail（左） ============ -->
+    <div class="rail rail-p1">
+      <div class="pile framed chamfer"><span class="pl">DECK</span><span class="pc" id="deck-1">42</span></div>
+      <div class="pile framed chamfer"><span class="pl">VOID</span><span class="pc" id="void-1">3</span></div>
+      <div class="pile framed chamfer"><span class="pl">RETREAT</span><span class="pc" id="retreat-1">1</span></div>
+    </div>
+
+    <!-- ============ P1 戰區（左上，FRONT 貼中央） ============ -->
+    <div class="field-p1">
+      <div class="zone z-back framed chamfer" data-tier="3" data-side="1" data-slot="back">
+        <span class="zbadge">3</span><span class="zname">BACK</span><span class="rval">R-3</span></div>
+      <div class="zone z-w1 framed chamfer" data-tier="2" data-side="1" data-slot="wing1">
+        <span class="zbadge">2</span><span class="zname">WING</span><span class="rval">R-2</span></div>
+      <div class="zone z-w2 framed chamfer" data-tier="2" data-side="1" data-slot="wing2">
+        <span class="zbadge">2</span><span class="zname">WING</span><span class="rval">R-2</span></div>
+      <div class="zone z-front framed chamfer" data-tier="1" data-side="1" data-slot="front">
+        <span class="zbadge">1</span><span class="zname">FRONT</span><span class="rval">R-1</span></div>
+    </div>
+
+    <!-- ============ RUSH（中央） ============ -->
+    <div class="rush framed chamfer">
+      <span class="rl">RUSH</span>
+      <span class="rs p1" id="score-1">3</span>
+      <span class="rv">:</span>
+      <span class="rs p2" id="score-2">9</span>
+    </div>
+
+    <!-- ============ P2 戰區（右下，FRONT 貼中央） ============ -->
+    <div class="field-p2">
+      <div class="zone z-front framed chamfer" data-tier="1" data-side="2" data-slot="front">
+        <span class="zbadge">1</span><span class="zname">FRONT</span><span class="rval">R-1</span></div>
+      <div class="zone z-w1 framed chamfer" data-tier="2" data-side="2" data-slot="wing1">
+        <span class="zbadge">2</span><span class="zname">WING</span><span class="rval">R-2</span></div>
+      <div class="zone z-w2 framed chamfer" data-tier="2" data-side="2" data-slot="wing2">
+        <span class="zbadge">2</span><span class="zname">WING</span><span class="rval">R-2</span></div>
+      <div class="zone z-back framed chamfer" data-tier="3" data-side="2" data-slot="back">
+        <span class="zbadge">3</span><span class="zname">BACK</span><span class="rval">R-3</span></div>
+    </div>
+
+    <!-- ============ P2 rail（右上） ============ -->
+    <div class="rail rail-p2">
+      <div class="pile framed chamfer"><span class="pl">DECK</span><span class="pc" id="deck-2">43</span></div>
+      <div class="pile framed chamfer"><span class="pl">VOID</span><span class="pc" id="void-2">0</span></div>
+      <div class="pile framed chamfer"><span class="pl">RETREAT</span><span class="pc" id="retreat-2">0</span></div>
+    </div>
+
+    <!-- ============ BASE（底中） ============ -->
+    <div class="base-row" id="base-row"></div>
+
+    <!-- ============ Battle Control（右下） ============ -->
+    <div class="panel ctrl-p1 framed chamfer">
+      <div class="pt">Battle Phase</div>
+      <div class="ctrl-btns">
+        <button class="btn"><span class="bin"></span><span class="bface">蓋放</span></button>
+        <button class="btn"><span class="bin"></span><span class="bface">移動</span></button>
+        <button class="btn"><span class="bin"></span><span class="bface">攻擊</span></button>
+        <button class="btn"><span class="bin"></span><span class="bface">起動</span></button>
+        <button class="btn warn"><span class="bin"></span><span class="bface">結束回合</span></button>
+        <button class="btn accent"><span class="bin"></span><span class="bface">回報</span></button>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="brand">MARVEL <span>HERO RUSH</span> · SIM</div>
+</div>
+
+<div id="card-pop" hidden></div>
+
+<script>
+const SAMPLE = [
+  { no:'BP01-001', name:'「Pulse Assembler」Iron Man', lv:3, p:3500, r:2, color:'Blue', feat:'Avenger',
+    effect:'TRIG【FIELD】：When this card enters the field by calling, you prune 1 of your opponent\'s characters with Lv2 or below in BATTLE.' },
+  { no:'BP01-003', name:'「Starving」Venom', lv:4, p:4000, r:1, color:'Red', feat:'Symbiote',
+    effect:'TRIG【WING】:When your turn ends, if this card did not attack in this turn, 1 of your opponent\'s characters in BATTLE gets Power-X in this turn.' },
+  { no:'BP01-005', name:'「Scarlet Witch」', lv:2, p:2000, r:3, color:'Red', feat:'Avenger',
+    effect:'TRIG【HAND】:When your red character attacks, you may discard this card in HAND. If you do, that character gets Power+2000 in this turn.' },
+  { no:'SP01-021', name:'「Spider-Man」', lv:3, p:3000, r:2, color:'Blue', feat:'Web',
+    effect:'ACTI【VOID/ONCE PER TURN】:You may place this card from VOID into your BASE.' },
+];
+
+function makeCard(s) {
+  const d = document.createElement('div');
+  d.className = 'card';
+  d.innerHTML = `<div class="cn">${s.no}</div>
+    <div class="cr"><span class="chip">Lv${s.lv}</span><span class="chip">P${s.p}</span><span class="chip">R${s.r}</span></div>`;
+  d.addEventListener('mouseenter', () => showPop(s, d));
+  d.addEventListener('mouseleave', hidePop);
+  return d;
+}
+const emptyCard = () => { const d = document.createElement('div'); d.className = 'card empty'; return d; };
+
+const layout = {
+  '1-front': SAMPLE[1], '1-wing1': SAMPLE[0], '1-wing2': null, '1-back': null,
+  '2-front': SAMPLE[2], '2-wing1': null, '2-wing2': SAMPLE[3], '2-back': null,
+};
+document.querySelectorAll('.zone').forEach(el => {
+  const slot = document.createElement('div');
+  slot.className = 'cardslot';
+  const s = layout[el.dataset.side + '-' + el.dataset.slot];
+  slot.appendChild(s ? makeCard(s) : emptyCard());
+  el.insertBefore(slot, el.firstChild);
+});
+
+const handRow = document.getElementById('hand-row');
+for (let i = 0; i < 6; i++) {
+  const d = document.createElement('div');
+  d.className = 'mini-slot framed chamfer';
+  d.appendChild(makeCard(SAMPLE[i % SAMPLE.length]));
+  handRow.appendChild(d);
+}
+const baseRow = document.getElementById('base-row');
+for (let i = 0; i < 6; i++) {
+  const d = document.createElement('div');
+  d.className = 'mini-slot framed chamfer';
+  d.textContent = 'BASE';
+  d.title = 'BASE ' + (i + 1);
+  baseRow.appendChild(d);
+}
+
+function showPop(s, anchor) {
+  const pop = document.getElementById('card-pop');
+  pop.className = 'framed chamfer';
+  pop.innerHTML = `<div class="cb-name">${s.name}</div>
+    <div class="cb-stats">
+      <span class="cb-chip">Lv${s.lv ?? '—'}</span>
+      <span class="cb-chip">P${s.p ?? '—'}</span>
+      <span class="cb-chip">R${s.r ?? '—'}</span>
+      ${s.color?`<span class="cb-chip">${s.color}</span>`:''}
+      ${s.feat?`<span class="cb-chip">${s.feat}</span>`:''}
+    </div>
+    <div class="cb-effect">${s.effect || '—（無效果文本）'}</div>`;
+  pop.hidden = false;
+  const r = anchor.getBoundingClientRect(), pw = pop.offsetWidth, ph = pop.offsetHeight;
+  let left = Math.max(8, Math.min(r.left + r.width / 2 - pw / 2, innerWidth - pw - 8));
+  let top = r.top - ph - 10;
+  if (top < 8) top = r.bottom + 10;
+  pop.style.left = left + 'px'; pop.style.top = top + 'px';
+}
+function hidePop() { document.getElementById('card-pop').hidden = true; }
+</script>
+</body>
+</html>

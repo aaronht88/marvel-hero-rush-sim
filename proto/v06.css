@@ -1,0 +1,432 @@
+/* ============================================================
+   MHR PLAYMAT v06 — 自適應（唔鎖方形）
+
+   Aaron：原稿方形只係示範，介面應按畫面比例舒展。
+
+   放棄手算 grid 座標（試過 6 輪，每次撞新問題）。
+   改用最可靠做法：
+     · 兩個「領域方塊」用絕對定位貼角落 + % 尺寸
+     · 每方內部用 2x2 grid，FRONT 位置固定喺「貼近中央」嘅格
+     · 整個領域用 CSS 變數控制大小，隨畫面比例舒展
+     · 所有格用 aspect-ratio + max-height 自動縮，唔會溢出
+   ============================================================ */
+
+:root {
+  --bg-0: #03060c;
+  --bg-1: #061020;
+  --bg-2: #0a1c3a;
+  --bg-3: #12325e;
+
+  --p1-deep: rgba(150, 26, 38, .30);
+  --p2-deep: rgba(16, 78, 150, .30);
+
+  --cyan-1: #4dd0e1;
+  --cyan-dim: rgba(77, 208, 225, .34);
+
+  --t-hi: #ffffff;
+  --t-mid: rgba(198, 224, 250, .82);
+  --t-lo: rgba(150, 190, 228, .48);
+
+  --frame: rgba(77, 208, 225, .42);
+  --frame-dim: rgba(77, 208, 225, .20);
+
+  --chamfer: 10px;
+  --gap: clamp(5px, .9vmin, 14px);
+
+  /* 領域方塊尺寸：佔畫面寬/高嘅比例，自適應 */
+  --field-w: clamp(200px, 31vw, 480px);
+  --field-h: clamp(170px, 31vh, 400px);
+  --edge: clamp(6px, 1vmin, 18px);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%; overflow: hidden;
+  background: var(--bg-0); color: var(--t-hi);
+  font-family: Inter, "Rajdhani", ui-sans-serif, -apple-system, "Segoe UI", "Noto Sans HK", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#mat {
+  position: relative;
+  width: 100vw; height: 100dvh;
+  overflow: hidden;
+}
+
+/* ---------- 背景 ---------- */
+.bg-base {
+  position: absolute; inset: 0;
+  background: radial-gradient(120% 95% at 50% 0%,
+    var(--bg-3) 0%, var(--bg-2) 34%, var(--bg-1) 68%, var(--bg-0) 100%);
+}
+.bg-grid, .bg-grid-major {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(var(--cyan-dim) 1px, transparent 1px),
+    linear-gradient(90deg, var(--cyan-dim) 1px, transparent 1px);
+  mask-image: radial-gradient(92% 82% at 50% 46%, #000, rgba(0,0,0,.4) 64%, transparent 100%);
+  -webkit-mask-image: radial-gradient(92% 82% at 50% 46%, #000, rgba(0,0,0,.4) 64%, transparent 100%);
+  pointer-events: none;
+}
+.bg-grid       { background-size: clamp(26px, 4vw, 60px) clamp(26px, 4vw, 60px); opacity: .24; }
+.bg-grid-major { background-size: clamp(104px, 16vw, 240px) clamp(104px, 16vw, 240px); opacity: .17; }
+
+.tint { position: absolute; inset: 0; pointer-events: none; }
+.tint-p1 {
+  background: linear-gradient(133deg, var(--p1-deep) 0%, rgba(150,26,38,.12) 32%, transparent 56%);
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+.tint-p2 {
+  background: linear-gradient(313deg, var(--p2-deep) 0%, rgba(16,78,150,.12) 32%, transparent 56%);
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+}
+.axis {
+  position: absolute; left: 50%; top: 50%;
+  width: 175%; height: 2px;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(90deg,
+    transparent 0 21%, rgba(77,208,225,.18) 29%, var(--cyan-1) 36%,
+    transparent 42% 58%, var(--cyan-1) 64%, rgba(77,208,225,.18) 71%, transparent 79% 100%);
+  filter: drop-shadow(0 0 6px rgba(77,208,225,.5));
+  pointer-events: none; z-index: 1;
+  /* 角度跟領域對角線：atan(fieldH/fieldW) 由 JS 設定 */
+}
+
+/* ---------- 斜切角 ---------- */
+.chamfer {
+  clip-path: polygon(
+    var(--chamfer) 0, calc(100% - var(--chamfer)) 0,
+    100% var(--chamfer), 100% calc(100% - var(--chamfer)),
+    calc(100% - var(--chamfer)) 100%, var(--chamfer) 100%,
+    0 calc(100% - var(--chamfer)), 0 var(--chamfer));
+}
+.framed { position: relative; }
+.framed::before {
+  content: ""; position: absolute; inset: 0;
+  background: var(--frame); clip-path: inherit; pointer-events: none;
+}
+.framed::after {
+  content: ""; position: absolute; inset: 1.5px;
+  background: linear-gradient(180deg, rgba(18,50,94,.90), rgba(6,16,32,.95));
+  clip-path: inherit; pointer-events: none;
+}
+.framed > * { position: relative; z-index: 1; }
+
+/* ============================================================
+   領域方塊：每方 4 個戰區
+   P1 貼左上、P2 貼右下
+   FRONT 位置：P1 喺右下格、P2 喺左上格 → 兩者夾住畫面中央
+   ============================================================ */
+.domain {
+  position: absolute;
+  width: var(--field-w);
+  height: var(--field-h);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: var(--gap);
+  z-index: 5;
+}
+.domain-p1 {
+  left: var(--edge);
+  top: var(--edge);
+}
+.domain-p2 {
+  right: var(--edge);
+  bottom: var(--edge);
+}
+
+/* P1：BACK 左上、WING 右上、WING 左下、FRONT 右下（貼中央） */
+.domain-p1 .slot-back  { grid-area: 1 / 1; }
+.domain-p1 .slot-wing1 { grid-area: 1 / 2; }
+.domain-p1 .slot-wing2 { grid-area: 2 / 1; }
+.domain-p1 .slot-front { grid-area: 2 / 2; }
+/* P2：FRONT 左上（貼中央）、WING 右上、WING 左下、BACK 右下 */
+.domain-p2 .slot-front { grid-area: 1 / 1; }
+.domain-p2 .slot-wing1 { grid-area: 1 / 2; }
+.domain-p2 .slot-wing2 { grid-area: 2 / 1; }
+.domain-p2 .slot-back  { grid-area: 2 / 2; }
+
+.zone {
+  --chamfer: 10px;
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  min-width: 0; min-height: 0;
+  transition: filter .18s;
+  cursor: pointer;
+  overflow: hidden;
+}
+.zone:hover { filter: brightness(1.35) drop-shadow(0 0 10px rgba(77,208,225,.5)); }
+.zone[data-tier="1"] { --frame: rgba(77,208,225,.82); }
+.zone[data-tier="2"] { --frame: rgba(77,208,225,.44); }
+.zone[data-tier="3"] { --frame: rgba(77,208,225,.26); }
+
+/* 卡面：維持 63:88，用 max 約束唔溢出 */
+.zone .cardslot {
+  position: relative;
+  aspect-ratio: 63 / 88;
+  height: min(74%, 88% * 0.74);
+  max-height: 74%;
+  max-width: 76%;
+  width: auto;
+  z-index: 1;
+}
+.zone .zbadge {
+  position: absolute; top: 6%; left: 6%;
+  min-width: clamp(11px, 1.5vmin, 18px);
+  height: clamp(11px, 1.5vmin, 18px);
+  border-radius: 50%;
+  background: #fff; color: var(--bg-2);
+  font-size: clamp(6px, .9vmin, 10px); font-weight: 900;
+  line-height: clamp(11px, 1.5vmin, 18px); text-align: center;
+  box-shadow: 0 0 8px rgba(77,208,225,.55);
+  pointer-events: none; z-index: 2;
+}
+.zone .zname {
+  position: absolute; left: 0; right: 0; bottom: 5%;
+  text-align: center;
+  font-size: clamp(6px, .95vmin, 12px); font-weight: 900;
+  color: var(--t-hi);
+  text-shadow: 0 0 8px rgba(77,208,225,.45), 0 1px 3px rgba(0,0,0,.9);
+  text-transform: uppercase;
+  pointer-events: none; z-index: 2;
+}
+.zone .rval {
+  position: absolute; right: 7%; bottom: 6%;
+  font-size: clamp(5px, .75vmin, 9px); font-weight: 800;
+  color: var(--cyan-1); opacity: .9;
+  pointer-events: none; z-index: 2;
+}
+
+/* ============================================================
+   RUSH：貼畫面正中（兩 FRONT 之間）
+   ============================================================ */
+.rush {
+  position: absolute; z-index: 30;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  --chamfer: 8px;
+  display: flex; align-items: center; gap: clamp(4px, .8vmin, 10px);
+  padding: clamp(2px, .5vmin, 6px) clamp(8px, 1.4vmin, 18px);
+  white-space: nowrap;
+}
+.rush .rl { font-size: clamp(6px, .8vmin, 10px); font-weight: 800; letter-spacing: .16em; color: var(--cyan-1); }
+.rush .rs { font-size: clamp(12px, 2.2vmin, 26px); font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; text-shadow: 0 0 10px currentColor; }
+.rush .rs.p1 { color: #ff5d6c; }
+.rush .rs.p2 { color: #4da3ff; }
+.rush .rv { font-size: clamp(7px, .95vmin, 11px); font-weight: 700; color: var(--t-lo); }
+
+/* ============================================================
+   邊欄：P1 喺左中，P2 喺右中
+   ============================================================ */
+.rail {
+  position: absolute; z-index: 6;
+  display: flex; flex-direction: column;
+  gap: var(--gap);
+  width: clamp(48px, 6.5vw, 104px);
+  top: 50%; transform: translateY(-50%);
+}
+.rail-p1 { left: var(--edge); }
+.rail-p2 { right: var(--edge); }
+
+.pile {
+  --chamfer: 7px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 1px;
+  padding: clamp(3px, .5vmin, 7px) 0;
+  cursor: pointer;
+  transition: filter .16s;
+}
+.pile:hover { filter: brightness(1.4); }
+.pile .pl {
+  font-size: clamp(5px, .7vmin, 9px); font-weight: 800;
+  letter-spacing: .11em; color: var(--cyan-1);
+  text-transform: uppercase;
+}
+.pile .pc {
+  font-size: clamp(10px, 1.5vmin, 18px); font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  color: var(--t-hi); line-height: 1;
+  text-shadow: 0 0 8px rgba(77,208,225,.4);
+}
+
+/* ============================================================
+   面板：Battle Log（右上）/ Battle Control（左下）
+   ============================================================ */
+.panel {
+  position: absolute; z-index: 7;
+  --chamfer: 11px;
+  padding: clamp(4px, .8vmin, 10px) clamp(6px, 1vmin, 14px);
+  width: clamp(180px, 24vw, 330px);
+  height: clamp(90px, 17vh, 175px);
+  display: flex; flex-direction: column;
+  min-height: 0;
+}
+.log-p1  { right: var(--edge); top: var(--edge); }
+.ctrl-p1 { left: var(--edge);  bottom: var(--edge); }
+
+.panel .pt {
+  font-size: clamp(6px, .8vmin, 10px); font-weight: 800;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: var(--cyan-1);
+  margin-bottom: clamp(2px, .45vmin, 5px);
+  display: flex; align-items: center; gap: 5px;
+  flex: none;
+}
+.panel .pt::after {
+  content: ""; flex: 1; height: 1px;
+  background: linear-gradient(90deg, var(--frame-dim), transparent);
+}
+.log-lines {
+  flex: 1;
+  font-size: clamp(6px, .9vmin, 10px); line-height: 1.55;
+  color: var(--t-mid);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  overflow: hidden;
+}
+.log-lines div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.log-lines .hl { color: var(--cyan-1); }
+
+.ctrl-btns {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: clamp(3px, .45vmin, 6px);
+  min-height: 0;
+}
+.btn {
+  border: 0; background: none; padding: 0;
+  font-family: inherit; cursor: pointer;
+  position: relative; min-height: clamp(18px, 2.4vmin, 32px);
+}
+.btn .bin {
+  position: absolute; inset: 0;
+  background: rgba(77,208,225,.78);
+  box-shadow: 0 0 8px rgba(77,208,225,.3);
+  clip-path: polygon(6px 0, calc(100% - 6px) 0, 100% 6px, 100% calc(100% - 6px),
+                     calc(100% - 6px) 100%, 6px 100%, 0 calc(100% - 6px), 0 6px);
+}
+.btn .bface {
+  position: absolute; inset: 1px;
+  background: linear-gradient(180deg, #1e4a7c, #0d2440);
+  clip-path: polygon(5px 0, calc(100% - 5px) 0, 100% 5px, 100% calc(100% - 5px),
+                     calc(100% - 5px) 100%, 5px 100%, 0 calc(100% - 5px), 0 5px);
+  display: flex; align-items: center; justify-content: center;
+  font-size: clamp(6px, .85vmin, 10px); font-weight: 800;
+  color: #fff; text-shadow: 0 0 6px rgba(77,208,225,.5);
+}
+.btn:hover .bface { background: linear-gradient(180deg, #2a6299, #14324f); }
+.btn.warn .bin   { background: rgba(245,185,66,.85); }
+.btn.accent .bin { background: rgba(77,208,225,1); }
+.btn.accent .bface { background: linear-gradient(180deg, #1c5f86, #0d3350); color: #d9f7ff; }
+
+/* ============================================================
+   手牌（頂中）/ BASE（底中）
+   ============================================================ */
+.strip {
+  position: absolute; z-index: 6;
+  left: 50%; transform: translateX(-50%);
+  display: flex; gap: var(--gap);
+  justify-content: center;
+  /* 手牌/BASE 條要避開兩個領域方塊：寬度 = 100vw - 兩側領域 - rail - 邊距 */
+  width: min(calc(100vw - var(--field-w) * 2 - var(--edge) * 4), 720px);
+  min-width: 160px;
+  height: clamp(46px, 9.5vh, 108px);
+}
+.hand-row { top: var(--edge); }
+.base-row { bottom: var(--edge); }
+
+.mini-slot {
+  --chamfer: 5px;
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0; min-height: 0;
+  overflow: hidden;
+  transition: filter .14s, transform .14s;
+}
+.mini-slot > .card {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  aspect-ratio: 63 / 88;
+  height: 100%; width: auto; max-width: 100%;
+}
+.hand-row .mini-slot:hover { filter: brightness(1.4); transform: translateY(-4px); }
+.base-row .mini-slot {
+  display: flex; align-items: center; justify-content: center;
+  font-size: clamp(5px, .65vmin, 8px); font-weight: 800;
+  letter-spacing: .08em; text-transform: uppercase;
+  color: var(--t-lo);
+}
+
+/* ---------- 卡面 ---------- */
+.card {
+  width: 100%; height: 100%;
+  background: linear-gradient(158deg, #1d3a61 0%, #0a1626 100%);
+  padding: clamp(2px, .3vmin, 4px);
+  display: flex; flex-direction: column; justify-content: space-between;
+  font-size: clamp(5px, .7vmin, 8px); line-height: 1.14;
+  color: rgba(214,234,255,.90);
+  overflow: hidden;
+}
+.card .cn { font-size: .92em; font-weight: 700; color: var(--cyan-1); }
+.card .cr { display: flex; gap: 1.5px; flex-wrap: wrap; }
+.card .chip {
+  padding: 0 2px; border-radius: 2px;
+  background: rgba(77,208,225,.24); color: #eaf8ff;
+  font-size: .95em; font-weight: 700;
+}
+.card.empty {
+  background: repeating-linear-gradient(45deg, rgba(77,208,225,.055) 0 4px, transparent 4px 8px);
+}
+
+/* ---------- hover banner ---------- */
+#card-pop {
+  position: fixed; z-index: 200;
+  width: clamp(180px, 22vw, 300px);
+  max-height: 46vh; overflow-y: auto;
+  padding: 10px 12px;
+  --chamfer: 10px; font-size: 11px; line-height: 1.5;
+  pointer-events: none;
+}
+#card-pop[hidden] { display: none; }
+#card-pop .cb-name { font-weight: 800; margin-bottom: 5px; color: var(--t-hi); }
+#card-pop .cb-stats { display: flex; gap: 3px; flex-wrap: wrap; margin-bottom: 6px; }
+#card-pop .cb-chip {
+  padding: 1px 5px; border-radius: 3px; font-size: .86em; font-weight: 600;
+  background: rgba(77,208,225,.20); color: var(--cyan-1);
+  border: 1px solid rgba(77,208,225,.30);
+}
+#card-pop .cb-effect { white-space: pre-wrap; opacity: .92; font-size: .95em; color: var(--t-mid); }
+
+.brand {
+  position: absolute; z-index: 15;
+  right: 50%; bottom: 1px; transform: translateX(50%);
+  font-size: clamp(4px, .6vmin, 7px); font-weight: 900;
+  letter-spacing: .16em; text-transform: uppercase;
+  color: var(--t-lo); pointer-events: none;
+}
+.brand span { color: var(--cyan-1); }
+
+/* ============================================================
+   窄 / 直向 → 上下堆疊
+   ============================================================ */
+@media (max-aspect-ratio: 1/1) {
+  html, body { overflow-y: auto; }
+  #mat { height: auto; min-height: 100dvh; }
+  .axis, .bg-grid, .bg-grid-major { display: none; }
+  .domain, .rail, .panel, .strip, .rush, .brand {
+    position: static; transform: none; width: auto; height: auto;
+  }
+  #mat { padding: 10px; display: flex; flex-direction: column; gap: 10px; }
+  .domain { grid-template-columns: 1fr 1fr; grid-template-rows: auto auto; }
+  .zone { aspect-ratio: 63 / 88; }
+  .zone .cardslot { height: 100%; max-height: none; }
+  .rail { flex-direction: row; }
+  .pile { flex: 1; }
+  .strip { width: 100%; flex-wrap: wrap; height: auto; }
+  .mini-slot { height: 78px; flex: 0 0 auto; width: 56px; }
+  .rush { align-self: center; }
+  .panel { width: 100%; }
+}

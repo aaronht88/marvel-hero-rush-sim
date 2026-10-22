@@ -69,13 +69,13 @@ html, body {
 
 /* 工作區：鎖 804:730（figcraft 原稿比例），letterbox */
 .stage {
-  position: absolute; left: 50%; top: 50%;
-  transform: translate(-50%, -50%);
-  aspect-ratio: 804 / 730;
-  width: min(97vw, calc(97dvh * 804 / 730));
+  /* v05.1 — Aaron：唔再局限原稿方形，按畫面比例舒展。
+     改用百分比 + vmin 混合定位，任何 aspect ratio 都鋪滿。
+     container-type:size 保留，讓 cqw/cqh 仍然可用於網格。 */
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
   container-type: size;
   overflow: hidden;
-  border-radius: 4px;
 }
 
 /* ============================================================
