@@ -1,0 +1,445 @@
+/* ============================================================
+   MHR PLAYMAT v07 — 整合版
+   v06 菱形自適應佈局 + 3D 扇形手牌（真卡圖）+ drag to playmat
+
+   佈局：
+     左上領域 P1（菱形 BACK/WING/WING/FRONT）
+     右下領域 P2（菱形 FRONT/WING/WING/BACK）
+     中央 RUSH
+     兩側 rail（DECK/VOID/RETREAT）
+     頂部 Battle Log / 底部 Battle Control
+     底部 3D 手牌（浮在 playmat 外，不佔位）
+     BASE 6 格（底部中央，細格）
+
+   手牌用 three.js canvas 疊在 playmat 上層，idle 保持扇形。
+   ============================================================ */
+
+:root {
+  --bg-0: #03060c;
+  --bg-1: #061020;
+  --bg-2: #0a1c3a;
+  --bg-3: #12325e;
+
+  --p1-deep: rgba(150, 26, 38, .30);
+  --p2-deep: rgba(16, 78, 150, .30);
+
+  --cyan-1: #4dd0e1;
+  --cyan-dim: rgba(77, 208, 225, .34);
+
+  --t-hi: #ffffff;
+  --t-mid: rgba(198, 224, 250, .82);
+  --t-lo: rgba(150, 190, 228, .48);
+
+  --frame: rgba(77, 208, 225, .42);
+  --frame-dim: rgba(77, 208, 225, .20);
+
+  --chamfer: 10px;
+  --gap: clamp(5px, .9vmin, 14px);
+  --edge: clamp(6px, 1vmin, 18px);
+  --pull: clamp(4px, 1.5vw, 40px);
+
+  --field-w: clamp(220px, 27vw, 440px);
+  --field-h: clamp(150px, 24vh, 300px);
+  --panel-w: clamp(160px, 21vw, 300px);
+  --panel-h: clamp(80px, 14vh, 150px);
+  --strip-h: clamp(44px, 8vh, 92px);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%; overflow: hidden;
+  background: var(--bg-0); color: var(--t-hi);
+  font-family: Inter, "Rajdhani", ui-sans-serif, -apple-system, "Segoe UI", "Noto Sans HK", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#mat {
+  position: relative;
+  width: 100vw; height: 100dvh;
+  overflow: hidden;
+}
+
+/* ---------- 背景 ---------- */
+.bg-base {
+  position: absolute; inset: 0;
+  background: radial-gradient(120% 95% at 50% 0%,
+    var(--bg-3) 0%, var(--bg-2) 34%, var(--bg-1) 68%, var(--bg-0) 100%);
+}
+.bg-grid, .bg-grid-major {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(var(--cyan-dim) 1px, transparent 1px),
+    linear-gradient(90deg, var(--cyan-dim) 1px, transparent 1px);
+  mask-image: radial-gradient(92% 82% at 50% 46%, #000, rgba(0,0,0,.4) 64%, transparent 100%);
+  -webkit-mask-image: radial-gradient(92% 82% at 50% 46%, #000, rgba(0,0,0,.4) 64%, transparent 100%);
+  pointer-events: none;
+}
+.bg-grid       { background-size: clamp(26px, 4vw, 60px) clamp(26px, 4vw, 60px); opacity: .24; }
+.bg-grid-major { background-size: clamp(104px, 16vw, 240px) clamp(104px, 16vw, 240px); opacity: .17; }
+
+.tint { position: absolute; inset: 0; pointer-events: none; }
+.tint-p1 {
+  background: linear-gradient(133deg, var(--p1-deep) 0%, rgba(150,26,38,.12) 32%, transparent 56%);
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+.tint-p2 {
+  background: linear-gradient(313deg, var(--p2-deep) 0%, rgba(16,78,150,.12) 32%, transparent 56%);
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+}
+.axis {
+  position: absolute; left: 50%; top: 50%;
+  width: 175%; height: 2px;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(90deg,
+    transparent 0 21%, rgba(77,208,225,.18) 29%, var(--cyan-1) 36%,
+    transparent 42% 58%, var(--cyan-1) 64%, rgba(77,208,225,.18) 71%, transparent 79% 100%);
+  filter: drop-shadow(0 0 6px rgba(77,208,225,.5));
+  pointer-events: none; z-index: 1;
+}
+
+/* ---------- 斜切角 ---------- */
+.chamfer {
+  clip-path: polygon(
+    var(--chamfer) 0, calc(100% - var(--chamfer)) 0,
+    100% var(--chamfer), 100% calc(100% - var(--chamfer)),
+    calc(100% - var(--chamfer)) 100%, var(--chamfer) 100%,
+    0 calc(100% - var(--chamfer)), 0 var(--chamfer));
+}
+.framed { position: relative; }
+.framed::before {
+  content: ""; position: absolute; inset: 0;
+  background: var(--frame); clip-path: inherit; pointer-events: none;
+}
+.framed::after {
+  content: ""; position: absolute; inset: 1.5px;
+  background: linear-gradient(180deg, rgba(18,50,94,.90), rgba(6,16,32,.95));
+  clip-path: inherit; pointer-events: none;
+}
+.framed > * { position: relative; z-index: 1; }
+
+/* ============================================================
+   戰區領域（菱形）
+   ============================================================ */
+.domain {
+  position: absolute;
+  width: var(--field-w);
+  height: var(--field-h);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: var(--gap);
+  z-index: 5;
+}
+.domain-p1 {
+  left: calc(50% - var(--field-w) - var(--pull));
+  top: calc(var(--edge) + var(--gap));
+}
+.domain-p2 {
+  right: calc(50% - var(--field-w) - var(--pull));
+  bottom: calc(var(--edge) + 31vh);   /* 讓開手牌層 */
+}
+
+.domain-p1 .slot-back  { grid-area: 1 / 2; }
+.domain-p1 .slot-wing1 { grid-area: 2 / 1; }
+.domain-p1 .slot-wing2 { grid-area: 2 / 3; }
+.domain-p1 .slot-front { grid-area: 3 / 2; }
+
+.domain-p2 .slot-front { grid-area: 1 / 2; }
+.domain-p2 .slot-wing1 { grid-area: 2 / 1; }
+.domain-p2 .slot-wing2 { grid-area: 2 / 3; }
+.domain-p2 .slot-back  { grid-area: 3 / 2; }
+
+.zone {
+  --chamfer: 9px;
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  min-width: 1px; min-height: 1px;
+  transition: filter .18s, box-shadow .18s;
+  cursor: pointer;
+  overflow: hidden;
+}
+.zone[data-tier="1"] { --frame: rgba(77,208,225,.82); }
+.zone[data-tier="2"] { --frame: rgba(77,208,225,.44); }
+.zone[data-tier="3"] { --frame: rgba(77,208,225,.26); }
+.zone.hot {
+  --frame: rgba(34,211,238,1);
+  filter: brightness(1.4) drop-shadow(0 0 16px rgba(77,208,225,.8));
+}
+
+.zone .zname {
+  position: absolute; left: 0; right: 0; bottom: 4%;
+  text-align: center;
+  font-size: clamp(6px, .9vmin, 11px); font-weight: 900;
+  color: var(--t-hi);
+  text-shadow: 0 0 8px rgba(77,208,225,.45), 0 1px 3px rgba(0,0,0,.9);
+  text-transform: uppercase;
+  pointer-events: none; z-index: 3;
+}
+.zone .rval {
+  position: absolute; right: 6%; bottom: 5%;
+  font-size: clamp(5px, .7vmin, 8px); font-weight: 800;
+  color: var(--cyan-1); opacity: .9;
+  pointer-events: none; z-index: 3;
+}
+.zone .zbadge {
+  position: absolute; top: 5%; left: 5%;
+  min-width: clamp(10px, 1.4vmin, 16px);
+  height: clamp(10px, 1.4vmin, 16px);
+  border-radius: 50%;
+  background: #fff; color: var(--bg-2);
+  font-size: clamp(5px, .8vmin, 9px); font-weight: 900;
+  line-height: clamp(10px, 1.4vmin, 16px); text-align: center;
+  box-shadow: 0 0 8px rgba(77,208,225,.55);
+  pointer-events: none; z-index: 3;
+}
+/* 已放入的卡（真卡圖） */
+.zone .incard {
+  position: absolute; inset: 2px;
+  border-radius: 5px;
+  background-size: cover;
+  background-position: center;
+  z-index: 1;
+}
+.zone .incard::after {
+  content: ""; position: absolute; inset: 0;
+  border-radius: 5px;
+  box-shadow: inset 0 0 18px rgba(0,0,0,.55);
+}
+
+/* ============================================================
+   RUSH
+   ============================================================ */
+.rush {
+  position: absolute; z-index: 20;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  --chamfer: 8px;
+  display: flex; align-items: center; gap: clamp(4px, .8vmin, 10px);
+  padding: clamp(2px, .45vmin, 5px) clamp(8px, 1.3vmin, 16px);
+  white-space: nowrap;
+}
+.rush .rl { font-size: clamp(5px, .75vmin, 9px); font-weight: 800; letter-spacing: .16em; color: var(--cyan-1); }
+.rush .rs { font-size: clamp(11px, 2vmin, 24px); font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; text-shadow: 0 0 10px currentColor; }
+.rush .rs.p1 { color: #ff5d6c; }
+.rush .rs.p2 { color: #4da3ff; }
+.rush .rv { font-size: clamp(6px, .9vmin, 10px); font-weight: 700; color: var(--t-lo); }
+
+/* ============================================================
+   rail（DECK / VOID / RETREAT）
+   ============================================================ */
+.rail {
+  position: absolute; z-index: 6;
+  display: flex; flex-direction: column;
+  gap: var(--gap);
+  width: clamp(44px, 6vw, 98px);
+  top: 50%; transform: translateY(-50%);
+}
+.rail-p1 { left: var(--edge); }
+.rail-p2 { right: var(--edge); }
+
+.pile {
+  --chamfer: 6px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 1px;
+  padding: clamp(3px, .45vmin, 6px) 0;
+  cursor: pointer;
+  transition: filter .16s;
+}
+.pile:hover { filter: brightness(1.4); }
+.pile .pl {
+  font-size: clamp(5px, .65vmin, 8px); font-weight: 800;
+  letter-spacing: .1em; color: var(--cyan-1);
+  text-transform: uppercase;
+}
+.pile .pc {
+  font-size: clamp(10px, 1.4vmin, 17px); font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  color: var(--t-hi); line-height: 1;
+  text-shadow: 0 0 8px rgba(77,208,225,.4);
+}
+
+/* ============================================================
+   面板（Battle Log 右上 / Battle Control 左下）
+   ============================================================ */
+.panel {
+  position: absolute; z-index: 7;
+  --chamfer: 10px;
+  padding: clamp(4px, .7vmin, 9px) clamp(6px, .9vmin, 13px);
+  width: var(--panel-w);
+  height: var(--panel-h);
+  display: flex; flex-direction: column;
+  min-height: 0;
+}
+.log-p1  { right: var(--edge); top: calc(var(--edge) + var(--gap)); }
+.ctrl-p1 { left: var(--edge);  bottom: calc(var(--edge) + 31vh);   /* 讓開手牌層 */ }
+
+.panel .pt {
+  font-size: clamp(5px, .75vmin, 9px); font-weight: 800;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: var(--cyan-1);
+  margin-bottom: clamp(2px, .4vmin, 4px);
+  display: flex; align-items: center; gap: 5px;
+  flex: none;
+}
+.panel .pt::after {
+  content: ""; flex: 1; height: 1px;
+  background: linear-gradient(90deg, var(--frame-dim), transparent);
+}
+.log-lines {
+  flex: 1;
+  font-size: clamp(6px, .8vmin, 9px); line-height: 1.5;
+  color: var(--t-mid);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  overflow: hidden;
+}
+.log-lines div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.log-lines .hl { color: var(--cyan-1); }
+
+.ctrl-btns {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: clamp(2px, .4vmin, 5px);
+  min-height: 0;
+}
+.btn {
+  border: 0; background: none; padding: 0;
+  font-family: inherit; cursor: pointer;
+  position: relative; min-height: clamp(16px, 2.2vmin, 28px);
+}
+.btn .bin {
+  position: absolute; inset: 0;
+  background: rgba(77,208,225,.78);
+  box-shadow: 0 0 8px rgba(77,208,225,.3);
+  clip-path: polygon(6px 0, calc(100% - 6px) 0, 100% 6px, 100% calc(100% - 6px),
+                     calc(100% - 6px) 100%, 6px 100%, 0 calc(100% - 6px), 0 6px);
+}
+.btn .bface {
+  position: absolute; inset: 1px;
+  background: linear-gradient(180deg, #1e4a7c, #0d2440);
+  clip-path: polygon(5px 0, calc(100% - 5px) 0, 100% 5px, 100% calc(100% - 5px),
+                     calc(100% - 5px) 100%, 5px 100%, 0 calc(100% - 5px), 0 5px);
+  display: flex; align-items: center; justify-content: center;
+  font-size: clamp(5px, .75vmin, 9px); font-weight: 800;
+  color: #fff; text-shadow: 0 0 6px rgba(77,208,225,.5);
+}
+.btn:hover .bface { background: linear-gradient(180deg, #2a6299, #14324f); }
+.btn.warn .bin   { background: rgba(245,185,66,.85); }
+.btn.accent .bin { background: rgba(77,208,225,1); }
+.btn.accent .bface { background: linear-gradient(180deg, #1c5f86, #0d3350); color: #d9f7ff; }
+
+/* ============================================================
+   BASE 6 格（底部中央，手牌移走後空出來的位置）
+   ============================================================ */
+.base-row {
+  position: absolute; z-index: 13;
+  left: 50%; transform: translateX(-50%);
+  bottom: 2px;
+  display: flex; gap: clamp(3px, .5vmin, 7px);
+  height: clamp(44px, 7.5vh, 76px);
+}
+.base-slot {
+  --chamfer: 5px;
+  aspect-ratio: 63 / 88;
+  height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: clamp(7px, 1.05vmin, 11px); font-weight: 900;
+  letter-spacing: .08em; text-transform: uppercase;
+  color: rgba(160,205,245,.62);
+}
+
+/* ============================================================
+   3D 手牌層（浮喺 playmat 上，唔佔 playmat 空間）
+   ============================================================ */
+#hand3d {
+  position: absolute; z-index: 12;
+  left: 0; right: 0;
+  bottom: 0;
+  height: 31%;
+  pointer-events: none;
+}
+#hand3d canvas { display: block; }
+
+/* drag 幽靈 */
+#ghost {
+  position: fixed; z-index: 100;
+  width: 106px; pointer-events: none;
+  opacity: 0; transform: translate(-50%, -50%) scale(.92);
+  transition: opacity .1s;
+  filter: drop-shadow(0 14px 30px rgba(0,0,0,.85));
+}
+#ghost.on { opacity: .94; }
+#ghost img { width: 100%; display: block; border-radius: 6px; }
+
+/* hover tooltip */
+#cardtip {
+  position: fixed; z-index: 200;
+  width: clamp(170px, 20vw, 260px);
+  max-height: 42vh; overflow-y: auto;
+  padding: 9px 11px;
+  --chamfer: 9px;
+  font-size: 10.5px; line-height: 1.5;
+  pointer-events: none;
+  opacity: 0; transition: opacity .14s;
+}
+#cardtip.show { opacity: 1; }
+#cardtip .tn { font-weight: 800; margin-bottom: 4px; color: #fff; }
+#cardtip .ts { display: flex; gap: 3px; flex-wrap: wrap; margin-bottom: 5px; }
+#cardtip .tc {
+  padding: 1px 5px; border-radius: 3px; font-size: .84em; font-weight: 600;
+  background: rgba(77,208,225,.20); color: var(--cyan-1);
+  border: 1px solid rgba(77,208,225,.30);
+}
+#cardtip .te { white-space: pre-wrap; color: var(--t-mid); }
+
+/* HUD */
+.hud {
+  position: absolute; z-index: 14;
+  right: var(--edge);
+  bottom: 2px;
+  display: flex; align-items: center; gap: 14px;
+  pointer-events: none;
+  font-size: clamp(6px, .75vmin, 9px);
+  color: rgba(180,210,240,.55);
+  letter-spacing: .05em;
+}
+.hud b { color: var(--cyan-1); }
+
+.loading {
+  position: absolute; inset: 0; z-index: 90;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: rgba(180,210,240,.6); letter-spacing: .1em;
+  background: var(--bg-0);
+  transition: opacity .35s;
+}
+.err {
+  position: absolute; inset: 0; z-index: 95;
+  display: flex; align-items: center; justify-content: center;
+  padding: 30px; font-size: 11px; line-height: 1.7; color: #ff8b96;
+  text-align: center; white-space: pre-wrap;
+}
+
+/* ============================================================
+   窄畫面
+   ============================================================ */
+@media (max-aspect-ratio: 1/1) {
+  html, body { overflow-y: auto; }
+  #mat { height: auto; min-height: 100dvh; padding: 8px; }
+  .axis, .bg-grid-major { display: none; }
+  .domain {
+    position: static; width: 100%; height: auto;
+    grid-template-rows: repeat(3, auto);
+    margin-bottom: 8px;
+  }
+  .domain-p2 { margin-top: 8px; }
+  .zone { aspect-ratio: 63 / 88; }
+  .rail, .panel, .base-row, .rush, .hud { position: static; transform: none; width: auto; height: auto; }
+  .rail { flex-direction: row; margin: 6px 0; }
+  .pile { flex: 1; }
+  .panel { width: 100%; height: 100px; margin: 6px 0; }
+  .base-row { justify-content: center; margin: 8px 0; }
+  .base-slot { height: 64px; width: 46px; }
+  #hand3d { position: relative; height: 230px; margin-top: 8px; }
+  .hud { justify-content: center; margin-top: 6px; }
+}

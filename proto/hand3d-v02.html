@@ -136,6 +136,8 @@
   </div>
 </div>
 
+<script src="../js/cards.js"></script>
+
 <script type="importmap">
 {
   "imports": {
@@ -162,6 +164,28 @@ try {
   const THREE = await import('three');
 
   /* ---------------- 卡資料 ---------------- */
+  // 優先讀真卡資料（js/cards.js 的 MHR_DATA）；冇就 fallback 到示範卡
+  const REAL_CARDS = (window.MHR_DATA && window.MHR_DATA.CARDS) || null;
+  if (!REAL_CARDS) console.warn('[cards] window.MHR_DATA 未定義，用示範卡');
+  // 去重（同一 card_no 多個 rarity）+ 只留有效果文本
+  const REAL_POOL = (() => {
+    if (!REAL_CARDS) return null;
+    const seen = new Set();
+    const out = [];
+    for (const c of REAL_CARDS) {
+      if (!c.card_no || seen.has(c.card_no)) continue;
+      seen.add(c.card_no);
+      out.push({
+        no: c.card_no, name: c.name, lv: +c.level, p: c.power, r: c.attackRange,
+        color: c.attribute, feat: c.feature, effect: c.effect || '',
+        art: (c.art || '').split('/').pop().replace(/\.webp$/, ''),
+        rarity: c.rarity,
+      });
+    }
+    return out;
+  })();
+  console.log('[cards] 真卡:', REAL_POOL ? REAL_POOL.length : 0, '張');
+
   const CARD_POOL = [
     { no:'BP01-001', name:'「Pulse Assembler」Iron Man', lv:3, p:3500, r:2, color:'Blue', feat:'Avenger',
       effect:'TRIG【FIELD】：When this card enters the field by calling, you prune 1 of your opponent\'s characters with Lv2 or below in BATTLE.' },
@@ -184,6 +208,24 @@ try {
 
   /* ---------------- 卡面 texture ---------------- */
   const texCache = new Map();
+  const artLoader = new THREE.TextureLoader();
+
+  /* 真卡圖：優先用 img/cards-thumb/<id>.webp，失敗則 fallback 到 canvas 卡面 */
+  function makeArtTexture(card, artId) {
+    if (!artId) return null;
+    const key = 'art:' + artId;
+    if (texCache.has(key)) return texCache.get(key);
+    const tex = artLoader.load(
+      '../img/cards-thumb/' + artId + '.webp',
+      undefined, undefined,
+      () => { tex.__failed = true; }
+    );
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 8;
+    texCache.set(key, tex);
+    return tex;
+  }
+
   function makeCardTexture(card) {
     if (texCache.has(card.no)) return texCache.get(card.no);
     const W = 512, H = 716;
@@ -258,7 +300,7 @@ try {
 
   /* ---------------- three.js 場景管理 ---------------- */
   const CARD_W = 2.1;
-  const CARD_H = CARD_W / 0.716;
+  const CARD_H = CARD_W / 0.726;   // 真卡圖 260x358
 
   class Hand3D {
     constructor(container) {
@@ -423,7 +465,9 @@ try {
       const totalAng = dTheta * Math.max(0, n - 1);
 
       cards.forEach((card, i) => {
-        const tex = makeCardTexture(card);
+        // 真卡圖優先，冇則用 canvas 合成卡面
+        const artTex = card.art ? makeArtTexture(card, card.art) : null;
+        const tex = artTex || makeCardTexture(card);
         const geo = new THREE.PlaneGeometry(CARD_W, CARD_H);
         const mat = new THREE.MeshStandardMaterial({
           map: tex, transparent: true, side: THREE.DoubleSide, toneMapped: false,
@@ -524,12 +568,12 @@ try {
   /* ---------------- React App ---------------- */
   let uidSeq = 0;
   const mkCard = (src) => ({ ...src, uid: 'c' + (uidSeq++) });
-  const POOL = CARD_POOL;
+  const POOL = REAL_POOL && REAL_POOL.length ? REAL_POOL : CARD_POOL;
 
   function App() {
     const glRef = useRef(null);
     const engRef = useRef(null);
-    const [hand, setHand] = useState(() => CARD_POOL.map(mkCard));
+    const [hand, setHand] = useState(() => (REAL_POOL && REAL_POOL.length ? REAL_POOL : CARD_POOL).slice(0, 8).map(mkCard));
     const [deck, setDeck] = useState(42);
     const [hovered, setHovered] = useState(null);
     const [ptr, setPtr] = useState({ x: 0, y: 0 });
@@ -621,7 +665,7 @@ try {
     }, []);
     const discard = useCallback(() => setHand(h => h.slice(0,-1)), []);
     const play = useCallback(() => setHand(h => h.slice(0,-1)), []);
-    const reset = useCallback(() => { uidSeq = 0; setHand(CARD_POOL.map(mkCard)); setDeck(42); }, []);
+    const reset = useCallback(() => { uidSeq = 0; setHand((REAL_POOL && REAL_POOL.length ? REAL_POOL : CARD_POOL).slice(0, 8).map(mkCard)); setDeck(42); }, []);
 
     useEffect(() => {
       const fn = (e) => {
