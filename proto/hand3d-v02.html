@@ -223,7 +223,7 @@ try {
       this.scene.fog = new THREE.Fog('#03060c', 9, 20);
 
       this.camera = new THREE.PerspectiveCamera(42, container.clientWidth/container.clientHeight, 0.1, 100);
-      this.camera.position.set(0, -0.45, 6.4);
+      this.camera.position.set(0, -0.30, 7.7);
       this.camera.lookAt(0, 0, 0);
 
       this.scene.add(new THREE.AmbientLight(0xffffff, 0.85));
@@ -315,59 +315,52 @@ try {
           const spreadX = Math.min(idealSpread, maxSpread);
       const maxRot = 0.30;
 
-      // 兩行排列：每行上限 5 張，避免單行 8 張必然重疊（實測單行最多露 34%）
-      const PER_ROW = 5;
-      const rows = [];
-      for (let r = 0; r * PER_ROW < n; r++) {
-        rows.push(cards.slice(r * PER_ROW, (r + 1) * PER_ROW));
-      }
-      const rowSpread = CARD_W * 0.62;     // 每張露 62%，一行 5 張剛好
+      // 單行真扇形：圓心喺卡下方，卡沿弧排，每張切線旋轉
+      // 幾何：R=6.2, 弧間距 = CARD_W*0.55 → 8 張總展開 ~75°
+      const R = 8.5;
+      const gapArc = CARD_W * 0.42;
+      const dTheta = gapArc / R;
+      const totalAng = dTheta * Math.max(0, n - 1);
 
-      let flat = 0;
-      rows.forEach((rowCards, r) => {
-        const rn = rowCards.length;
-        rowCards.forEach((card, j) => {
-          const i = flat++;
-          const tex = makeCardTexture(card);
-          const geo = new THREE.PlaneGeometry(CARD_W, CARD_H);
-          const mat = new THREE.MeshStandardMaterial({
-            map: tex, transparent: true, side: THREE.DoubleSide, toneMapped: false,
-          });
-          const mesh = new THREE.Mesh(geo, mat);
-          mesh.userData.index = i;
+      cards.forEach((card, i) => {
+        const tex = makeCardTexture(card);
+        const geo = new THREE.PlaneGeometry(CARD_W, CARD_H);
+        const mat = new THREE.MeshStandardMaterial({
+          map: tex, transparent: true, side: THREE.DoubleSide, toneMapped: false,
+        });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.userData.index = i;
 
-          const t = rn <= 1 ? 0 : (j - (rn-1)/2) / Math.max(1,(rn-1)/2);
-          const rowY = (rows.length === 1) ? 0 : (0.62 - r * 1.24);
-          // 每張之間嘅實際間距：一行 rn 張，總跨度 = (rn-1)*gap，置中
-          // gap = CARD_W * 0.62 → 每張露出 62%，剩 38% 被鄰卡覆蓋
-          const gap = CARD_W * 0.80;
-          const xPos = (j - (rn - 1) / 2) * gap;
-          const collapsed = {
-            x: -rowSpread * 0.5 + j * 0.055,
-            y: rowY - j * 0.020,
-            z: i * 0.004,
-            rotY: 0, rotZ: 0,
-          };
-          const expanded = {
-            x: xPos,
-            y: rowY,
-            z: -i * 0.006,
-            rotY: 0, rotZ: 0,
-          };
-          const base = { ...expanded, collapsed };
+        const ang = -totalAng / 2 + i * dTheta;
+        const fx = R * Math.sin(ang);
+        const fy = R * Math.cos(ang) - R - 0.15;   // 整體下移，留空間俾 hover 抽出
+
+        const collapsed = {
+          x: i * 0.045 - n * 0.0225,
+          y: -0.55 - i * 0.016,
+          z: i * 0.004,
+          rotY: 0, rotZ: 0,
+        };
+        const expanded = {
+          x: fx,
+          y: fy,
+          z: i * 0.006,
+          rotY: 0,
+          rotZ: -ang,          // 切線方向 → 真扇形
+        };
+        const base = { ...expanded, collapsed };
+
         if (animateIn) {
-          // 由牌堆位置飛入
-          mesh.position.set(spreadX * 0.6, -1.6, 0.9);
-          mesh.scale.setScalar(0.55);
-          mesh.rotation.set(0, 0.7, 0.35);
+          mesh.position.set(i * 0.04 - n * 0.02, -1.9, 0.9);
+          mesh.scale.setScalar(0.5);
+          mesh.rotation.set(0, 0.6, 0.3);
         } else {
           mesh.position.set(base.x, base.y, base.z);
           mesh.scale.setScalar(1);
           mesh.rotation.set(0, base.rotY, base.rotZ);
         }
-          this.group.add(mesh);
-          this.cards.push({ mesh, base, card });
-        });
+        this.group.add(mesh);
+        this.cards.push({ mesh, base, card });
       });
     }
 
@@ -407,17 +400,18 @@ try {
         const m = c.mesh, b = c.base;
         const isH = this.hovered === i;
         const src = this.expanded ? b : b.collapsed;
-        const tx = isH ? src.x * 0.86 : src.x;
-        const ty = isH ? src.y + 0.62 : src.y;
-        const tz = isH ? 0.62 : src.z;
+        // hover = 由扇形向上抽出
+        const tx = isH ? src.x * 0.94 : src.x;
+        const ty = isH ? src.y + 1.05 : src.y;
+        const tz = isH ? 1.15 : src.z;
         m.position.x += (tx - m.position.x) * k;
         m.position.y += (ty - m.position.y) * k;
         m.position.z += (tz - m.position.z) * k;
-        const s = isH ? 1.28 : 1.0;
+        const s = isH ? 1.16 : 1.0;
         m.scale.x += (s - m.scale.x) * k;
         m.scale.y += (s - m.scale.y) * k;
         m.scale.z += (s - m.scale.z) * k;
-        const tRy = isH ? 0 : src.rotY;
+        const tRy = 0;
         const tRz = isH ? 0 : src.rotZ;
         m.rotation.y += (tRy - m.rotation.y) * k;
         m.rotation.z += (tRz - m.rotation.z) * k;
@@ -444,6 +438,7 @@ try {
     const [deck, setDeck] = useState(42);
     const [hovered, setHovered] = useState(null);
     const [ptr, setPtr] = useState({ x: 0, y: 0 });
+    const [tipPos, setTipPos] = useState(null);
     const prevLen = useRef(hand.length);
 
     // 初始化 three
@@ -479,6 +474,20 @@ try {
       eng.onSelect = (i) => {
         setHand(h => h.filter((_, idx) => idx !== i));
         setHovered(null);
+      };
+      // 每次 hover 改變，計出該卡在畫面上的位置，tooltip 貼住卡
+      eng.onHover = (i) => {
+        setHovered(i);
+        if (i == null || !eng.cards[i]) { setTipPos(null); return; }
+        const mesh = eng.cards[i].mesh;
+        const v = new THREE.Vector3();
+        mesh.getWorldPosition(v);
+        v.project(eng.camera);
+        const r = eng.renderer.domElement.getBoundingClientRect();
+        setTipPos({
+          x: r.left + (v.x * 0.5 + 0.5) * r.width,
+          y: r.top + (-v.y * 0.5 + 0.5) * r.height,
+        });
       };
     }, []);
 
@@ -517,10 +526,10 @@ try {
       h('div', {
         id: 'cardtip',
         className: 'cardtip' + (tipCard ? ' show' : ''),
-        style: {
-          left: Math.min(ptr.x + 18, window.innerWidth - 268),
-          top: Math.max(12, ptr.y - 120),
-        },
+        style: tipPos ? {
+          left: Math.min(tipPos.x + 130, window.innerWidth - 268),
+          top: Math.max(12, Math.min(tipPos.y - 90, window.innerHeight - 260)),
+        } : { display: 'none' },
       },
         tipCard && h(React.Fragment, null,
           h('div', { className:'tn' }, tipCard.name),
