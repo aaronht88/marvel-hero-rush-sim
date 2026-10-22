@@ -88,15 +88,39 @@
   function readField(card, k) {
     if (!card) return 0;
     switch (k) {
-      case "lv":    return card.level + (card._lvMod || 0);
+      // v3.19: 蓋卡一律 Lv1（官方 P14 名詞 3）——同 engine.cardEffectiveLv 一致
+      case "lv":    return card._faceDown ? 1 : (card.level + (card._lvMod || 0));
       case "power": return (card.power && parseInt(card.power, 10)) || 0;
       case "attr":  return card.attribute;
-      case "feature": return card.feature;
+      // v3.19 BUGFIX: MHR 嘅 feature 係 '/' 分隔字串（例如 "Human/Web"），
+      // 唔係 array。舊版直接回傳整個字串，所以 filter { feature:"Web" } 對
+      // 一張 "Human/Web" 嘅卡永遠唔會 match —— 所有 【Web】/【Machine】 類
+      // filter（SP01 一大票）靜靜哋篩錯卡。呢度回傳 array 畀 compareOp 處理。
+      case "feature": return splitFeatures(card);
       default:      return null;
     }
   }
 
+  // "Human/Web" → ["Human","Web"]；"Machine" → ["Machine"]
+  function splitFeatures(card) {
+    if (!card) return [];
+    const f = card.feature;
+    if (!f) return [];
+    if (Array.isArray(f)) return f.map(x => String(x).trim()).filter(Boolean);
+    return String(f).split("/").map(x => x.trim()).filter(Boolean);
+  }
+
   function compareOp(op, a, b) {
+    // v3.19: feature 讀出嚟係 array（"Human/Web" → ["Human","Web"]）。
+    // filter { feature:"Web" } 嘅語義係「包含」，唔係等於，所以一律用
+    // includes。舊版因為 readField 回傳字串而令呢個 filter 永遠唔中。
+    if (Array.isArray(a)) {
+      const needle = Array.isArray(b) ? b : [b];
+      const has = needle.every(n => a.includes(n));
+      if (op === "==" || op === undefined || op === null) return has;
+      if (op === "!=") return !has;
+      return false;
+    }
     switch (op) {
       case "<=": return a <= b;
       case "<":  return a <  b;
@@ -314,6 +338,66 @@
     emitLog(state, `[效果未實裝] op:${opDef.op}（M2+ 補齊）`, side);
     return { ok: false, stub: true };
   }
+
+  // =============================================================
+  // v3.19 Z2 — discard / prune 由 stub 升做真 op
+  //
+  // 呢兩個之前係 opStub，所以任何 descriptor 用佢哋都會 log「未實裝」。
+  // zone_transfer 嘅 after[] 同 choose_one 分支都要用，所以必須實作。
+  // 重用 Z1 嘅 COST_VALIDATORS/APPLIERS，確保同一套語義（atomic 檢查）。
+  // =============================================================
+
+  // op: { op:"discard", n, self?, from? }
+  function opDiscard(state, side, opDef, ctx) {
+    const cost = { op: 'discard', n: opDef.n, self: opDef.self };
+    const v = COST_VALIDATORS.discard(state, side, cost, ctx);
+    if (!v.ok) {
+      emitLog(state, `[效果] ${opDef._sourceName || ""}：無法捨棄（${v.err}）`, side);
+      return { ok: false, err: v.err };
+    }
+    COST_APPLIERS.discard(state, side, cost, ctx, v.plan);
+    return { ok: true };
+  }
+
+  // op: { op:"prune", n, target?, filter? }
+  // 注意 prune 做「效果」（唔係 cost）時，log 措辭應該係「裁剪」而唔係「cost」。
+  function opPruneEffect(state, side, opDef, ctx) {
+    const p = state.players[side];
+    const opp = state.players[side === "P" ? "A" : "P"];
+
+    // 對自己場上（多數 prune 效果係 prune 對手，但 V2 類會 prune 自己）
+    if (opDef.target === "self_on_field" || opDef.target === "my_field") {
+      const pool = battleAll(p).filter(c => !opDef.filter || passFilter(c, opDef.filter, ctx, state, side));
+      if (!pool.length) { emitLog(state, `[效果] ${opDef._sourceName || ""}：無合法目標`, side); return { ok: true }; }
+      doPrune(state, side, pool[0]);
+      return { ok: true };
+    }
+    // 自己撤退區
+    if (opDef.target === "my_retreat") {
+      const pool = p.retreat.filter(c => !opDef.filter || passFilter(c, opDef.filter, ctx, state, side));
+      if (!pool.length) { emitLog(state, `[效果] ${opDef._sourceName || ""}：撤退區無合法目標`, side); return { ok: true }; }
+      const t = pool[0];
+      const i = p.retreat.indexOf(t);
+      p.retreat.splice(i, 1);
+      p.voidZone.push(t);
+      emitLog(state, `${p.name} ${shortName(t)} → VOID（裁剪）`, side);
+      return { ok: true };
+    }
+    // 牌組頂
+    if (opDef.target === "my_deck_top") {
+      const n = opDef.n == null ? 1 : opDef.n;
+      const k = Math.min(n, p.deck.length);
+      for (let i = 0; i < k; i++) p.voidZone.push(p.deck.shift());
+      if (k) emitLog(state, `${p.name} 裁剪牌組頂 ${k} 張 → VOID`, side);
+      if (checkWinAfterEffect) checkWinAfterEffect(state);
+      return { ok: true };
+    }
+    // 預設：對手戰場
+    const pool = battleChars(opp).filter(c => !opDef.filter || passFilter(c, opDef.filter, ctx, state, side));
+    if (!pool.length) { emitLog(state, `[效果] ${opDef._sourceName || ""}：對手場上無合法目標`, side); return { ok: true }; }
+    doPrune(state, side === "P" ? "A" : "P", pool[0]);
+    return { ok: true };
+  }
   // =============================================================
   // v3.17 — CHOICE / CONDITIONAL-CHAIN primitives
   //
@@ -422,9 +506,41 @@
     if (idx < 0) return { ok: false, err: "no pending choice for side " + side };
     const ch = state.pendingChoices[idx];
     state.pendingChoices.splice(idx, 1);
+
+    // v3.19: choose_one 用 optionIndex（唔係 yes/no）
+    if (ch.isChooseOne) {
+      const ctx = Object.assign({}, ch.ctxSnapshot || {});
+      if (ch.cardUid) ctx.source = findCardByUid(state, side, ch.cardUid) || null;
+      const optIdx = answer && answer.optionIndex != null ? answer.optionIndex : -1;
+      if (optIdx < 0 || !ch.then || !ch.then[optIdx]) {
+        emitLog(state, `${ch.cardName || ""}：放棄二選一`, side);
+        return { ok: true, declined: true };
+      }
+      const r = runOpList(state, side, [ch.then[optIdx]], ctx, { op: "choose_one" });
+      refreshAutos(state);
+      return r;
+    }
+
     if (!answer.accept) {
       emitLog(state, `${ch.cardName || ""}：放棄可選效果`, side);
       return { ok: true, declined: true };
+    }
+
+    // v3.19: pick_card（zone_transfer 嘅 playerChooses）—— 用答案覆寫目標
+    if (ch.kind === "pick_card") {
+      const ctx = Object.assign({}, ch.ctxSnapshot || {});
+      if (ch.cardUid) ctx.source = findCardByUid(state, side, ch.cardUid) || null;
+      const chosenUid = answer.cardUid;
+      if (!chosenUid || !ch.opDefSnapshot) return { ok: false, err: "pick_card 答案缺 cardUid" };
+      const chosen = findCardByUid(state, side, chosenUid);
+      if (!chosen) return { ok: false, err: "揀嘅卡已唔存在" };
+      const opDef = ch.opDefSnapshot;
+      delete opDef.playerChooses;                 // 已由玩家揀，唔再 park
+      opDef.subject = "self";
+      const ctx2 = Object.assign({}, ctx, { source: chosen });
+      const r = opZoneTransfer(state, side, opDef, ctx2);
+      refreshAutos(state);
+      return r;
     }
     // rehydrate ctx
     const ctx = Object.assign({}, ch.ctxSnapshot || {});
@@ -459,9 +575,15 @@
     // v3.17 choice / conditional-chain
     optional: opOptional,
     if_you_do: opIfYouDo,
+    // v3.19 Z2 zone transfer
+    zone_transfer: opZoneTransfer,
+    // v3.19 Z2 zone transfer modes
+    choose_one: opChooseOne,
+    // v3.19 Z2 — 由 stub 升做真 op
+    discard: opDiscard,
+    prune: opPruneEffect,
     // stubs (declared so descriptors stay honest — they log, don't silently pass)
     move: opStub,
-    discard: opStub,
     attach: opStub,
     face_down: opStub,
     show: opStub,
@@ -639,6 +761,278 @@
       default:       return true;
     }
   }
+
+  // =============================================================
+  // v3.19 Z2 — zone_transfer op
+  //
+  // 規格見 ZONE_TRANSFER_SPEC.md。官方規則書依據：
+  //   P14 名詞 5/6/7 — 捨棄(手牌/牌組→撤退) / 撤退(場上→撤退) / 裁剪(任何→虛空)
+  //                    目的地相同但來源唔同，所以 from 必須係 model 一部分
+  //   P14 名詞 3    — BASE 嘅卡 = 蓋卡：失去效果 + 非公開 + 可當 Lv1 付費
+  //   P15 名詞 8/9  — 結附卡跟主體（attach/detach 唔在本 op 範圍）
+  //
+  // 實測 7 個 VOID 變體（tests/smoke/void-survey.json）全部要呢個 op：
+  //   V1 self→field (cost discard 2)  V2 self→field (cost prune own)
+  //   V3 self→base  (免費)             V4 chosen→battle (cost prune deck top 3)
+  //   V5 chosen→field (cost prune self) V6 chosen→battle (二階段)
+  //   V7 all→retreat (or 二選一)
+  // =============================================================
+
+  // 由 zone key 攞玩家身上對應嘅陣列 + 位置（單槽 zone 要特殊處理）
+  const SINGLE_SLOTS = { front: "front", back: "back" };
+  function zoneList(p, zone) {
+    switch (zone) {
+      case "deck": return p.deck;
+      case "hand": return p.hand;
+      case "retreat": return p.retreat;
+      case "voidZone": case "void": return p.voidZone;
+      case "base": return p.base.faceDown;
+      case "wing": return p.battle.wing;
+      default: return null;
+    }
+  }
+
+  // 由某個 zone 移除一張卡（identity `_uid`，唔用 `==`）
+  function removeFromZoneById(p, zone, card) {
+    if (zone === "front") {
+      if (p.battle.front && p.battle.front._uid === card._uid) { p.battle.front = null; return true; }
+      return false;
+    }
+    if (zone === "back") {
+      if (p.battle.back && p.battle.back._uid === card._uid) { p.battle.back = null; return true; }
+      return false;
+    }
+    if (zone === "wing") {
+      const i = p.battle.wing.findIndex(c => c && c._uid === card._uid);
+      if (i >= 0) { p.battle.wing[i] = null; return true; }
+      return false;
+    }
+    const list = zoneList(p, zone);
+    if (!list) return false;
+    const i = list.findIndex(c => c && c._uid === card._uid);
+    if (i >= 0) { list.splice(i, 1); return true; }
+    return false;
+  }
+
+  // 卡而家實際喺邊個 zone（用 identity 掃）
+  function findZoneOf(p, card) {
+    if (!card) return null;
+    if (p.battle.front && p.battle.front._uid === card._uid) return "front";
+    if (p.battle.back && p.battle.back._uid === card._uid) return "back";
+    if (p.battle.wing.some(c => c && c._uid === card._uid)) return "wing";
+    const zones = [["deck", p.deck], ["hand", p.hand], ["retreat", p.retreat],
+                   ["void", p.voidZone], ["base", p.base.faceDown]];
+    for (const [name, list] of zones) {
+      if ((list || []).some(c => c && c._uid === card._uid)) return name;
+    }
+    return null;
+  }
+
+  // 加去某個 zone。戰場 zone 滿咗要返回 false（validate 階段就要知）
+  function zoneHasRoom(p, zone, state) {
+    if (zone === "front") return !p.battle.front;
+    if (zone === "back") return !p.battle.back;
+    if (zone === "wing") return p.battle.wing.some(c => !c);
+    if (zone === "base") {
+      // 規則書 P6：基地區上限 6 張
+      return p.base.faceDown.length < (state && state.baseLimit ? state.baseLimit : 6);
+    }
+    return true;   // deck/hand/retreat/void 無上限
+  }
+
+  function addToZone(p, zone, card) {
+    if (zone === "front") { p.battle.front = card; return true; }
+    if (zone === "back") { p.battle.back = card; return true; }
+    if (zone === "wing") {
+      const i = p.battle.wing.findIndex(c => !c);
+      if (i < 0) return false;
+      p.battle.wing[i] = card;
+      return true;
+    }
+    const list = zoneList(p, zone);
+    if (!list) return false;
+    list.push(card);
+    return true;
+  }
+
+  // 由 subjectFilter 揀目標。排序（orderBy）同最終選擇（playerChooses）
+  // 按 Aaron 2026-10-21 決定：卡效冇特別講就預設由控制方揀。
+  function collectZoneTransferTargets(state, side, opDef, ctx) {
+    const p = state.players[side];
+    const opp = state.players[side === "P" ? "A" : "P"];
+    const subject = opDef.subject || "self";
+    const fromOwner = opDef.fromOwner === "opp" ? opp : p;
+
+    let pool = [];
+    if (subject === "self") {
+      // 「此卡」—— 可能喺場上，亦可能喺 VOID（V1/V2/V3 就係自己喺 VOID）
+      const src = ctx && ctx.source;
+      if (!src) return [];
+      pool = [src];
+    } else if (subject === "all") {
+      pool = zoneList(fromOwner, opDef.from) ? zoneList(fromOwner, opDef.from).slice() : [];
+    } else {
+      // chosen / chosen_filtered：由 from zone 攞全部再篩
+      pool = zoneList(fromOwner, opDef.from) ? zoneList(fromOwner, opDef.from).slice() : [];
+    }
+
+    // filter
+    if (opDef.subjectFilter) {
+      const f = opDef.subjectFilter;
+      pool = pool.filter(c => {
+        if (!c) return false;
+        if (f.feature && !splitFeatures(c).includes(f.feature)) return false;
+        if (f.name && String(c.name || "").indexOf(f.name) < 0) return false;
+        if (f.lv) {
+          const cl = c._faceDown ? 1 : (c.level + (c._lvMod || 0));
+          if (f.lv.op === "lowest") { /* 排序用，唔篩 */ }
+          else if (!compareOp(f.lv.op, cl, f.lv.n)) return false;
+        }
+        if (f.power && !compareOp(f.power.op, parseInt(c.power, 10) || 0, f.power.n)) return false;
+        if (f.zone && findZoneOf(fromOwner, c) !== f.zone) return false;
+        return true;
+      });
+    }
+
+    // orderBy
+    const orderBy = opDef.subjectFilter && opDef.subjectFilter.orderBy;
+    if (orderBy === "lowest_lv") {
+      pool.sort((a, b) => (a.level + (a._lvMod || 0)) - (b.level + (b._lvMod || 0)));
+    } else if (orderBy === "highest_power") {
+      pool.sort((a, b) => (parseInt(b.power, 10) || 0) - (parseInt(a.power, 10) || 0));
+    }
+
+    // count（"all" 就係全部；否則預設 1）
+    // NOTE: playerChooses 要在 SLICE 之前判斷 —— 否則 count 已經截到 1 張，
+    // pool.length > 1 永遠唔成立，玩家永遠冇得揀（實測 bug）。
+    const wantAll = subject === "all";
+    const count = wantAll ? pool.length : (opDef.count == null ? 1 : opDef.count);
+
+    // playerChooses：多過一個候選 + 冇 orderBy 明確決定 → park choice
+    if (opDef.playerChooses && !wantAll && !orderBy && pool.length > 1) {
+      return { needsChoice: true, pool: pool.slice(0, Math.max(count, pool.length)) };
+    }
+    pool = pool.slice(0, count);
+    return pool;
+  }
+
+  function opZoneTransfer(state, side, opDef, ctx) {
+    const p = state.players[side];
+    const from = opDef.from;
+    const to = opDef.to;
+
+    if (!from || !to) return { ok: false, err: "zone_transfer 需要 from 同 to" };
+
+    // 1) 揀目標
+    const picked = collectZoneTransferTargets(state, side, opDef, ctx);
+    if (picked && picked.needsChoice) {
+      return parkChoice(state, side, {
+        kind: "pick_card",
+        prompt: opDef.prompt || "揀 1 張卡",
+        cardUid: ctx.source && ctx.source._uid,
+        cardName: ctx.source ? shortName(ctx.source) : "",
+        options: picked.pool.map(c => ({ uid: c._uid, name: c.name, card_no: c.card_no })),
+        opDefSnapshot: JSON.parse(JSON.stringify(opDef)),
+        ctxSnapshot: snapshotCtx(ctx),
+      });
+    }
+    const targets = picked || [];
+    if (!targets.length) {
+      // 冇目標：按 spec §5.4 建議，指令已執行 = 成立（不失敗）
+      emitLog(state, `${ctx.source ? shortName(ctx.source) : "效果"}：zone_transfer 無合法目標`, side);
+      return { ok: true, transferred: [] };
+    }
+
+    // 2) validate —— 目的地有位，而且每張卡真係喺 from zone
+    const fromOwner = opDef.fromOwner === "opp" ? state.players[side === "P" ? "A" : "P"] : p;
+    const toOwner  = opDef.toOwner === "opp" ? state.players[side === "P" ? "A" : "P"] : p;
+    for (const c of targets) {
+      const realZone = findZoneOf(fromOwner, c);
+      if (!realZone) return { ok: false, err: `目標卡 ${shortName(c)} 唔在任何 zone` };
+      if (realZone !== from && !(from === "wing" && realZone === "wing")) {
+        return { ok: false, err: `目標卡 ${shortName(c)} 喺 ${realZone}，唔係 ${from}` };
+      }
+      if (!zoneHasRoom(toOwner, to, state)) {
+        return { ok: false, err: `目的地 ${to} 已滿` };
+      }
+    }
+
+    // 3) apply —— remove-then-add，identity 檢查
+    const moved = [];
+    for (const c of targets) {
+      const realZone = findZoneOf(fromOwner, c);
+      if (!realZone) continue;
+      if (!removeFromZoneById(fromOwner, realZone, c)) continue;
+      if (!addToZone(toOwner, to, c)) {
+        // 加唔到就放返原處（理論上 validate 過咗唔會發生）
+        addToZone(fromOwner, realZone, c);
+        return { ok: false, err: `加去 ${to} 失敗` };
+      }
+      // to === base 即係變蓋卡（P14 名詞 3）：失去效果 + 非公開
+      if (to === "base") {
+        c._faceDown = true;
+        c._origUid = c._origUid || c._uid;
+      } else if (c._faceDown && to !== "base") {
+        // 由基地移出去 → 解除蓋伏
+        c._faceDown = false;
+      }
+      moved.push(c);
+      const toLabel = { front: "先鋒", back: "後衛", wing: "側翼", base: "基地",
+                        retreat: "撤退區", void: "虛空區", hand: "手牌", deck: "牌組" }[to] || to;
+      emitLog(state, `${p.name} ${shortName(c)} ${from} → ${toLabel}`, side);
+    }
+
+    // 4) after[] ── v3.19：回傳 transferred 供二階段條件用（V6）
+    if (opDef.after && moved.length) {
+      const afterCtx = Object.assign({}, ctx, { transferred: moved, transferredUids: moved.map(c => c._uid) });
+      const r = runOpList(state, side, opDef.after, afterCtx, opDef);
+      if (!r.ok) return { ok: false, err: r.err };
+    }
+
+    // 5) deck 可能因為 zone_transfer 而變 0 → P8 勝利條件
+    if (typeof checkWinAfterEffect === "function") checkWinAfterEffect(state);
+
+    return { ok: true, transferred: moved };
+  }
+
+  // v3.19 Z2 — 「or」二選一（SP01-077 V7）
+  // 同 optional 唔同：optional 係 yes/no，choose_one 係從 N 個 ops 揀一個執行。
+  // 選擇本身要玩家答，所以一樣 park choice；resolveChoice 會用 optionIndex。
+  function opChooseOne(state, side, opDef, ctx) {
+    const opts = opDef.options || [];
+    if (!opts.length) return { ok: false, err: "choose_one 冇 options" };
+    if (opDef.auto !== undefined) {
+      const choice = opDef.auto === true ? 0 : opDef.auto;
+      if (typeof choice === "number" && opts[choice]) {
+        return runOpList(state, side, [opts[choice]], ctx, opDef);
+      }
+      return { ok: true, declined: true };
+    }
+    return parkChoice(state, side, {
+      kind: "choose_one",
+      prompt: opDef.prompt || "選一個：",
+      cardUid: ctx.source && ctx.source._uid,
+      cardName: ctx.source ? shortName(ctx.source) : "",
+      options: opts.map((o, i) => ({ index: i, op: o.op, label: opDef.optionLabels ? opDef.optionLabels[i] : describeOp(o) })),
+      then: opts,
+      ctxSnapshot: snapshotCtx(ctx),
+      isChooseOne: true,
+    });
+  }
+
+  function describeOp(o) {
+    if (!o || !o.op) return "?";
+    const t = { prune: "裁剪", zone_transfer: "移動", draw: "抽牌", discard: "捨棄",
+                stat_opp: "對手戰力", stat_self: "自身戰力", retreat: "撤退" }[o.op] || o.op;
+    return t;
+  }
+
+  // v3.19 Z2 — zone_transfer 可能令 deck 變 0；但 effects.js 唔應該直接依賴
+  // engine.js 內部函數。由 engine 喺 load 時注入一個 hook。
+  let checkWinAfterEffect = null;
+  function setWinChecker(fn) { checkWinAfterEffect = fn; }
+
+  const OPS_EXTRA = { zone_transfer: opZoneTransfer };
 
   // =============================================================
   // v3.18 Z1 — ATOMIC COST RESOLUTION
@@ -875,9 +1269,17 @@
   // =============================================================
   // PUBLIC API
   // =============================================================
+  // v3.19: engine.js 先 load，所以佢將 checkWin 掛喺 global（見 engine.js）。
+  // effects.js load 完成時自己接返，之後 zone_transfer 就可以即時檢查 P8 勝利。
+  if (typeof global.MHR_ENGINE_WIN_CHECKER === "function") {
+    setWinChecker(global.MHR_ENGINE_WIN_CHECKER);
+  }
+
   global.MHR_EFFECTS = {
     runEffects,
     refreshAutos,
+    // v3.19: engine 注入 P8 勝利檢查器（effects.js 唔直接依賴 engine 內部）
+    setWinChecker,
     // v3.17 — choice / conditional-chain API (app.js renders the prompt,
     // then calls resolveChoice(state, side, {accept:bool}))
     hasPendingChoice: hasPending,

@@ -1207,6 +1207,13 @@
     return { ok: dupes.length === 0, total: seen.size, dupes };
   }
 
+  // v3.19: effects.js 嘅 zone_transfer 可能令 deck 變 0，需要即時觸發 P8 勝利
+  // 條件。effects.js 唔應該直接 call engine 內部函數，所以由 engine 注入 hook。
+  // 注意 script load 次序：engine.js 先於 effects.js 載入，所以 MHR_EFFECTS
+  // 喺呢一刻仲未存在 —— 改為喺 public API 暴露一個 lazy 版，由 effects.js
+  // 喺自己載入完成時自己 call 返。
+  global.MHR_ENGINE_WIN_CHECKER = checkWin;
+
   global.MHR_ENGINE = {
     initGame,
     mulligan,

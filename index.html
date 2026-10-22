@@ -2,16 +2,16 @@
 <html lang="zh-HK">
 <head>
 <meta charset="UTF-8">
-<title>Marvel Hero Rush TCG — Battle Simulator v3.19</title>
+<title>Marvel Hero Rush TCG — Battle Simulator v3.20</title>
 <meta name="viewport" content="width=1480">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=3.19">
+<link rel="stylesheet" href="css/styles.css?v=3.20">
 <!-- Card data is committed locally (js/cards.js) so the sim is
      self-contained and works under any GitHub Pages subpath. -->
-<script src="js/cards.js?v=3.19"></script>
-<script src="js/mhr-decks.js?v=3.19"></script>
+<script src="js/cards.js?v=3.20"></script>
+<script src="js/mhr-decks.js?v=3.20"></script>
 </head>
 <body>
 
@@ -29,7 +29,7 @@
       <a class="mhr-nav-link active" href="index.html">⚔ 對戰</a>
       <a class="mhr-nav-link" href="archive.html">📖 圖鑑</a>
     </nav>
-    <span class="version-badge">v3.19</span>
+    <span class="version-badge">v3.20</span>
     <button id="btn-sound-toggle" class="sound-toggle" title="音效切換">音效</button>
   </header>
   <main class="setup-main">
@@ -52,6 +52,7 @@
       <a class="link-muted" href="README.md" target="_blank">README / 規則假設</a>
     </div>
 
+    <!-- v3.20: Z2 zone_transfer + choose_one + feature-filter fix -->
     <!-- v3.19: Z1 atomic cost resolution -->
     <!-- v3.18: P8 win conditions + 蓋卡 Lv1 + zone-transfer spec -->
     <!-- v3.17: 「you may」choice + 「If you do」conditional chain -->
@@ -391,15 +392,15 @@
 </div>
 
 <!-- Order matters: data → effects-data → engine → effects → ai → app -->
-<script src="js/data.js?v=3.19"></script>
-<script src="js/effects-data.js?v=3.19"></script>
-<script src="js/engine.js?v=3.19"></script>
-<script src="js/effects.js?v=3.19"></script>
-<script src="js/audio.js?v=3.19"></script>
-<script src="js/ai.js?v=3.19"></script>
-<script src="js/online-protocol.js?v=3.19"></script>
-<script src="js/online.js?v=3.19"></script>
-<script src="js/app.js?v=3.19"></script>
+<script src="js/data.js?v=3.20"></script>
+<script src="js/effects-data.js?v=3.20"></script>
+<script src="js/engine.js?v=3.20"></script>
+<script src="js/effects.js?v=3.20"></script>
+<script src="js/audio.js?v=3.20"></script>
+<script src="js/ai.js?v=3.20"></script>
+<script src="js/online-protocol.js?v=3.20"></script>
+<script src="js/online.js?v=3.20"></script>
+<script src="js/app.js?v=3.20"></script>
 <script>
   // Wire sound toggle after DOM ready
   document.getElementById("btn-sound-toggle").addEventListener("click", () => {
