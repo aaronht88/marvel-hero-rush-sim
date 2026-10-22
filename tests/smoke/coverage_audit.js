@@ -11,7 +11,8 @@ const ctx = { window: {}, console, setTimeout, clearTimeout };
 ctx.global = ctx.window;
 vm.createContext(ctx);
 function load(f) { vm.runInContext(fs.readFileSync(path.join(REPO, f), 'utf8'), ctx, { filename: f }); }
-load('js/cards.js'); load('js/mhr-decks.js'); load('js/data.js'); load('js/effects-data.js');
+load('js/cards.js'); load('js/mhr-decks.js'); load('js/data.js');
+load('js/effects-data.js'); load('js/effects-data-void.js');
 load('js/engine.js'); load('js/effects.js'); load('js/ai.js');
 
 const D = ctx.window.MHR_DATA, E = ctx.window.MHR_ENGINE;

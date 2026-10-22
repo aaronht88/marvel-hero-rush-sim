@@ -2,17 +2,17 @@
   "generatedFor": "MHR v3.16 coverage audit",
   "totals": {
     "cards": 448,
-    "DSL": 21,
-    "REGEX": 126,
-    "STUB": 220,
+    "DSL": 33,
+    "REGEX": 125,
+    "STUB": 209,
     "NONE": 81
   },
   "bySet": {
     "BP01": {
       "total": 183,
-      "DSL": 16,
+      "DSL": 18,
       "REGEX": 49,
-      "STUB": 88,
+      "STUB": 86,
       "NONE": 30
     },
     "EB01": {
@@ -31,9 +31,9 @@
     },
     "PB01-B": {
       "total": 5,
-      "DSL": 0,
+      "DSL": 1,
       "REGEX": 1,
-      "STUB": 4,
+      "STUB": 3,
       "NONE": 0
     },
     "SD01": {
@@ -66,9 +66,9 @@
     },
     "SP01": {
       "total": 152,
-      "DSL": 0,
-      "REGEX": 37,
-      "STUB": 81,
+      "DSL": 9,
+      "REGEX": 36,
+      "STUB": 73,
       "NONE": 34
     },
     "TB01": {
@@ -85,7 +85,7 @@
     "move_base": 4,
     "powmod_self": 29,
     "draw": 25,
-    "counter_kw": 40,
+    "counter_kw": 39,
     "range_self": 9,
     "powmod_foe": 3
   },
@@ -125,24 +125,6 @@
       "power": "2500",
       "rarity": "GR",
       "effect": "TRIG【HAND】:When your red character attacks, you may discard this card in HAND. If you do, 1 of your red characters in BATTLE gets Power+3000 in this turn."
-    },
-    {
-      "card_no": "BP01-007",
-      "set": "BP01",
-      "name": "「Void Reforge」Vision",
-      "level": 6,
-      "power": "5000",
-      "rarity": "GR",
-      "effect": "TRIG【VOID】:When this card enters VOID from RETREAT, you may discard 2 cards in HAND. If you do, you place this card from VOID into your field, and your opponent's character in FRONT gets Power-1000 in this turn."
-    },
-    {
-      "card_no": "BP01-007",
-      "set": "BP01",
-      "name": "「Void Reforge」Vision",
-      "level": 6,
-      "power": "5000",
-      "rarity": "MR",
-      "effect": "TRIG【VOID】:When this card enters VOID from RETREAT, you may discard 2 cards in HAND. If you do, you place this card from VOID into your field, and your opponent's character in FRONT gets Power-1000 in this turn."
     },
     {
       "card_no": "BP01-008",
@@ -1018,15 +1000,6 @@
       "effect": "ACTI【HAND】:If the number of your set cards in BASE is more than your opponent's, you place this card from HAND into your opponent's BATTLE.\nTRIG【BATTLE】:When this card enters the field, you retreat 1 of your characters with Power 4500 or lower in BATTLE."
     },
     {
-      "card_no": "PB01-011",
-      "set": "PB01-B",
-      "name": "「Astral Visitor」Doctor Strange",
-      "level": 3,
-      "power": "2000",
-      "rarity": "PR",
-      "effect": "ACTI【VOID/ONCE PER TURN】:You prune 1 of your characters with Lv4 or above in RETREAT. If you do, you place this card from VOID into your field."
-    },
-    {
       "card_no": "SD01-003",
       "set": "SD01",
       "name": "「Fire Support」War Machine",
@@ -1504,51 +1477,6 @@
       "effect": "ACTI【BASE/ONCE PER TURN】:You cover 1 of your opponent's characters with LvX or below and 【Human】 in their features in BASE. X is the Lv value of this card. If you do, you cover this card."
     },
     {
-      "card_no": "SP01-021",
-      "set": "SP01",
-      "name": "「The Web of Destiny」Spider-Man",
-      "level": 3,
-      "power": "2000",
-      "rarity": "UR",
-      "effect": "UNIQUE\nTRIG【BASE/ONCE PER TURN】:When your card with 【Web】 in its feature enters the field, you may attach 1 of your characters with 【Web】 in their features from HAND to 1 of the characters on the field.\nTRIG【VOID】:When this card enters VOID by your effect, you may place this card from VOID into your BASE."
-    },
-    {
-      "card_no": "SP01-021",
-      "set": "SP01",
-      "name": "「The Web of Destiny」Spider-Man",
-      "level": 3,
-      "power": "2000",
-      "rarity": "MR",
-      "effect": "UNIQUE\nTRIG【BASE/ONCE PER TURN】:When your card with 【Web】 in its feature enters the field, you may attach 1 of your characters with 【Web】 in their features from HAND to 1 of the characters on the field.\nTRIG【VOID】:When this card enters VOID by your effect, you may place this card from VOID into your BASE."
-    },
-    {
-      "card_no": "SP01-021",
-      "set": "SP01",
-      "name": "「The Web of Destiny」Spider-Man",
-      "level": 3,
-      "power": "2000",
-      "rarity": "SEC",
-      "effect": "UNIQUE\nTRIG【BASE/ONCE PER TURN】:When your card with 【Web】 in its feature enters the field, you may attach 1 of your characters with 【Web】 in their features from HAND to 1 of the characters on the field.\nTRIG【VOID】:When this card enters VOID by your effect, you may place this card from VOID into your BASE."
-    },
-    {
-      "card_no": "SP01-021",
-      "set": "SP01",
-      "name": "「The Web of Destiny」Spider-Man",
-      "level": 3,
-      "power": "2000",
-      "rarity": "HR",
-      "effect": "UNIQUE\nTRIG【BASE/ONCE PER TURN】:When your card with 【Web】 in its feature enters the field, you may attach 1 of your characters with 【Web】 in their features from HAND to 1 of the characters on the field.\nTRIG【VOID】:When this card enters VOID by your effect, you may place this card from VOID into your BASE."
-    },
-    {
-      "card_no": "SP01-021",
-      "set": "SP01",
-      "name": "「The Web of Destiny」Spider-Man",
-      "level": 3,
-      "power": "2000",
-      "rarity": "HR",
-      "effect": "UNIQUE\nTRIG【BASE/ONCE PER TURN】:When your card with 【Web】 in its feature enters the field, you may attach 1 of your characters with 【Web】 in their features from HAND to 1 of the characters on the field.\nTRIG【VOID】:When this card enters VOID by your effect, you may place this card from VOID into your BASE."
-    },
-    {
       "card_no": "SP01-022",
       "set": "SP01",
       "name": "「Phantom Strike」Ghost-Spider",
@@ -1648,15 +1576,6 @@
       "effect": "AUTO【FIELD】:If the character this card is attached to is with Lv4 and has only 1 attached card, that character gets Power+3000.\nACTI【BASE/ONCE PER TURN】:You attach this card from BASE to 1 of your characters on the field. If you do, that character gets R+1 this turn."
     },
     {
-      "card_no": "SP01-031",
-      "set": "SP01",
-      "name": "「Straight and Narrow」Uncle Ben",
-      "level": 2,
-      "power": "500",
-      "rarity": "SR",
-      "effect": "UNIQUE BLOCK\nTRIG【RETREAT】:When this card enters RETREAT from BATTLE by losing the fight, you prune the top 3 cards of your deck. If you do, you place 1 of your characters with the lowest Lv and 【Web】 in their features from VOID onto your BATTLE."
-    },
-    {
       "card_no": "SP01-033",
       "set": "SP01",
       "name": "「Spider-Mentor」Spider-Man",
@@ -1664,15 +1583,6 @@
       "power": "2000",
       "rarity": "R",
       "effect": "UNIQUE\nAUTO【FIELD】:The character this card is attached to gets R+1 and Power+1000.\nAUTO【BATTLE】:In your turn, if the number of characters on both BATTLE are the same, all your characters with 【Web】 in their features on BATTLE get R+1 and Power+1000."
-    },
-    {
-      "card_no": "SP01-035",
-      "set": "SP01",
-      "name": "「Mirror Fate」Prowler",
-      "level": 3,
-      "power": "2000",
-      "rarity": "R",
-      "effect": "TRIG【BATTLE】:When your character with 【Human】 in its feature enters RETREAT from BATTLE by losing the fight, you may prune this card on BATTLE. If you do, you place 1 of your characters with Lv3 and 【Spider-Man】 in their names from VOID onto the field."
     },
     {
       "card_no": "SP01-037",
@@ -1952,15 +1862,6 @@
       "power": "2000",
       "rarity": "MR",
       "effect": "ACTI【FIELD/ONCE PER TURN】：You swap this card on the field and the character this card is attached to with 【Web】 in its feature. If you do, this card gets the ability 【AIR STRIKE】 this turn.\nTRIG【FIELD/ONCE PER TURN】：When your opponent's turn starts, you swap this card on the field and 1 of its attached cards with 【Web】 in their features. If you do, the character this card is attached to gets the ability 【BLOCK】 this turn."
-    },
-    {
-      "card_no": "SP01-066",
-      "set": "SP01",
-      "name": "「Restoration of Multiverse」Doctor Strange",
-      "level": 4,
-      "power": "3500",
-      "rarity": "GR",
-      "effect": "UNIQUE\nACTI【BATTLE/ONCE PER TURN】:You discard 1 of your cards in HAND. If you do, you place 1 of your characters with 【Multiverse】 in their features from VOID onto your BATTLE. If that character is with Lv4 or above, you discard 1 of your cards in HAND extra."
     },
     {
       "card_no": "SP01-067",

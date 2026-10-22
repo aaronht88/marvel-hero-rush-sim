@@ -163,11 +163,20 @@
   function resolveVar(state, side, varName, ctx) {
     // descriptor vars 已由 runEffects 解入 ctx（如 ctx.X = count_opp_battle）→ 優先
     if (ctx && ctx[varName] != null) return ctx[varName];
+    const me = state.players[side];
+    const opp = state.players[side === "P" ? "A" : "P"];
     switch (varName) {
-      case "count_opp_battle":   return battleChars(state.players[side === "P" ? "A" : "P"]).length;
-      case "count_my_field":     return battleChars(state.players[side]).length;
-      case "count_my_hand":      return state.players[side].hand.length;
+      case "count_opp_battle":   return battleChars(opp).length;
+      case "count_my_field":     return battleChars(me).length;
+      case "count_my_hand":      return me.hand.length;
+      case "count_my_retreat":   return me.retreat.length;
+      case "count_my_void":      return me.voidZone.length;
+      case "count_my_base":      return me.base.faceDown.length;
       case "this_power":         return ctx && ctx.source ? readField(ctx.source, "power") : 0;
+      // v3.23: BP01-055 每 3000 Power 得 R+1；配合 amount.divisor 用
+      case "opp_front_power":    return opp.battle.front ? readField(opp.battle.front, "power") : 0;
+      case "count_my_feature_field":
+        return battleChars(me).filter(c => ctx && ctx.feature && splitFeatures(c).includes(ctx.feature)).length;
       case "retreated_by_this_call":
         return ctx && ctx.retreatCount != null ? ctx.retreatCount : 0;
       default:                   return 0;
@@ -271,10 +280,18 @@
     } else if (opDef.amount && opDef.amount.var) {
       const base = resolveVar(state, side, opDef.amount.var, ctx);
       const scale = opDef.amount.scale || 1;
-      amt = base * scale;
+      const divisor = opDef.amount.divisor || 1;
+      // v3.23: divisor 支援「每 N 點 → +1」型效果（例如 BP01-055 每 3000 Power 得 R+1）
+      amt = Math.floor(base / divisor) * scale;
     }
-    const targets = collectTargets(state, side, opDef.target, ctx);
-    if (!targets.length) return { ok: false };
+    const targets = collectTargets(state, side, opDef.target, ctx, opDef);
+    // v3.23: 冇合法目標唔算失敗 —— 效果「已執行」但無對象。
+    // 之前 return {ok:false} 會令整個 effect 中斷（包括後面嘅 op），
+    // 同 spec §5.4「指令已執行」語義相反。場上冇對手角色係常見情況。
+    if (!targets.length) {
+      emitLog(state, `[效果] ${opDef._sourceName || ""}：無合法目標`, side);
+      return { ok: true, noTarget: true };
+    }
     targets.forEach(card => {
       card._powerMod = (card._powerMod || 0) + amt;
       emitLog(state, `[效果] ${shortName(card)} Power ${amt >= 0 ? "+" : ""}${amt}`, side);
@@ -290,7 +307,7 @@
   }
 
   function opPrune(state, side, opDef, ctx) {
-    const all = collectTargets(state, side, opDef.target, ctx);
+    const all = collectTargets(state, side, opDef.target, ctx, opDef);
     const filtered = all.filter(card => passFilter(card, opDef.filter, ctx, state, side));
     if (!filtered.length) {
       emitLog(state, `[效果] 無合法目標除外`, side);
@@ -322,10 +339,16 @@
     if (typeof opDef.amount === "number") amt = opDef.amount;
     else if (opDef.amount && opDef.amount.var) {
       const base = resolveVar(state, side, opDef.amount.var, ctx);
-      amt = base * (opDef.amount.scale || 1);
+      amt = Math.floor(base / (opDef.amount.divisor || 1)) * (opDef.amount.scale || 1);
     }
-    const targets = collectTargets(state, side, opDef.target, ctx);
-    if (!targets.length) return { ok: false };
+    const targets = collectTargets(state, side, opDef.target, ctx, opDef);
+    // v3.23: 冇合法目標唔算失敗 —— 效果「已執行」但無對象。
+    // 之前 return {ok:false} 會令整個 effect 中斷（包括後面嘅 op），
+    // 同 spec §5.4「指令已執行」語義相反。場上冇對手角色係常見情況。
+    if (!targets.length) {
+      emitLog(state, `[效果] ${opDef._sourceName || ""}：無合法目標`, side);
+      return { ok: true, noTarget: true };
+    }
     targets.forEach(card => {
       card._rMod = (card._rMod || 0) + amt;
       emitLog(state, `[效果] ${shortName(card)} R ${amt >= 0 ? "+" : ""}${amt}`, side);
@@ -339,10 +362,16 @@
     if (typeof opDef.amount === "number") amt = opDef.amount;
     else if (opDef.amount && opDef.amount.var) {
       const base = resolveVar(state, side, opDef.amount.var, ctx);
-      amt = base * (opDef.amount.scale || 1);
+      amt = Math.floor(base / (opDef.amount.divisor || 1)) * (opDef.amount.scale || 1);
     }
-    const targets = collectTargets(state, side, opDef.target, ctx);
-    if (!targets.length) return { ok: false };
+    const targets = collectTargets(state, side, opDef.target, ctx, opDef);
+    // v3.23: 冇合法目標唔算失敗 —— 效果「已執行」但無對象。
+    // 之前 return {ok:false} 會令整個 effect 中斷（包括後面嘅 op），
+    // 同 spec §5.4「指令已執行」語義相反。場上冇對手角色係常見情況。
+    if (!targets.length) {
+      emitLog(state, `[效果] ${opDef._sourceName || ""}：無合法目標`, side);
+      return { ok: true, noTarget: true };
+    }
     targets.forEach(card => {
       card._lvMod = (card._lvMod || 0) + amt;
       emitLog(state, `[效果] ${shortName(card)} Lv ${amt >= 0 ? "+" : ""}${amt}`, side);
@@ -654,12 +683,29 @@
   }
 
   // 收集 op 嘅 target list — self 走 ctx.source，其他走 resolveTarget
-  function collectTargets(state, side, targetKey, ctx) {
+  // v3.23: 支援 opDef.filter（篩目標）、excludeSelf（排除來源卡）、
+  //        event_card（DB 事件觸發嗰張卡，例如「對手 Lv6 入場」嘅該卡）
+  function collectTargets(state, side, targetKey, ctx, opDef) {
+    let list;
     if (targetKey === "self") {
-      return ctx && ctx.source ? [ctx.source] : [];
+      list = ctx && ctx.source ? [ctx.source] : [];
+    } else if (targetKey === "event_card") {
+      list = ctx && ctx.eventCard ? [ctx.eventCard] : [];
+    } else if (targetKey === "my_hand") {
+      // resolveTarget 有 my_hand，但 filter 要喺手牌上做（LV mod 類）
+      list = state.players[side].hand.slice();
+    } else {
+      if (!targetKey) return [];
+      list = resolveTarget(state, side, targetKey, ctx) || [];
     }
-    if (!targetKey) return [];
-    return resolveTarget(state, side, targetKey, ctx);
+    const o = opDef || {};
+    if (o.excludeSelf && ctx && ctx.source) {
+      list = list.filter(c => c && c._uid !== ctx.source._uid);
+    }
+    if (o.filter) {
+      list = list.filter(c => c && passFilter(c, o.filter, ctx, state, side));
+    }
+    return list;
   }
 
   // =============================================================
@@ -726,6 +772,9 @@
         byCalling: !!(event && event.kind === "enter_field" && event.byCalling),
         retreatCount: event && event.retreatCount != null ? event.retreatCount : 0,
         attackerUid: event && event.attackerUid != null ? event.attackerUid : null, // M4: counter 事件
+        // v3.23: 事件攜帶嘅卡（例如「對手 Lv6 入場」嘅該張卡），
+        // descriptor 用 target:"event_card" 指涉
+        eventCard: event && (event.card || event.source) ? (event.card || event.source) : null,
       };
       // S3: 解析 descriptor 級 vars（{X: "count_opp_battle"} → ctx.X = N）供 ops/filters 用
       if (eff.vars) {
