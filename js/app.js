@@ -796,39 +796,136 @@
   // opOptional). This renders it as a yes/no prompt. Kept in its own overlay
   // so it can never collide with the COUNTER / call / deploy modals, which all
   // share #modal.
+  // v3.21 Z4 — 三種 choice 模式共用一個 overlay：
+  //   (a) optional    yes/no           —「you may」可選效果
+  //   (b) choose_one  多個 op 揀一個   —「or」二選一（V7 Spider-Punk）
+  //   (c) pick_card   多張卡揀一張     — zone_transfer playerChooses（V4/V6）
+  // 全部由 engine park 喺 state.pendingChoices，UI 只負責呈現同回覆。
+  // 保持獨立 overlay，唔會撞 #modal（COUNTER / call / deploy 都用嗰個）。
+  function currentChoice() {
+    if (!state || !window.MHR_EFFECTS) return null;
+    return window.MHR_EFFECTS.pendingChoices(state).filter(c => c.side === "P")[0] || null;
+  }
+
   function openChoiceModal() {
-    if (!state || !window.MHR_EFFECTS) return false;
-    const pend = window.MHR_EFFECTS.pendingChoices(state).filter(c => c.side === "P")[0];
+    const pend = currentChoice();
     if (!pend) return false;
     view._choiceOpen = true;
     const modal = document.getElementById("choice-modal");
-    document.getElementById("choice-modal-title").textContent = "可選效果";
-    document.getElementById("choice-modal-body").innerHTML =
-      `<p style="margin-top:0"><strong>${pend.cardName || "某張卡"}</strong>：${pend.prompt}</p>`;
-    document.getElementById("choice-yes").disabled = false;
-    document.getElementById("choice-no").disabled = false;
+    const titleEl = document.getElementById("choice-modal-title");
+    const bodyEl = document.getElementById("choice-modal-body");
+    const yesBtn = document.getElementById("choice-yes");
+    const noBtn = document.getElementById("choice-no");
+    bodyEl.innerHTML = "";
+    view._choicePick = null;
+
+    const head = document.createElement("p");
+    head.style.marginTop = "0";
+    head.innerHTML = `<strong>${escapeHtml(pend.cardName || "某張卡")}</strong>：${escapeHtml(pend.prompt || "")}`;
+    bodyEl.appendChild(head);
+
+    // ---- (b) choose_one：列 op 選項 ----
+    if (pend.isChooseOne) {
+      titleEl.textContent = "二選一";
+      (pend.options || []).forEach(o => {
+        const label = document.createElement("label");
+        label.className = "retreat-option counter-option";
+        label.innerHTML = `<input type="radio" name="choice-pick" value="opt-${o.index}">
+          <span class="co-name">${escapeHtml(o.label || ("選項 " + (o.index + 1)))}</span>`;
+        label.querySelector("input").addEventListener("change", () => {
+          view._choicePick = { optionIndex: o.index };
+          yesBtn.disabled = false;
+        });
+        bodyEl.appendChild(label);
+      });
+      yesBtn.textContent = "執行";
+      yesBtn.disabled = true;
+      noBtn.textContent = "放棄";
+      noBtn.disabled = false;
+      modal.classList.remove("hidden");
+      return true;
+    }
+
+    // ---- (c) pick_card：列卡揀一張 ----
+    if (pend.kind === "pick_card") {
+      titleEl.textContent = "揀一張卡";
+      (pend.options || []).forEach(o => {
+        const label = document.createElement("label");
+        label.className = "retreat-option";
+        const lv = o.lv != null ? `Lv${o.lv} ` : "";
+        label.innerHTML = `<input type="radio" name="choice-pick" value="${escapeHtml(o.uid)}">
+          <span class="co-name">${escapeHtml(lv + (o.name || o.card_no || ""))}</span>`;
+        label.querySelector("input").addEventListener("change", () => {
+          view._choicePick = { accept: true, cardUid: o.uid };
+          yesBtn.disabled = false;
+        });
+        bodyEl.appendChild(label);
+      });
+      yesBtn.textContent = "揀";
+      yesBtn.disabled = true;
+      noBtn.textContent = "取消";
+      noBtn.disabled = false;
+      modal.classList.remove("hidden");
+      return true;
+    }
+
+    // ---- (a) optional：yes / no ----
+    titleEl.textContent = "可選效果";
+    yesBtn.textContent = "發動";
+    noBtn.textContent = "放棄";
+    yesBtn.disabled = false;
+    noBtn.disabled = false;
     modal.classList.remove("hidden");
     return true;
   }
+
+  function escapeHtml(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
   function closeChoiceModal() {
     view._choiceOpen = false;
+    view._choicePick = null;
     const m = document.getElementById("choice-modal");
     if (m) m.classList.add("hidden");
   }
+
   function answerChoice(accept) {
     if (!state || !window.MHR_EFFECTS) return;
-    window.MHR_EFFECTS.resolveChoice(state, "P", { accept: !!accept });
+    const pend = currentChoice();
+    let answer;
+    if (pend && (pend.isChooseOne || pend.kind === "pick_card")) {
+      // 呢兩種模式要具體選擇，唔係單純 yes/no
+      if (!accept) {
+        answer = pend.isChooseOne ? { accept: true, optionIndex: -1 } : { accept: false };
+      } else {
+        answer = view._choicePick || { accept: false };
+        if (pend.isChooseOne && answer.optionIndex == null) return;   // 未揀
+        if (pend.kind === "pick_card" && !answer.cardUid) return;      // 未揀
+      }
+    } else {
+      answer = { accept: !!accept };
+    }
+    let r = null;
+    try { r = window.MHR_EFFECTS.resolveChoice(state, "P", answer); }
+    catch (e) { console.warn("resolveChoice failed:", e && e.message); }
+    if (r && r.ok === false && r.err) console.warn(r.err);
     closeChoiceModal();
     render();
-    // A declined/accepted optional may unblock an ACTI or the AI turn.
+    // A declined/accepted choice may unblock an ACTI or the AI turn.
     if (state && !state.winner && state.activeSide === "A" && !view.autoPlay) scheduleAI();
+    else if (state && !state.winner && currentChoice()) openChoiceModal();  // 仲有下一個
   }
+
   document.getElementById("choice-yes").addEventListener("click", () => answerChoice(true));
   document.getElementById("choice-no").addEventListener("click", () => answerChoice(false));
-  // safety: if the choice modal is up, block the generic cancel handler from
-  // wiping modal state that belongs to another flow
+  // 撳背景 = 放棄（只對 optional 有意義；其他模式等玩家揀）
   document.getElementById("choice-modal").addEventListener("click", (e) => {
-    if (e.target.id === "choice-modal") answerChoice(false);
+    if (e.target.id !== "choice-modal") return;
+    const pend = currentChoice();
+    if (pend && !pend.isChooseOne && pend.kind !== "pick_card") answerChoice(false);
   });
 
   // ===== v3.9.2: 卡資料 hover banner（duels.ink 式：參數 chips + 效果說明，唔帶 art） =====
@@ -1263,16 +1360,32 @@
     const atkBtn = document.getElementById("btn-attack");
     const endBtn = document.getElementById("btn-end-turn");
     const endLbl = document.getElementById("btn-end-label");
+    const actiBtn = document.getElementById("btn-acti");
     const hint = document.getElementById("action-hint");
     if (endLbl) endLbl.textContent = nextEndLabel();
+
+    // v3.21 Z4 — 起動效果掣：只喺自己 ACTION 階段、有可起動效果時開
+    const activatable = (state && !state.winner && state.activeSide === "P" && state.phase === "ACTION"
+      && window.MHR_EFFECTS && window.MHR_EFFECTS.collectActivatable)
+      ? window.MHR_EFFECTS.collectActivatable(state, "P")
+      : [];
+    if (actiBtn) {
+      actiBtn.disabled = activatable.length === 0;
+      actiBtn.title = activatable.length
+        ? "起動效果：" + activatable.map(a => a.label).join("、")
+        : "冇可起動效果";
+    }
+
     if (state.winner) {
       [setBtn, moveBtn, atkBtn, endBtn].forEach(b => b.disabled = true);
+      if (actiBtn) actiBtn.disabled = true;
       hint.textContent = "遊戲結束";
       showWinOverlay();
       return;
     }
     if (state.activeSide !== "P") {
       [setBtn, moveBtn, atkBtn, endBtn].forEach(b => b.disabled = true);
+      if (actiBtn) actiBtn.disabled = true;
       hint.textContent = "等緊 AI 行動…";
       return;
     }
@@ -1344,6 +1457,46 @@
     if (view.attackerUid) { view.attackerUid = null; render(); return; }
     showAttackerPicker();
   });
+
+  // v3.21 Z4 — 起動效果：揀要用邊個可起動效果
+  document.getElementById("btn-acti").addEventListener("click", () => {
+    if (!state || state.activeSide !== "P" || state.phase !== "ACTION") return;
+    const list = window.MHR_EFFECTS.collectActivatable(state, "P");
+    if (!list.length) return;
+    if (list.length === 1) { doActivate(list[0]); return; }
+    const modal = document.getElementById("modal");
+    document.getElementById("modal-title").textContent = "揀要起動嘅效果";
+    const body = document.getElementById("modal-body");
+    body.innerHTML = "";
+    let picked = null;
+    list.forEach((a, i) => {
+      const label = document.createElement("label");
+      label.className = "retreat-option";
+      const costTxt = (a.eff.cost && a.eff.cost.length)
+        ? `<span class="co-sub">成本：${a.eff.cost.map(c => c.op).join(" + ")}</span>` : "";
+      label.innerHTML = `<input type="radio" name="acti" value="${i}">
+        <span class="co-name">${escapeHtml(a.label)}</span>${costTxt}`;
+      label.querySelector("input").addEventListener("change", () => {
+        picked = a;
+        document.getElementById("modal-confirm").disabled = false;
+      });
+      body.appendChild(label);
+    });
+    document.getElementById("modal-confirm").disabled = true;
+    document.getElementById("modal-confirm").textContent = "起動";
+    view._actiPick = () => picked;
+    modal.classList.remove("hidden");
+    modal.dataset.acti = "1";
+  });
+
+  function doActivate(a) {
+    if (!a) return;
+    const r = window.MHR_EFFECTS.activateEffect(state, "P", a.card._uid, a.idx);
+    if (!r.ok && r.err) console.warn("起動失敗：" + r.err);
+    render();
+    // 起動可能 park 咗 choice → 由 render() 嘅 openChoiceModal 接手
+  }
+
   document.getElementById("btn-end-turn").addEventListener("click", () => {
     if (state.activeSide !== "P") return;
     // Skip BATTLE if first turn first player
@@ -1493,6 +1646,15 @@
 
   document.getElementById("modal-confirm").addEventListener("click", () => {
     const modal = document.getElementById("modal");
+    // v3.21 Z4 — 起動效果選擇
+    if (modal.dataset.acti === "1") {
+      const pick = view._actiPick && view._actiPick();
+      view._actiPick = null;
+      delete modal.dataset.acti;
+      modal.classList.add("hidden");
+      if (pick) doActivate(pick);
+      return;
+    }
     if (view._counterOpen) {
       // v3.9.1: 揀咗 COUNTER 卡 → resolveCounter；-1 = 唔用
       const idx = view._counterIdx;

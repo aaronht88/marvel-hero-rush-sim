@@ -1199,6 +1199,80 @@
   let checkWinAfterEffect = null;
   function setWinChecker(fn) { checkWinAfterEffect = fn; }
 
+  // =============================================================
+  // v3.21 Z4 — ACTI（起動效果）
+  //
+  // 規則書 P15：「起動 區域/要求 若卡牌處於對應區域，則該卡牌控制方在其回合
+  //   行動階段可以起動的效果」
+  // 同 TRIG 唔同：TRIG 由 event 驅動，ACTI 由玩家主動按。
+  // 所以需要 (1) 列出當前可起動嘅效果 (2) 起動指定一個。
+  // =============================================================
+  function collectActivatable(state, side) {
+    const p = state.players[side];
+    const flags = state.turnFlags[side];
+    if (!flags) return [];
+    const out = [];
+    const zones = [].concat(
+      battleAll(p), p.hand.slice(), p.retreat.slice(), p.voidZone.slice(),
+      p.base.faceDown.slice()
+    );
+    zones.forEach(card => {
+      if (!card || card._faceDown) return;
+      if (!Array.isArray(card.effects)) return;
+      card.effects.forEach((eff, idx) => {
+        if (eff.trig !== "ACTI" && eff.trig !== "COUNTER_ACTI") return;
+        // COUNTER_ACTI 只喺應對步驟可以用，唔喺 ACTI 清單
+        if (eff.trig === "COUNTER_ACTI") return;
+        if (eff.once && flags.oncePerTurnUids[card._uid + "::" + idx]) return;
+        if (!slotZoneMatches(card, eff.slot, p, state)) return;
+        out.push({ card, idx, eff, label: `${shortName(card)}（${eff.slot}）` });
+      });
+    });
+    return out;
+  }
+
+  // 起動指定效果。validate → apply（成本用 Z1 atomic path）
+  function activateEffect(state, side, cardUid, effectIdx) {
+    const p = state.players[side];
+    const flags = state.turnFlags[side];
+    if (!flags) return { ok: false, err: "冇 turnFlags" };
+    const card = findCardByUid(state, side, cardUid);
+    if (!card) return { ok: false, err: "搵唔到卡" };
+    if (card._faceDown) return { ok: false, err: "蓋卡冇效果" };
+    const eff = card.effects && card.effects[effectIdx];
+    if (!eff) return { ok: false, err: "搵唔到效果" };
+    if (eff.trig !== "ACTI") return { ok: false, err: "唔係起動效果" };
+    if (eff.once && flags.oncePerTurnUids[card._uid + "::" + effectIdx]) {
+      return { ok: false, err: "本回合已用過" };
+    }
+    if (!slotZoneMatches(card, eff.slot, p, state)) {
+      return { ok: false, err: `卡唔喺 ${eff.slot}` };
+    }
+
+    const ctx = { source: card, byCalling: false, retreatCount: 0, attackerUid: null };
+    if (eff.vars) {
+      for (const vk of Object.keys(eff.vars)) ctx[vk] = resolveVar(state, side, eff.vars[vk], ctx);
+    }
+    // 1) cond
+    if (!evalCond(state, side, eff.cond, ctx)) {
+      emitLog(state, `[起動] ${shortName(card)}：條件不符`, side);
+      return { ok: false, err: "條件不符" };
+    }
+    // 2) cost（atomic：失敗則 state 完全不變）
+    const costRes = resolveCost(state, side, eff.cost, ctx);
+    if (!costRes.ok) {
+      emitLog(state, `[起動] ${shortName(card)}：成本不足（${costRes.err}）`, side);
+      return { ok: false, err: costRes.err };
+    }
+    // 3) ops
+    emitLog(state, `[起動] ${shortName(card)} 效果`, side);
+    const r = runOpList(state, side, eff.ops, ctx, { op: "acti" });
+    if (eff.once) flags.oncePerTurnUids[card._uid + "::" + effectIdx] = true;
+    refreshAutos(state);
+    if (!r.pending) flushPendingEvents(state, side);
+    return r;
+  }
+
   const OPS_EXTRA = { zone_transfer: opZoneTransfer };
 
   // =============================================================
@@ -1451,6 +1525,9 @@
     // 排入 pendingEvents，令 TRIG【VOID】/【RETREAT】/【FIELD】 可以連鎖觸發
     notifyZoneChange,
     flushPendingEvents,
+    // v3.21 Z4: ACTI 起動效果（玩家主動按）
+    collectActivatable,
+    activateEffect,
     // v3.17 — choice / conditional-chain API (app.js renders the prompt,
     // then calls resolveChoice(state, side, {accept:bool}))
     hasPendingChoice: hasPending,
