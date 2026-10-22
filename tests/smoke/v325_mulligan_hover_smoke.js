@@ -29,9 +29,13 @@ check('★ 有 bindCardHover(card, c)', /bindCardHover\(card,\s*c\)/.test(mullBo
 // ---------- TEST 2: HOVER_OK 唔再係 TDZ 陷阱 ----------
 console.log('\n[TEST 2] hoverOk() lazy 化（TDZ 修正）');
 check('hoverOk 函數存在', /function hoverOk\(\)/.test(appSrc));
-check('★ bindCardHover 用 hoverOk()', /bindCardHover[\s\S]{0,120}!hoverOk\(\)/.test(appSrc));
+check('★ bindCardHover 唔再用 hoverOk 做 gate', !/bindCardHover[\s\S]{0,120}if \(![^)]*hoverOk\(\)\) return/.test(appSrc));
 check('★ 冇殘留 module-level const HOVER_OK', !/const HOVER_OK\s*=/.test(appSrc));
 check('hoverOk 有 cache', /_hoverOkCache/.test(appSrc));
+check('★ 有 pointerdown 保底（touch/hover:none）', /pointerdown/.test(appSrc));
+check('★ mulligan 卡直接顯示 m-card-effect', /m-card-effect/.test(mullBody));
+check('★ 效果文字來自 card.effect', /effEl\.textContent\s*=\s*\(c\.effect/.test(mullBody));
+check('★ 有 title 屬性（native tooltip 保底）', /card\.title\s*=/.test(mullBody));
 
 // ---------- TEST 3: 真跑 renderMulliganOverlay（DOM stub）----------
 console.log('\n[TEST 3] DOM stub 實跑 mulligan render（驗證冇 throw）');

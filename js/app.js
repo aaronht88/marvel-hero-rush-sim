@@ -124,9 +124,17 @@
       name.textContent = `Lv${c.level || "-"} · ${E.fullName(c)}`;
       card.appendChild(art);
       card.appendChild(name);
-      // v3.25: mulligan 時 hover 就見到卡效 —— 之前要撳開 detail modal 先睇到，
-      // 但要決定換唔換牌，正正就係要知效果。重用 #card-pop banner（唔帶 art，
-      // 只顯示 Lv/P/R/attribute/feature/rarity + 完整效果文本）。
+      // v3.25 / v3.25.1: mulligan 時要即時見到卡效 —— 換牌決策正正需要知效果。
+      // v3.25 只綁 bindCardHover（mouseenter → #card-pop），但實測唔work：
+      //   1. #card-pop 喺 @media (hover:none) 被 display:none!important 蓋住
+      //   2. 部分環境 mouseenter 唔 fire（觸控 / overlay 層干擾）
+      // 所以改為喺卡本身直接顯示效果文字（唔靠 hover 都見到），
+      // 同時保留 hover banner 俾空間不足時用。
+      const effEl = document.createElement("div");
+      effEl.className = "m-card-effect";
+      effEl.textContent = (c.effect || "").trim() || "—（無效果）";
+      card.appendChild(effEl);
+      card.title = (c.effect || "").trim();
       bindCardHover(card, c);
       card.addEventListener("click", () => {
         if (view._mulliganSelected.has(i)) view._mulliganSelected.delete(i);
@@ -977,9 +985,17 @@
     if (pop) pop.hidden = true;
   }
   function bindCardHover(el, card) {
-    if (!el || !card || !hoverOk()) return;
-    el.addEventListener("mouseenter", () => showCardPop(card, el));
+    if (!el || !card) return;
+    // v3.25.1: 唔再用 hoverOk() 做閘 —— 有 hover 就 hover，冇 hover 就 tap。
+    // 之前 `if (!hoverOk()) return` 會令觸控裝置（或者 hover:none 誤判嘅桌面）
+    // 完全冇任何方式見到卡效。
+    el.addEventListener("mouseenter", () => { if (hoverOk()) showCardPop(card, el); });
     el.addEventListener("mouseleave", hideCardPop);
+    el.addEventListener("pointerdown", () => {
+      if (hoverOk()) return;      // 有 hover 就唔需要 tap
+      showCardPop(card, el);
+      setTimeout(hideCardPop, 2600);
+    });
   }
   // 任何 render 之後有新 card 都自動重新綁 hover（renderHand / buildMiniCard 各自 call）
   function hidePopOnScroll() { window.addEventListener("scroll", hideCardPop, true); }
