@@ -34,9 +34,13 @@
   --gap: clamp(5px, .9vmin, 14px);
 
   /* 領域方塊尺寸：佔畫面寬/高嘅比例，自適應 */
-  --field-w: clamp(250px, 38vw, 600px);
-  --field-h: clamp(220px, 40vh, 520px);
+  --field-w: clamp(220px, 28vw, 460px);
+  --field-h: clamp(190px, 34vh, 430px);
   --edge: clamp(6px, 1vmin, 18px);
+  /* 向中央靠攏的程度：細 = 更貼中央 */
+  --pull: clamp(4px, 1.5vw, 40px);
+  --strip-h: clamp(46px, 9vh, 100px);
+  --panel-w: clamp(170px, 22vw, 320px);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -131,13 +135,16 @@ html, body {
   gap: var(--gap);
   z-index: 5;
 }
+/* v06.2 — Aaron：兩邊戰區要向中間靠攏，唔好分散貼左右。
+   P1 水平靠中央偏左、垂直靠上；P2 水平靠中央偏右、垂直靠下。
+   用 calc 由中心點偏移，令兩方自然形成夾住中央的對峙。 */
 .domain-p1 {
-  left: var(--edge);
-  top: var(--edge);
+  left: calc(50% - var(--field-w) - var(--pull));
+  top: calc(var(--edge) + var(--strip-h) + var(--gap));
 }
 .domain-p2 {
-  right: var(--edge);
-  bottom: var(--edge);
+  right: calc(50% - var(--field-w) - var(--pull));
+  bottom: calc(var(--edge) + var(--strip-h) + var(--gap));
 }
 
 /* ---- 菱形排列（十字位）----
@@ -235,7 +242,7 @@ html, body {
   position: absolute; z-index: 6;
   display: flex; flex-direction: column;
   gap: var(--gap);
-  width: clamp(48px, 6.5vw, 104px);
+  width: clamp(44px, calc(50vw - var(--field-w) - var(--pull) - var(--edge) * 2), 110px);
   top: 50%; transform: translateY(-50%);
 }
 .rail-p1 { left: var(--edge); }
@@ -270,13 +277,15 @@ html, body {
   position: absolute; z-index: 7;
   --chamfer: 11px;
   padding: clamp(4px, .8vmin, 10px) clamp(6px, 1vmin, 14px);
-  width: clamp(180px, 24vw, 330px);
-  height: clamp(90px, 17vh, 175px);
+  width: var(--panel-w);
+  height: clamp(86px, 16vh, 168px);
   display: flex; flex-direction: column;
   min-height: 0;
 }
-.log-p1  { right: var(--edge); top: var(--edge); }
-.ctrl-p1 { left: var(--edge);  bottom: var(--edge); }
+/* v06.2：panel 放領域外側（唔再壓 strip）。
+   Log 右上、Ctrl 左下，垂直位置對齊領域。 */
+.log-p1  { right: var(--edge); top: calc(var(--edge) + var(--strip-h) + var(--gap)); }
+.ctrl-p1 { left: var(--edge);  bottom: calc(var(--edge) + var(--strip-h) + var(--gap)); }
 
 .panel .pt {
   font-size: clamp(6px, .8vmin, 10px); font-weight: 800;
@@ -341,10 +350,12 @@ html, body {
   left: 50%; transform: translateX(-50%);
   display: flex; gap: var(--gap);
   justify-content: center;
-  /* 手牌/BASE 條要避開兩個領域方塊：寬度 = 100vw - 兩側領域 - rail - 邊距 */
-  width: min(calc(100vw - var(--field-w) * 2 - var(--edge) * 4), 720px);
-  min-width: 160px;
-  height: clamp(46px, 9.5vh, 108px);
+  /* v06.2：領域已向中央靠攏，手牌條要收窄到只佔外側空間，
+     否則會壓住領域。寬度 = 2*(50% - field-w - pull) - 邊距 */
+  /* 手牌條横跨兩個領域寬度（panel 已移到外側，唔再相撞） */
+  width: min(calc(var(--field-w) * 2 + var(--pull) * 2), 1100px);
+  min-width: 200px;
+  height: var(--strip-h);
 }
 .hand-row { top: var(--edge); }
 .base-row { bottom: var(--edge); }
