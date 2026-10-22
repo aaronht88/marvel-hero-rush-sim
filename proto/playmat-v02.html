@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MHR Playmat Prototype v02 — 斜向階梯</title>
+<style>
+/* ============================================================
+   MHR PLAYMAT v02 — 依照 Aaron figcraft 原稿的真實座標
+
+   抽自 MHR_SIM_Proto_v01.figcraft 的下半場（藍方）相對座標：
+     FRONT   (  0,   0)   127×171
+     WING左  (-43,  -4)    85×121   ← 略細，貼近斜線
+     WING右  (+135, +94)  127×171   ← 沿斜線落一級
+     BACK    (  0, +179)  127×171   ← FRONT 正下
+
+   即係「沿斜線方向逐級排」，唔係水平直線。
+   上半場鏡像（AI），方向反向。
+   ============================================================ */
+
+:root {
+  --bg: #070b12;
+  --red: rgba(140, 34, 48, .22);
+  --blue: rgba(26, 78, 140, .22);
+  --line: rgba(110, 160, 220, .20);
+  --line-hi: rgba(120, 190, 255, .55);
+  --cyan: #22d3ee;
+  --text: #dce8f7;
+  --muted: rgba(185, 208, 236, .60);
+  --card-ar: 0.716;         /* 63:88 真卡 */
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%; overflow: hidden;
+  background: var(--bg); color: var(--text);
+  font-family: Inter, -apple-system, "Segoe UI", "Noto Sans HK", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#mat { position: relative; width: 100vw; height: 100dvh; overflow: hidden; }
+
+/* ---------- 斜切背景 ---------- */
+.half { position: absolute; inset: 0; pointer-events: none; }
+.half-ai {
+  background: linear-gradient(215deg, #2b0c13 0%, var(--red) 48%, transparent 72%);
+  clip-path: polygon(0 0, 100% 0, 100% 58%, 0 26%);
+}
+.half-p {
+  background: linear-gradient(35deg, #061219 0%, var(--blue) 48%, transparent 72%);
+  clip-path: polygon(0 26%, 100% 58%, 100% 100%, 0 100%);
+}
+.divider {
+  position: absolute; left: -6%; right: -6%; top: 42%;
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent, var(--line-hi) 14%, var(--cyan) 34%,
+                              transparent 40%, transparent 60%, var(--cyan) 66%, var(--line-hi) 86%, transparent);
+  transform: rotate(-13.6deg);
+  opacity: .48; pointer-events: none; z-index: 1;
+}
+
+/* ============================================================
+   每方戰區：用「斜向階梯」絕對定位
+   以 FRONT 為基準點，其他三個區按相對比例偏移。
+   比例用 clamp + vmin 自適應。
+   ============================================================ */
+.side {
+  position: absolute;
+  z-index: 4;
+  /* 中央對齊：由 RUSH 左右分開 */
+  left: 50%;
+  transform: translateX(-50%);
+  display: block;
+}
+
+/* AI 側（上半）：FRONT 貼近斜線 → 整組靠上 */
+.side-ai {
+  top: 0; height: 47.5%;
+}
+.side-ai .field { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); }
+/* Player 側（下半）：FRONT 貼近斜線 → 整組靠上 */
+.side-p {
+  top: 52.5%; bottom: 0;
+}
+.side-p .field { position: absolute; top: 0; left: 50%; transform: translateX(-50%); }
+
+/* 戰區容器 —— 以「卡寬／卡高」為單位定位。
+   寬 = 容納 WING右 最右邊（dx +1.06 + 寬 1.0 = 2.06 卡寬）
+   高 = 容納 BACK 最底（dy +1.05 + 高 1.0 = 2.05 卡高）
+   實際用的是「絕對 mm 比例」，見下方 .zone-* 的 % — 全部相對 container。 */
+.field {
+  position: relative;
+  margin: 0;
+  --ch: clamp(46px, 9.6vmin, 122px);
+  --cw: calc(var(--ch) * var(--card-ar));
+  /* container 要包住 WING左(dx -1.047) 到 WING右右邊(dx +1.063+1.0)
+     → 寬 3.11 卡寬；高 = BACK 底 (1.047+1.0) = 2.05 卡高 */
+  width: calc(var(--cw) * 3.11);
+  height: calc(var(--ch) * 2.05);
+}
+
+/* 每個 zone 用 --dx/--dy 百分比偏移（相對卡寬/卡高） */
+.zone {
+  position: absolute;
+  width: var(--cw); height: var(--ch);
+  border: 1px dashed var(--line);
+  border-radius: clamp(5px, .9vmin, 11px);
+  background: rgba(6, 12, 22, .42);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: flex-end;
+  transition: border-color .18s, box-shadow .18s;
+}
+.zone:hover { border-color: var(--line-hi); box-shadow: 0 0 0 1px rgba(34,211,238,.16), 0 6px 20px rgba(0,0,0,.5); }
+.zone .z-label {
+  position: absolute;
+  top: 3px; left: 0; right: 0;
+  text-align: center;
+  font-size: clamp(6px, .68vmin, 9px);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: rgba(175, 210, 250, .78);
+  text-shadow: 0 1px 3px rgba(0,0,0,.95);
+  pointer-events: none;
+}
+.zone .z-r {
+  position: absolute;
+  bottom: 2px; left: 0; right: 0;
+  text-align: center;
+  font-size: clamp(5px, .58vmin, 8px);
+  letter-spacing: .06em;
+  color: rgba(140, 195, 245, .55);
+  pointer-events: none;
+}
+
+/* ---- 斜向階梯座標（由 figcraft 實測換算成百分比）----
+   FRONT 原點。寬 127、高 171 為基準。
+   WING左  dx -43/127 = -34%   dy  -4/171 =  -2%
+   WING右  dx +135/127 = +106% dy +94/171 = +55%
+   BACK    dx   0           dy +179/171 = +105%
+*/
+.zone-front { left: 33.7%; top: 0%; z-index: 3; }
+.zone-wing1 { left: 0%; top: 24.5%; z-index: 2; }
+.zone-wing2 { left: 67.8%; top: 26.8%; z-index: 2; }
+.zone-back  { left: 33.7%; top: 51.1%; z-index: 1; }
+
+/* AI 側鏡像：左右 + 上下反轉（FRONT 貼近斜線，BACK 向上外） */
+.side-ai .zone-front { left: 33.7%; top: auto; bottom: 0%; }
+.side-ai .zone-wing1 { left: 67.8%; top: auto; bottom: 24.5%; }
+.side-ai .zone-wing2 { left: 0%; top: auto; bottom: 26.8%; }
+.side-ai .zone-back  { left: 33.7%; top: auto; bottom: 51.1%; }
+
+/* 假卡 */
+.card {
+  width: 100%; height: 100%;
+  border-radius: clamp(4px, .7vmin, 8px);
+  background: linear-gradient(158deg, #1b2c46, #0b1520);
+  border: 1px solid rgba(120, 180, 240, .26);
+  padding: clamp(2px, .35vmin, 4px);
+  display: flex; flex-direction: column; justify-content: space-between;
+  font-size: clamp(6px, .68vmin, 9px); line-height: 1.15;
+  color: var(--muted); overflow: hidden;
+}
+.card .c-num { font-size: .92em; opacity: .75; }
+.card .c-row { display: flex; gap: 2px; flex-wrap: wrap; }
+.card .chip { padding: 0 2px; border-radius: 2px; background: rgba(90,140,200,.26); font-size: .92em; }
+.card.empty {
+  background: repeating-linear-gradient(45deg, rgba(60,90,130,.07) 0 5px, transparent 5px 10px);
+  border-style: dashed; border-color: rgba(120,170,230,.14);
+}
+
+/* ============================================================
+   側邊 pile（VOID / RETREAT / DECK）
+   ============================================================ */
+.piles {
+  position: absolute;
+  z-index: 6;
+  display: flex; flex-direction: column;
+  gap: clamp(3px, .6vmin, 8px);
+}
+.piles-left  { left: clamp(6px, 1.2vmin, 18px); }
+.piles-right { right: clamp(6px, 1.2vmin, 18px); }
+
+.piles-ai { top: clamp(6px, 1.2vmin, 18px); }
+.piles-p  { bottom: clamp(58px, 11vmin, 128px); }
+
+.pile {
+  display: flex; align-items: center; gap: clamp(3px, .5vmin, 6px);
+  padding: clamp(3px, .5vmin, 7px) clamp(5px, .8vmin, 10px);
+  border: 1px solid var(--line);
+  border-radius: clamp(5px, .8vmin, 9px);
+  background: rgba(6, 12, 22, .60);
+  font-size: clamp(7px, .76vmin, 10px);
+  color: var(--muted);
+  min-width: clamp(74px, 11vmin, 132px);
+  cursor: pointer;
+  transition: border-color .16s, background .16s;
+}
+.pile:hover { border-color: var(--line-hi); background: rgba(16, 32, 52, .82); }
+.pile .p-label { letter-spacing: .07em; text-transform: uppercase; }
+.pile .p-count {
+  margin-left: auto; min-width: 2em; text-align: right;
+  color: var(--text); font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.pile .p-mini {
+  width: clamp(13px, 2vmin, 22px); aspect-ratio: var(--card-ar);
+  border-radius: 2px; flex: none;
+  background: linear-gradient(150deg, #22354c, #0c1724);
+  border: 1px solid rgba(120,180,240,.18);
+}
+
+/* ============================================================
+   BASE 6 格
+   ============================================================ */
+.base-row {
+  position: absolute; z-index: 5;
+  display: flex; gap: clamp(2px, .4vmin, 5px);
+  left: 50%; transform: translateX(-50%);
+}
+.base-row-ai { top: clamp(4px, .7vmin, 10px); }
+.base-row-p  { bottom: clamp(52px, 10.5vmin, 118px); }
+.base-slot {
+  width: auto; height: clamp(24px, 5.2vmin, 54px);
+  aspect-ratio: var(--card-ar);
+  border: 1px dashed rgba(120, 170, 230, .22);
+  border-radius: clamp(3px, .6vmin, 7px);
+  background: rgba(6, 14, 24, .35);
+}
+
+/* ============================================================
+   RUSH Point（只分數）
+   ============================================================ */
+.rush {
+  position: absolute; z-index: 20;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex; align-items: center;
+  gap: clamp(3px, .6vmin, 9px);
+  padding: clamp(1px, .3vmin, 4px) clamp(6px, 1vmin, 12px);
+  border-radius: 999px;
+  background: rgba(4, 9, 16, .94);
+  border: 1px solid var(--line-hi);
+  box-shadow: 0 0 0 1px rgba(34,211,238,.10), 0 5px 20px rgba(0,0,0,.7);
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+.rush .r-label { font-size: clamp(6px, .66vmin, 9px); letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+.rush .r-score { font-size: clamp(11px, 1.8vmin, 20px); font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+.rush .r-score.p { color: #6db8ff; }
+.rush .r-score.a { color: #ff7b88; }
+.rush .r-vs { font-size: clamp(6px, .78vmin, 10px); color: var(--muted); letter-spacing: .1em; }
+
+/* ============================================================
+   Battle Log
+   ============================================================ */
+.log {
+  position: absolute; z-index: 8;
+  right: clamp(90px, 15vmin, 190px);
+  top: clamp(6px, 1vmin, 14px);
+  width: clamp(112px, 16vmin, 200px);
+  max-height: 19%;
+  padding: clamp(3px, .6vmin, 8px);
+  border: 1px solid var(--line);
+  border-radius: clamp(5px, .9vmin, 10px);
+  background: rgba(3, 7, 13, .92);
+  backdrop-filter: blur(8px);
+  font-size: clamp(7px, .78vmin, 10px);
+  line-height: 1.45;
+  color: var(--muted);
+  overflow: hidden;
+}
+.log .l-title { font-size: .9em; letter-spacing: .1em; text-transform: uppercase; opacity: .55; margin-bottom: 2px; }
+.log .l-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.log .l-line.hot { color: var(--cyan); }
+
+/* ============================================================
+   手牌
+   ============================================================ */
+.hand {
+  position: absolute; z-index: 10;
+  left: 50%; transform: translateX(-50%);
+  display: flex; gap: clamp(2px, .35vmin, 4px);
+  align-items: flex-end;
+}
+.hand-p { bottom: 0; }
+.hand-ai { top: 0; align-items: flex-start; }
+.h-card {
+  aspect-ratio: var(--card-ar);
+  height: clamp(40px, 8.4vmin, 96px);
+  max-width: calc((100vw - 60px) / 10);
+  flex: none;
+  border-radius: clamp(3px, .6vmin, 7px);
+  background: linear-gradient(158deg, #1e3350, #0b1622);
+  border: 1px solid rgba(120, 180, 240, .28);
+  cursor: pointer;
+  transition: transform .14s, border-color .14s;
+  overflow: hidden;
+}
+.h-card:hover { transform: translateY(clamp(-5px, -1.1vmin, -12px)); border-color: var(--cyan); }
+.hand-ai .h-card {
+  background: repeating-linear-gradient(45deg, #182636 0 4px, #101c29 4px 8px);
+  border-color: rgba(120, 180, 240, .13);
+}
+.hand-ai .h-card:hover { transform: translateY(clamp(5px, 1.1vmin, 12px)); }
+
+/* ============================================================
+   動作按鈕
+   ============================================================ */
+.actions {
+  position: absolute; z-index: 14;
+  left: 50%; transform: translateX(-50%);
+  bottom: calc(clamp(40px, 8.4vmin, 96px) + clamp(4px, .7vmin, 9px));
+  display: flex; gap: clamp(3px, .55vmin, 7px);
+}
+.btn {
+  padding: clamp(3px, .5vmin, 7px) clamp(7px, 1.1vmin, 14px);
+  border: 1px solid var(--line);
+  border-radius: clamp(4px, .7vmin, 8px);
+  background: rgba(10, 19, 32, .92);
+  color: var(--text);
+  font-family: inherit;
+  font-size: clamp(7px, .8vmin, 11px);
+  cursor: pointer; white-space: nowrap;
+  transition: border-color .14s, background .14s, transform .1s;
+}
+.btn:hover { border-color: var(--line-hi); background: rgba(20, 36, 56, .95); }
+.btn:active { transform: translateY(1px); }
+.btn.primary { border-color: rgba(34,211,238,.5); background: linear-gradient(180deg, rgba(28,74,112,.95), rgba(14,40,64,.95)); color: #d9f4ff; }
+.btn.end { border-color: rgba(245,185,66,.42); }
+
+/* ============================================================
+   距離圖例
+   ============================================================ */
+.legend {
+  position: absolute; z-index: 7;
+  left: 50%; transform: translateX(-50%);
+  display: flex; gap: clamp(6px, 1.1vmin, 14px);
+  font-size: clamp(6px, .66vmin, 9px);
+  letter-spacing: .08em;
+  color: rgba(140, 195, 245, .5);
+  pointer-events: none;
+  white-space: nowrap;
+}
+.legend-ai { top: calc(47.5% - 16px); }
+.legend-p  { bottom: calc(52.5% - 16px); }
+
+/* ============================================================
+   Adaptive
+   ============================================================ */
+@media (orientation: portrait), (max-width: 860px) {
+  html, body { overflow: auto; }
+  .divider { display: none; }
+  .half-ai { clip-path: none; background: linear-gradient(180deg, #2b0c13, transparent 60%); }
+  .half-p { clip-path: none; background: linear-gradient(0deg, #061219, transparent 60%); }
+  .side-ai { height: 48%; }
+  .side-p { top: 52%; }
+  .field { --ch: clamp(42px, 7.2vw, 92px); }
+  .legend { display: none; }
+  .log { display: none; }
+  .piles-left, .piles-right { font-size: 9px; }
+  .base-slot { height: clamp(20px, 4vw, 40px); }
+}
+
+@media (min-width: 1500px) {
+  .field { --ch: clamp(100px, 10.5vmin, 150px); }
+}
+
+#card-pop {
+  position: fixed; z-index: 200;
+  width: clamp(200px, 24vw, 320px);
+  max-height: 46vh; overflow-y: auto;
+  padding: clamp(6px, .9vmin, 11px);
+  border-radius: clamp(7px, 1vmin, 12px);
+  background: linear-gradient(180deg, #0e1c34, #091220);
+  border: 1px solid rgba(0, 229, 255, .38);
+  box-shadow: 0 12px 34px rgba(0,0,0,.72);
+  font-size: clamp(9px, .9vmin, 12px); line-height: 1.5;
+  pointer-events: none; backdrop-filter: blur(6px);
+}
+#card-pop[hidden] { display: none; }
+#card-pop .cb-name { font-weight: 700; margin-bottom: 4px; }
+#card-pop .cb-stats { display: flex; gap: 3px; flex-wrap: wrap; margin-bottom: 5px; }
+#card-pop .cb-chip { padding: 1px 4px; border-radius: 3px; font-size: .88em; background: rgba(90,140,200,.25); border: 1px solid rgba(120,180,240,.25); }
+#card-pop .cb-effect { white-space: pre-wrap; opacity: .92; font-size: .95em; }
+</style>
+</head>
+<body>
+
+<div id="mat">
+  <div class="half half-ai"></div>
+  <div class="half half-p"></div>
+  <div class="divider"></div>
+
+  <!-- ============ AI 側 pile ============ -->
+  <div class="piles piles-left piles-ai">
+    <div class="pile"><span class="p-label">卡組</span><span class="p-count" id="deck-a">42</span></div>
+    <div class="pile"><span class="p-label">虛空</span><span class="p-count" id="void-a">3</span></div>
+    <div class="pile"><span class="p-label">撤退</span><span class="p-count" id="retreat-a">1</span></div>
+  </div>
+
+  <!-- AI BASE -->
+  <div class="base-row base-row-ai" id="base-a"></div>
+
+  <!-- AI 戰區（斜向階梯鏡像） -->
+  <div class="side side-ai">
+    <div class="field">
+      <div class="zone zone-back"  data-label="BACK"  data-side="A" data-slot="back"></div>
+      <div class="zone zone-front" data-label="FRONT" data-side="A" data-slot="front"></div>
+      <div class="zone zone-wing1" data-label="WING"  data-side="A" data-slot="wing1"></div>
+      <div class="zone zone-wing2" data-label="WING"  data-side="A" data-slot="wing2"></div>
+    </div>
+  </div>
+  <div class="legend legend-ai">R-1 先鋒 · R-2 側翼 · R-3 後衛</div>
+
+  <!-- AI 手牌 -->
+  <div class="hand hand-ai" id="hand-a"></div>
+
+  <!-- ============ Player 側 pile ============ -->
+  <div class="piles piles-left piles-p">
+    <div class="pile"><span class="p-label">卡組</span><span class="p-count" id="deck-p">43</span></div>
+    <div class="pile"><span class="p-label">虛空</span><span class="p-count" id="void-p">0</span></div>
+    <div class="pile"><span class="p-label">撤退</span><span class="p-count" id="retreat-p">0</span></div>
+  </div>
+
+  <!-- Player BASE -->
+  <div class="base-row base-row-p" id="base-p"></div>
+
+  <!-- Player 戰區（斜向階梯） -->
+  <div class="side side-p">
+    <div class="field">
+      <div class="zone zone-front" data-label="FRONT" data-side="P" data-slot="front"></div>
+      <div class="zone zone-wing1" data-label="WING"  data-side="P" data-slot="wing1"></div>
+      <div class="zone zone-wing2" data-label="WING"  data-side="P" data-slot="wing2"></div>
+      <div class="zone zone-back"  data-label="BACK"  data-side="P" data-slot="back"></div>
+    </div>
+  </div>
+  <div class="legend legend-p">R-1 先鋒 · R-2 側翼 · R-3 後衛</div>
+
+  <!-- Player 手牌 -->
+  <div class="hand hand-p" id="hand-p"></div>
+
+  <!-- ============ RUSH Point（只分數） ============ -->
+  <div class="rush">
+    <span class="r-label">Rush</span>
+    <span class="r-score p" id="score-p">3</span>
+    <span class="r-vs">VS</span>
+    <span class="r-score a" id="score-a">9</span>
+  </div>
+
+  <!-- ============ Battle Log ============ -->
+  <div class="log">
+    <div class="l-title">Battle Log</div>
+    <div class="l-line hot">Player 號召 Iron Man → FRONT</div>
+    <div class="l-line">AI 抽 2 張</div>
+    <div class="l-line">Player 攻擊 AI BACK</div>
+    <div class="l-line">傷害：3500 vs 2800</div>
+    <div class="l-line">AI 撤退 1 張</div>
+  </div>
+
+  <!-- ============ 動作按鈕 ============ -->
+  <div class="actions">
+    <button class="btn">蓋放</button>
+    <button class="btn">移動</button>
+    <button class="btn">攻擊</button>
+    <button class="btn">起動</button>
+    <button class="btn end">結束回合</button>
+    <button class="btn">回報</button>
+  </div>
+</div>
+
+<div id="card-pop" hidden></div>
+
+<script>
+const SAMPLE = [
+  { no:'BP01-001', name:'「Pulse Assembler」Iron Man', lv:3, p:3500, r:2, color:'Blue', feat:'Avenger',
+    effect:'TRIG【FIELD】：When this card enters the field by calling, you prune 1 of your opponent\'s characters with Lv2 or below in BATTLE.' },
+  { no:'BP01-003', name:'「Starving」Venom', lv:4, p:4000, r:1, color:'Red', feat:'Symbiote',
+    effect:'TRIG【WING】:When your turn ends, if this card did not attack in this turn, 1 of your opponent\'s characters in BATTLE gets Power-X in this turn.' },
+  { no:'BP01-005', name:'「Scarlet Witch」', lv:2, p:2000, r:3, color:'Red', feat:'Avenger',
+    effect:'TRIG【HAND】:When your red character attacks, you may discard this card in HAND. If you do, that character gets Power+2000 in this turn.' },
+  { no:'SP01-021', name:'「Spider-Man」', lv:3, p:3000, r:2, color:'Blue', feat:'Web',
+    effect:'ACTI【VOID/ONCE PER TURN】:You may place this card from VOID into your BASE.' },
+];
+
+function makeCard(s) {
+  const d = document.createElement('div');
+  d.className = 'card';
+  d.innerHTML = `<div class="c-num">${s.no}</div>
+    <div class="c-row"><span class="chip">Lv${s.lv}</span><span class="chip">P${s.p}</span><span class="chip">R${s.r}</span></div>`;
+  d.addEventListener('mouseenter', () => showPop(s, d));
+  d.addEventListener('mouseleave', hidePop);
+  return d;
+}
+function makeEmpty() { const d = document.createElement('div'); d.className = 'card empty'; return d; }
+
+const layout = {
+  'A-front': SAMPLE[1], 'A-wing1': SAMPLE[0], 'A-wing2': null, 'A-back': null,
+  'P-front': SAMPLE[2], 'P-wing1': null, 'P-wing2': SAMPLE[3], 'P-back': null,
+};
+document.querySelectorAll('.zone[data-slot]').forEach(z => {
+  const s = layout[z.dataset.side + '-' + z.dataset.slot];
+  z.appendChild(s ? makeCard(s) : makeEmpty());
+  // R 距離標記
+  const rmap = { front:'R-1', wing1:'R-2', wing2:'R-2', back:'R-3' };
+  const tag = document.createElement('span');
+  tag.className = 'z-r';
+  tag.textContent = rmap[z.dataset.slot] || '';
+  z.appendChild(tag);
+});
+
+['base-a','base-p'].forEach(id => {
+  const row = document.getElementById(id);
+  for (let i=0;i<6;i++){ const b=document.createElement('div'); b.className='base-slot'; b.title='BASE '+(i+1); row.appendChild(b); }
+});
+
+function fillHand(id, n, up) {
+  const h = document.getElementById(id);
+  for (let i=0;i<n;i++){
+    const c = document.createElement('div'); c.className='h-card';
+    if (up) c.appendChild(makeCard(SAMPLE[i % SAMPLE.length]));
+    else { c.addEventListener('mouseenter',()=>showPop({no:'???',name:'AI 手牌',effect:'（蓋牌，不可查看）'},c)); c.addEventListener('mouseleave',hidePop); }
+    h.appendChild(c);
+  }
+}
+fillHand('hand-p', 6, true);
+fillHand('hand-a', 6, false);
+
+function showPop(s, anchor) {
+  const pop = document.getElementById('card-pop');
+  pop.innerHTML = `<div class="cb-name">${s.name}</div>
+    <div class="cb-stats">
+      <span class="cb-chip">Lv${s.lv ?? '—'}</span>
+      <span class="cb-chip">P${s.p ?? '—'}</span>
+      <span class="cb-chip">R${s.r ?? '—'}</span>
+      ${s.color?`<span class="cb-chip">${s.color}</span>`:''}
+      ${s.feat?`<span class="cb-chip">${s.feat}</span>`:''}
+    </div>
+    <div class="cb-effect">${s.effect || '—（無效果文本）'}</div>`;
+  pop.hidden = false;
+  const r = anchor.getBoundingClientRect(), pw = pop.offsetWidth, ph = pop.offsetHeight;
+  let left = Math.max(8, Math.min(r.left + r.width/2 - pw/2, innerWidth - pw - 8));
+  let top = r.top - ph - 10;
+  if (top < 8) top = r.bottom + 10;
+  pop.style.left = left + 'px'; pop.style.top = top + 'px';
+}
+function hidePop(){ document.getElementById('card-pop').hidden = true; }
+</script>
+</body>
+</html>

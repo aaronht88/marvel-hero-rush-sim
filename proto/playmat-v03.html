@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MHR Playmat v03 — 對角雙區</title>
+<style>
+/* ============================================================
+   MHR PLAYMAT v03 — 依照 Aaron figcraft 原稿的真實幾何
+
+   讀自 MHR_SIM_Proto_v01.figcraft 的實際 node 座標（單位 px，原稿尺度）：
+
+     上半場 P1 戰區（左上）       下半場 P2 戰區（右下）
+       WING    (-12,  54)          FRONT   (442, 242)
+       FRONT   (121, -32)          WING左  (309, 328)
+       WING    (256,  62)          WING右  (577, 336)
+       BACK    (121, 147)          BACK    (442, 421)
+
+     RUSH Point  文字 (295, 253)    ← 正中偏左
+     Battle Log  黑塊 (407,  43)    ← 右上
+     Battle Ctrl 黑塊 ( -5, 381)    ← 左下
+     VOID 槽      (683, 214)        ← 右中（配 label @625,199）
+     RETREAT 槽   (683, 545)        ← 右下（配 label @614,530）
+     手牌 6 細槽  (278..631, -56)   ← 頂部一排
+     BASE 6 細槽  (5..358,  576)    ← 底部一排
+     左側 2 個 109x85 (69,-67) / (69,246)  ← P1 的 DECK 類
+
+   關鍵：這是**對角**分割（左上 vs 右下），不是上下分半。
+   因此畫面接近 1:1（原稿內容 804x730 ≈ 1.10:1）。
+   ============================================================ */
+
+:root {
+  --bg: #06090f;
+  --p1: rgba(150, 36, 50, .26);
+  --p2: rgba(24, 76, 136, .26);
+  --line: rgba(110, 160, 220, .18);
+  --line-hi: rgba(120, 195, 255, .52);
+  --cyan: #22d3ee;
+  --text: #dce8f7;
+  --muted: rgba(182, 206, 236, .58);
+  --ar: 0.716;                 /* 真卡 63:88 */
+  /* 基準卡高：由 viewport 高度 + 寬度共同決定，保持 1:1 感覺 */
+  --ch: clamp(44px, min(9.2vmin, 13.5vh), 118px);
+  --cw: calc(var(--ch) * var(--ar));
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%; overflow: hidden;
+  background: var(--bg); color: var(--text);
+  font-family: Inter, -apple-system, "Segoe UI", "Noto Sans HK", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 主容器：保持接近方形的工作區，置中，留邊 */
+#mat {
+  position: relative;
+  width: 100vw; height: 100dvh;
+  overflow: hidden;
+}
+/* 工作區：原稿比例 804:730，用 aspect-ratio 鎖住，然後 contain 入畫面 */
+.stage {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  aspect-ratio: 804 / 730;
+  width: min(100vw, calc(100dvh * 804 / 730));
+  height: auto;
+  container-type: size;
+}
+
+/* ---------- 對角背景：左上紅 / 右下藍 ---------- */
+.half { position: absolute; inset: 0; pointer-events: none; }
+.half-p1 {
+  background: linear-gradient(135deg, #300d14 0%, var(--p1) 46%, transparent 74%);
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+.half-p2 {
+  background: linear-gradient(315deg, #07131d 0%, var(--p2) 46%, transparent 74%);
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+}
+/* 對角分界線（左上 → 右下），中央留空俾 RUSH */
+.divider {
+  position: absolute; inset: 0; pointer-events: none; z-index: 1;
+  background: linear-gradient(135deg,
+    transparent 0%, transparent 26%,
+    var(--line-hi) 34%, var(--cyan) 42%,
+    transparent 47%, transparent 55%,
+    var(--cyan) 62%, var(--line-hi) 69%,
+    transparent 76%, transparent 100%);
+  -webkit-mask-image: linear-gradient(135deg, #000 0%, #000 100%);
+  height: 1.5px; top: 50%; left: -50%; width: 200%;
+  transform: rotate(45deg) translateY(-50%);
+  opacity: .45;
+}
+
+/* ============================================================
+   戰區群：以原稿 px 座標 → stage 百分比
+   stage 寬 804 / 高 730。
+   每個卡槽 127x171（原稿），換算成 cqw/cqh 自適應。
+   ============================================================ */
+.zone {
+  position: absolute;
+  width: 15.80%;
+  height: 23.42%;
+  border: 1px dashed var(--line);
+  border-radius: clamp(4px, .8cqw, 10px);
+  background: rgba(6, 12, 22, .34);
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color .18s, box-shadow .18s;
+}
+.zone:hover { border-color: var(--line-hi); box-shadow: 0 0 0 1px rgba(34,211,238,.15); }
+.zone .zl {
+  position: absolute; left: 0; right: 0; bottom: 3px;
+  text-align: center;
+  font-size: clamp(5px, .82cqw, 9px);
+  letter-spacing: .1em; text-transform: uppercase;
+  color: rgba(178, 212, 250, .80);
+  text-shadow: 0 1px 3px rgba(0,0,0,.95);
+  pointer-events: none;
+}
+
+/* ---- P1 戰區（左上）實際座標 ---- */
+.z1-wing1 { left: 0.00%;    top: 16.58%; }
+.z1-front { left: 16.53%;   top: 4.79%; }
+.z1-wing2 { left: 33.32%;   top: 17.67%; }
+.z1-back  { left: 16.53%;   top: 29.32%; }
+
+/* ---- P2 戰區（右下）實際座標 ---- */
+.z2-front { left: 56.44%;   top: 42.33%; }
+.z2-wing1 { left: 39.91%;   top: 54.11%; }
+.z2-wing2 { left: 73.22%;   top: 55.21%; }
+.z2-back  { left: 56.44%;   top: 66.85%; }
+
+/* ---- RUSH Point（正中偏左，原稿 295,253）---- */
+.rush {
+  position: absolute;
+  left: 38.17%;
+  top: 43.84%;
+  display: flex; align-items: baseline; gap: .5em;
+  padding: calc(4 / 730 * 100cqh) calc(9 / 804 * 100cqw);
+  border-radius: 999px;
+  background: rgba(4, 9, 16, .93);
+  border: 1px solid var(--line-hi);
+  box-shadow: 0 0 0 1px rgba(34,211,238,.10), 0 4px 18px rgba(0,0,0,.7);
+  backdrop-filter: blur(6px);
+  z-index: 20;
+  white-space: nowrap;
+}
+.rush .rl { font-size: clamp(5px, .92cqw, 9px); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.rush .rs { font-size: clamp(9px, 2.1cqw, 20px); font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+.rush .rs.a { color: #6db8ff; }
+.rush .rs.b { color: #ff7b88; }
+.rush .rv { font-size: clamp(5px, 1cqw, 10px); color: var(--muted); }
+
+/* ---- 兩個黑塊（原稿 291x164）---- */
+.block {
+  position: absolute;
+  width: 36.19%;
+  height: 22.47%;
+  border: 1px solid rgba(80, 120, 170, .22);
+  border-radius: clamp(5px, 1cqw, 12px);
+  background: rgba(3, 7, 13, .80);
+  backdrop-filter: blur(5px);
+  overflow: hidden;
+  z-index: 8;
+}
+.block .bt {
+  position: absolute; top: 4px; left: 6px; right: 6px;
+  font-size: clamp(5px, .85cqw, 9px);
+  letter-spacing: .09em; text-transform: uppercase;
+  color: rgba(150, 190, 230, .5);
+}
+/* Battle Log：右上（原稿 407,43） */
+.block-log   { left: 52.09%; top: 15.07%; }
+/* Battle Control：左下（原稿 -5,381） */
+.block-ctrl  { left: 0.87%;  top: 61.37%; }
+
+.log-lines {
+  position: absolute; left: 6px; right: 6px; top: 18%;
+  font-size: clamp(5px, .8cqw, 9px);
+  line-height: 1.45; color: var(--muted);
+}
+.log-lines div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.log-lines .hot { color: var(--cyan); }
+
+/* 控制按鈕（放喺左下黑塊內，原稿寫「Buttons go here」） */
+.ctrl-btns {
+  position: absolute; left: 6px; right: 6px; bottom: 6px;
+  display: flex; flex-wrap: wrap; gap: clamp(2px, .35cqw, 5px);
+  align-content: flex-end;
+}
+.btn {
+  padding: clamp(2px, .35cqw, 5px) clamp(4px, .7cqw, 9px);
+  border: 1px solid var(--line);
+  border-radius: clamp(3px, .5cqw, 6px);
+  background: rgba(12, 22, 36, .95);
+  color: var(--text);
+  font-family: inherit;
+  font-size: clamp(5px, .78cqw, 9px);
+  cursor: pointer; white-space: nowrap;
+  transition: border-color .14s, background .14s;
+}
+.btn:hover { border-color: var(--line-hi); background: rgba(22, 40, 62, .98); }
+.btn.primary { border-color: rgba(34,211,238,.48); background: linear-gradient(180deg, rgba(28,74,112,.95), rgba(14,40,64,.95)); color: #d9f4ff; }
+.btn.end { border-color: rgba(245,185,66,.4); }
+
+/* ---- VOID / RETREAT（右側 109x85）---- */
+.pile {
+  position: absolute;
+  width: 13.56%;
+  height: 11.64%;
+  border: 1px solid var(--line);
+  border-radius: clamp(3px, .6cqw, 7px);
+  background: rgba(5, 11, 20, .62);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 1px;
+  font-size: clamp(5px, .76cqw, 9px);
+  color: var(--muted);
+  cursor: pointer;
+  z-index: 6;
+  transition: border-color .16s, background .16s;
+}
+.pile:hover { border-color: var(--line-hi); background: rgba(15, 30, 48, .85); }
+.pile .pl { letter-spacing: .08em; text-transform: uppercase; }
+.pile .pc { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
+.pile-void    { left: 86.42%; top: 38.50%; }
+.pile-retreat { left: 86.42%; top: 83.84%; }
+/* P1 左側兩個 109x85 */
+.pile-1a { left: 10.09%; top: 0.00%; }
+.pile-1b { left: 10.09%; top: 42.88%; }
+
+/* ---- 手牌（頂部 6 細槽 65x87）---- */
+.hand-row {
+  position: absolute;
+  left: 36.07%;
+  top: 1.51%;
+  display: flex; gap: 0.75%;
+  z-index: 7;
+}
+.h-slot {
+  width: 8.08%;
+  height: 11.92%;
+  border: 1px solid rgba(120, 175, 235, .22);
+  border-radius: clamp(3px, .5cqw, 6px);
+  background: rgba(6, 13, 23, .55);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform .14s, border-color .14s;
+}
+.h-slot:hover { transform: translateY(calc(-4 / 730 * 100cqh)); border-color: var(--cyan); }
+.h-slot.hidden-card {
+  background: repeating-linear-gradient(45deg, rgba(90,140,200,.10) 0 4px, transparent 4px 8px);
+}
+
+/* ---- BASE（底部 6 細槽 65x87）---- */
+.base-row {
+  position: absolute;
+  left: 2.11%;
+  top: 88.08%;
+  display: flex; gap: 0.70%;
+  z-index: 7;
+}
+.b-slot {
+  width: 8.08%;
+  height: 11.92%;
+  border: 1px dashed rgba(120, 170, 230, .20);
+  border-radius: clamp(3px, .5cqw, 6px);
+  background: rgba(6, 14, 24, .32);
+  font-size: clamp(4px, .7cqw, 8px);
+  letter-spacing: .06em;
+  color: rgba(150, 190, 230, .38);
+  display: flex; align-items: center; justify-content: center;
+  text-transform: uppercase;
+}
+
+/* ---- 卡面（假卡）---- */
+.card {
+  width: 100%; height: 100%;
+  border-radius: clamp(3px, .5cqw, 6px);
+  background: linear-gradient(158deg, #1b2c46, #0b1520);
+  border: 1px solid rgba(120, 180, 240, .24);
+  padding: calc(3 / 804 * 100cqw);
+  display: flex; flex-direction: column; justify-content: space-between;
+  font-size: clamp(4px, .72cqw, 8px); line-height: 1.12;
+  color: var(--muted); overflow: hidden;
+}
+.card .cn { font-size: .92em; opacity: .72; }
+.card .cr { display: flex; gap: 1px; flex-wrap: wrap; }
+.card .chip { padding: 0 1px; border-radius: 1px; background: rgba(90,140,200,.26); }
+.card.empty {
+  background: repeating-linear-gradient(45deg, rgba(60,90,130,.06) 0 5px, transparent 5px 10px);
+  border-style: dashed; border-color: rgba(120,170,230,.12);
+}
+
+/* ---- hover banner ---- */
+#card-pop {
+  position: fixed; z-index: 200;
+  width: clamp(190px, 23vw, 310px);
+  max-height: 46vh; overflow-y: auto;
+  padding: clamp(6px, .9vmin, 11px);
+  border-radius: clamp(7px, 1vmin, 12px);
+  background: linear-gradient(180deg, #0e1c34, #091220);
+  border: 1px solid rgba(0, 229, 255, .38);
+  box-shadow: 0 12px 34px rgba(0,0,0,.72);
+  font-size: clamp(9px, .9vmin, 12px); line-height: 1.5;
+  pointer-events: none; backdrop-filter: blur(6px);
+}
+#card-pop[hidden] { display: none; }
+#card-pop .cb-name { font-weight: 700; margin-bottom: 4px; }
+#card-pop .cb-stats { display: flex; gap: 3px; flex-wrap: wrap; margin-bottom: 5px; }
+#card-pop .cb-chip { padding: 1px 4px; border-radius: 3px; font-size: .88em; background: rgba(90,140,200,.25); border: 1px solid rgba(120,180,240,.25); }
+#card-pop .cb-effect { white-space: pre-wrap; opacity: .92; font-size: .95em; }
+
+/* ============================================================
+   Adaptive：窄螢幕 / 直向 → 放棄對角，改上下堆疊
+   ============================================================ */
+@media (max-aspect-ratio: 1/1) {
+  .stage { aspect-ratio: auto; width: 100vw; height: 100dvh; }
+  .divider { display: none; }
+  .half-p1 { clip-path: none; background: linear-gradient(180deg, #300d14, transparent 55%); }
+  .half-p2 { clip-path: none; background: linear-gradient(0deg, #07131d, transparent 55%); }
+  /* 用 flex 重新排：這裡簡化為兩個 50% 帶，各自水平排 4 槽 */
+  .zone { position: static; }
+  .p1-group, .p2-group {
+    position: absolute; left: 0; right: 0;
+    display: flex; justify-content: center; align-items: center;
+    gap: 1vw; flex-wrap: wrap;
+  }
+  .p1-group { top: 4%; }
+  .p2-group { bottom: 18%; }
+  .block, .pile, .hand-row, .base-row, .rush { position: static; }
+  .block-ctrl { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div id="mat">
+ <div class="stage">
+  <div class="half half-p1"></div>
+  <div class="half half-p2"></div>
+  <div class="divider"></div>
+
+  <!-- ============ P1 左側兩個 pile ============ -->
+  <div class="pile pile-1a"><span class="pl">卡組</span><span class="pc" id="deck-1">42</span></div>
+  <div class="pile pile-1b"><span class="pl">虛空</span><span class="pc" id="void-1">3</span></div>
+
+  <!-- ============ P1 戰區（左上） ============ -->
+  <div class="p1-group">
+    <div class="zone z1-wing1" data-label="WING"  data-side="1" data-slot="wing1"></div>
+    <div class="zone z1-front" data-label="FRONT" data-side="1" data-slot="front"></div>
+    <div class="zone z1-wing2" data-label="WING"  data-side="1" data-slot="wing2"></div>
+    <div class="zone z1-back"  data-label="BACK"  data-side="1" data-slot="back"></div>
+  </div>
+
+  <!-- ============ P1 手牌（頂部） ============ -->
+  <div class="hand-row" id="hand-1"></div>
+
+  <!-- ============ Battle Log（右上） ============ -->
+  <div class="block block-log">
+    <div class="bt">Battle Log</div>
+    <div class="log-lines">
+      <div class="hot">P1 號召 Iron Man → FRONT</div>
+      <div>P2 抽 2 張</div>
+      <div>P1 攻擊 P2 WING</div>
+      <div>傷害 3500 vs 2800</div>
+      <div>P2 撤退 1 張</div>
+    </div>
+  </div>
+
+  <!-- ============ VOID / RETREAT（右側） ============ -->
+  <div class="pile pile-void"><span class="pl">虛空</span><span class="pc" id="void-2">0</span></div>
+  <div class="pile pile-retreat"><span class="pl">撤退</span><span class="pc" id="retreat-2">0</span></div>
+
+  <!-- ============ P2 戰區（右下） ============ -->
+  <div class="p2-group">
+    <div class="zone z2-front" data-label="FRONT" data-side="2" data-slot="front"></div>
+    <div class="zone z2-wing1" data-label="WING"  data-side="2" data-slot="wing1"></div>
+    <div class="zone z2-wing2" data-label="WING"  data-side="2" data-slot="wing2"></div>
+    <div class="zone z2-back"  data-label="BACK"  data-side="2" data-slot="back"></div>
+  </div>
+
+  <!-- ============ BASE（底部） ============ -->
+  <div class="base-row" id="base-all"></div>
+
+  <!-- ============ RUSH Point ============ -->
+  <div class="rush">
+    <span class="rl">Rush</span>
+    <span class="rs a" id="score-1">3</span>
+    <span class="rv">VS</span>
+    <span class="rs b" id="score-2">9</span>
+  </div>
+
+  <!-- ============ Battle Phase Control（左下） ============ -->
+  <div class="block block-ctrl">
+    <div class="bt">Battle Phase</div>
+    <div class="ctrl-btns">
+      <button class="btn">蓋放</button>
+      <button class="btn">移動</button>
+      <button class="btn">攻擊</button>
+      <button class="btn">起動</button>
+      <button class="btn end">結束回合</button>
+      <button class="btn">回報</button>
+    </div>
+  </div>
+ </div>
+</div>
+
+<div id="card-pop" hidden></div>
+
+<script>
+const SAMPLE = [
+  { no:'BP01-001', name:'「Pulse Assembler」Iron Man', lv:3, p:3500, r:2, color:'Blue', feat:'Avenger',
+    effect:'TRIG【FIELD】：When this card enters the field by calling, you prune 1 of your opponent\'s characters with Lv2 or below in BATTLE.' },
+  { no:'BP01-003', name:'「Starving」Venom', lv:4, p:4000, r:1, color:'Red', feat:'Symbiote',
+    effect:'TRIG【WING】:When your turn ends, if this card did not attack in this turn, 1 of your opponent\'s characters in BATTLE gets Power-X in this turn.' },
+  { no:'BP01-005', name:'「Scarlet Witch」', lv:2, p:2000, r:3, color:'Red', feat:'Avenger',
+    effect:'TRIG【HAND】:When your red character attacks, you may discard this card in HAND. If you do, that character gets Power+2000 in this turn.' },
+  { no:'SP01-021', name:'「Spider-Man」', lv:3, p:3000, r:2, color:'Blue', feat:'Web',
+    effect:'ACTI【VOID/ONCE PER TURN】:You may place this card from VOID into your BASE.' },
+];
+
+function makeCard(s) {
+  const d = document.createElement('div');
+  d.className = 'card';
+  d.innerHTML = `<div class="cn">${s.no}</div>
+    <div class="cr"><span class="chip">Lv${s.lv}</span><span class="chip">P${s.p}</span><span class="chip">R${s.r}</span></div>`;
+  d.addEventListener('mouseenter', () => showPop(s, d));
+  d.addEventListener('mouseleave', hidePop);
+  return d;
+}
+const EMPTY = () => { const d = document.createElement('div'); d.className = 'card empty'; return d; };
+
+const layout = {
+  '1-front': SAMPLE[1], '1-wing1': SAMPLE[0], '1-wing2': null, '1-back': null,
+  '2-front': SAMPLE[2], '2-wing1': null, '2-wing2': SAMPLE[3], '2-back': null,
+};
+document.querySelectorAll('.zone[data-slot]').forEach(z => {
+  const s = layout[z.dataset.side + '-' + z.dataset.slot];
+  z.appendChild(s ? makeCard(s) : EMPTY());
+  const l = document.createElement('span');
+  l.className = 'zl';
+  l.textContent = z.dataset.label;
+  z.appendChild(l);
+});
+
+// BASE 6 格
+const baseRow = document.getElementById('base-all');
+for (let i = 0; i < 6; i++) {
+  const b = document.createElement('div');
+  b.className = 'b-slot';
+  b.textContent = 'BASE';
+  b.title = 'BASE ' + (i + 1);
+  baseRow.appendChild(b);
+}
+
+// 手牌 6 格
+const handRow = document.getElementById('hand-1');
+for (let i = 0; i < 6; i++) {
+  const h = document.createElement('div');
+  h.className = 'h-slot';
+  h.appendChild(makeCard(SAMPLE[i % SAMPLE.length]));
+  handRow.appendChild(h);
+}
+
+function showPop(s, anchor) {
+  const pop = document.getElementById('card-pop');
+  pop.innerHTML = `<div class="cb-name">${s.name}</div>
+    <div class="cb-stats">
+      <span class="cb-chip">Lv${s.lv ?? '—'}</span>
+      <span class="cb-chip">P${s.p ?? '—'}</span>
+      <span class="cb-chip">R${s.r ?? '—'}</span>
+      ${s.color?`<span class="cb-chip">${s.color}</span>`:''}
+      ${s.feat?`<span class="cb-chip">${s.feat}</span>`:''}
+    </div>
+    <div class="cb-effect">${s.effect || '—（無效果文本）'}</div>`;
+  pop.hidden = false;
+  const r = anchor.getBoundingClientRect(), pw = pop.offsetWidth, ph = pop.offsetHeight;
+  let left = Math.max(8, Math.min(r.left + r.width/2 - pw/2, innerWidth - pw - 8));
+  let top = r.top - ph - 10;
+  if (top < 8) top = r.bottom + 10;
+  pop.style.left = left + 'px'; pop.style.top = top + 'px';
+}
+function hidePop() { document.getElementById('card-pop').hidden = true; }
+</script>
+</body>
+</html>
