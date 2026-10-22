@@ -640,20 +640,219 @@
     }
   }
 
-  function resolveCost(state, side, costArr, ctx) {
-    if (!costArr || !costArr.length) return { ok: true };
-    for (const cost of costArr) {
-      if (cost.op === "discard_self_from_hand") {
-        const p = state.players[side];
+  // =============================================================
+  // v3.18 Z1 — ATOMIC COST RESOLUTION
+  //
+  // 舊版 resolveCost() 邊檢查邊改 state：
+  //     const c = p.hand.splice(hi, 1)[0];   // ← 已經改咗 state
+  //     p.retreat.push(c);
+  //     ...
+  // 如果 cost 陣列有第二項而佢失敗，第一項嘅卡已經離開手牌 —— 玩家付咗費
+  // 但效果冇發生，而且 zone 內容靜靜哋壞咗（卡喺 RETREAT 但效果當冇發生）。
+  //
+  // EFFECTS_DESCRIPTOR.md §5 硬性規則 2 要求：
+  //   「validate cost + 目標 → 先 commit；取消/非法 play 必須完整還原」
+  //
+  // 所以拆成兩個 pass：
+  //   COST_VALIDATORS[op](state, side, cost, ctx) → { ok, err?, plan }
+  //   COST_APPLIERS[op](state, side, cost, ctx, plan) → void
+  // 任何一項 validate 失敗 → 直接 return，state 完全未動過。
+  // =============================================================
+
+  // ---- validators (pure: must not mutate state) ----
+  const COST_VALIDATORS = {
+    // cost: { op:"discard_self_from_hand" }  — 棄效果來源卡本身（BP01-002）
+    discard_self_from_hand(state, side, cost, ctx) {
+      const p = state.players[side];
+      if (!ctx || !ctx.source) return { ok: false, err: "冇 source 卡" };
+      const hi = p.hand.indexOf(ctx.source);
+      if (hi < 0) return { ok: false, err: "手牌冇 source" };
+      return { ok: true, plan: { handIdx: hi } };
+    },
+
+    // cost: { op:"discard", n?, self?, from? } — 棄 N 張手牌
+    discard(state, side, cost, ctx) {
+      const p = state.players[side];
+      if (cost.self) {
+        if (!ctx || !ctx.source) return { ok: false, err: "冇 source 卡" };
         const hi = p.hand.indexOf(ctx.source);
         if (hi < 0) return { ok: false, err: "手牌冇 source" };
-        const c = p.hand.splice(hi, 1)[0];
+        return { ok: true, plan: { cards: [ctx.source], handIdx: hi } };
+      }
+      const n = cost.n == null ? 1 : cost.n;
+      if (p.hand.length < n) {
+        return { ok: false, err: `手牌不足（需 ${n}，有 ${p.hand.length}）` };
+      }
+      // 由控制方揀要棄邊張：呢度先取最後 N 張，如果 descriptor 要指定目標，
+      // 交畀 zone_transfer 嘅 playerChooses 先 park choice 再傳入 plan。
+      return { ok: true, plan: { cards: p.hand.slice(-n) } };
+    },
+
+    // cost: { op:"prune", n?, target?, filter? }
+    prune(state, side, cost, ctx) {
+      const p = state.players[side];
+      const opp = state.players[side === "P" ? "A" : "P"];
+      const n = cost.n == null ? 1 : cost.n;
+
+      // prune 自己場上（V5 Prowler：prune this card on BATTLE）
+      if (cost.target === "self_on_field") {
+        if (!ctx || !ctx.source) return { ok: false, err: "冇 source 卡" };
+        const onField = battleAll(p).some(c => c && c._uid === ctx.source._uid);
+        if (!onField) return { ok: false, err: "source 唔喺場上" };
+        return { ok: true, plan: { cards: [ctx.source], from: "field" } };
+      }
+
+      // prune 牌組頂 N 張（V4 Uncle Ben）
+      if (cost.target === "my_deck_top") {
+        const k = Math.min(n, p.deck.length);
+        if (k === 0) return { ok: false, err: "牌組已空" };
+        return { ok: true, plan: { cards: p.deck.slice(0, k), from: "deck", short: k < n } };
+      }
+
+      // prune 自己撤退區嘅卡（V2 Doctor Strange），可帶 filter
+      if (cost.target === "my_retreat" || (!cost.target && cost.filter)) {
+        const pool = p.retreat.filter(c => !cost.filter || passFilter(c, cost.filter, ctx, state, side));
+        if (pool.length < n) {
+          return { ok: false, err: `撤退區符合條件嘅卡不足（需 ${n}，有 ${pool.length}）` };
+        }
+        return { ok: true, plan: { cards: pool.slice(0, n), from: "retreat" } };
+      }
+
+      // prune 對手場上（一般 prune 效果）
+      if (cost.target === "opp_battle" || cost.target === "opp_field") {
+        const pool = battleAll(opp).filter(c => !cost.filter || passFilter(c, cost.filter, ctx, state, side));
+        if (pool.length < n) {
+          return { ok: false, err: `對手場上符合條件嘅卡不足（需 ${n}，有 ${pool.length}）` };
+        }
+        return { ok: true, plan: { cards: pool.slice(0, n), from: "opp_field" } };
+      }
+
+      return { ok: false, err: "prune cost 唔知 target: " + cost.target };
+    },
+
+    // cost: { op:"retreat_self" } — 撤退效果來源卡（自付）
+    retreat_self(state, side, cost, ctx) {
+      const p = state.players[side];
+      if (!ctx || !ctx.source) return { ok: false, err: "冇 source 卡" };
+      const onField = battleAll(p).some(c => c && c._uid === ctx.source._uid);
+      if (!onField) return { ok: false, err: "source 唔喺場上" };
+      return { ok: true, plan: { card: ctx.source } };
+    },
+
+    // cost: { op:"lv_pay", lv } — 用撤退區合計 Lv 支付（號召規則）
+    lv_pay(state, side, cost, ctx) {
+      const p = state.players[side];
+      const need = cost.lv;
+      const uids = (ctx && ctx.retreatUids) || [];
+      let sum = 0;
+      const picked = [];
+      for (const uid of uids) {
+        const c = p.retreat.find(x => x && x._uid === uid);
+        if (!c) return { ok: false, err: `撤退區冇卡 ${uid}` };
+        sum += c._faceDown ? 1 : (c.level + (c._lvMod || 0));
+        picked.push(c);
+      }
+      if (sum !== need) return { ok: false, err: `Lv 合計不符（需 ${need}，有 ${sum}）` };
+      return { ok: true, plan: { cards: picked } };
+    },
+  };
+
+  // ---- appliers (mutating: only run after ALL validators passed) ----
+  const COST_APPLIERS = {
+    discard_self_from_hand(state, side, cost, ctx, plan) {
+      const p = state.players[side];
+      // 重新定位（validator 之後 state 未變，但 index 可能因其他 op 而移位）
+      const hi = p.hand.indexOf(plan.cards ? plan.cards[0] : ctx.source);
+      const idx = hi >= 0 ? hi : plan.handIdx;
+      const c = p.hand.splice(idx, 1)[0];
+      if (!c) return;
+      p.retreat.push(c);
+      emitLog(state, `${p.name} 捨棄 ${shortName(c)} → RETREAT（cost）`, side);
+    },
+
+    discard(state, side, cost, ctx, plan) {
+      const p = state.players[side];
+      for (const target of plan.cards) {
+        const i = p.hand.indexOf(target);
+        if (i < 0) continue;
+        const c = p.hand.splice(i, 1)[0];
         p.retreat.push(c);
         emitLog(state, `${p.name} 捨棄 ${shortName(c)} → RETREAT（cost）`, side);
-      } else {
-        return { ok: false, err: "cost 不支援: " + cost.op };
       }
+    },
+
+    prune(state, side, cost, ctx, plan) {
+      const p = state.players[side];
+      if (plan.from === "deck") {
+        for (const target of plan.cards) {
+          const i = p.deck.indexOf(target);
+          if (i < 0) continue;
+          p.deck.splice(i, 1);
+          p.voidZone.push(target);
+          emitLog(state, `${p.name} 裁剪牌組頂 ${shortName(target)} → VOID（cost）`, side);
+        }
+        return;
+      }
+      if (plan.from === "retreat") {
+        for (const target of plan.cards) {
+          const i = p.retreat.indexOf(target);
+          if (i < 0) continue;
+          p.retreat.splice(i, 1);
+          // 結附卡跟主體走（規則書 P15 名詞 8）
+          const att = p.attached[target._uid] || [];
+          delete p.attached[target._uid];
+          p.voidZone.push(target, ...att);
+          emitLog(state, `${p.name} ${shortName(target)} → VOID（裁剪 cost）`, side);
+        }
+        return;
+      }
+      if (plan.from === "opp_field") {
+        const oppSide = side === "P" ? "A" : "P";
+        for (const target of plan.cards) doPrune(state, oppSide, target);
+        return;
+      }
+      // field（self）
+      for (const target of plan.cards) doPrune(state, side, target);
+    },
+
+    retreat_self(state, side, cost, ctx, plan) {
+      doRetreat(state, side, plan.card, "cost");
+    },
+
+    lv_pay(state, side, cost, ctx, plan) {
+      const p = state.players[side];
+      for (const target of plan.cards) {
+        const i = p.retreat.indexOf(target);
+        if (i >= 0) p.retreat.splice(i, 1);
+        p.voidZone.push(target);   // 號召付出嘅撤退區卡去 VOID
+      }
+    },
+  };
+
+  // 兩個 pass。第二個 pass 只會喺第一個 pass 全部成功之後執行。
+  function resolveCost(state, side, costArr, ctx) {
+    if (!costArr || !costArr.length) return { ok: true };
+
+    // ---- PASS 1: validate (NO mutation) ----
+    const plans = [];
+    for (const cost of costArr) {
+      const op = cost.op;
+      // 向後兼容：舊 descriptor 用 discard_self_from_hand
+      const v = COST_VALIDATORS[op] || COST_VALIDATORS[op === "discard_self" ? "discard_self_from_hand" : op];
+      if (!v) return { ok: false, err: "cost 不支援: " + op };
+      const r = v(state, side, cost, ctx);
+      if (!r.ok) return { ok: false, err: r.err };
+      plans.push({ cost, plan: r.plan });
     }
+
+    // ---- PASS 2: apply (mutation) ----
+    for (const { cost, plan } of plans) {
+      const op = cost.op;
+      const a = COST_APPLIERS[op] || COST_APPLIERS[op === "discard_self" ? "discard_self_from_hand" : op];
+      if (!a) return { ok: false, err: "cost applier 不存在: " + op };
+      a(state, side, cost, ctx, plan);
+    }
+
     return { ok: true };
   }
 
@@ -685,6 +884,7 @@
     resolveChoice,
     pendingChoices: state => (state && state.pendingChoices) || [],
     // exported for test
-    _internal: { resolveVar, evalCond, matchTrigger, OPS, collectTargets, runOpList, snapshotCtx, findCardByUid },
+    _internal: { resolveVar, evalCond, matchTrigger, OPS, collectTargets, runOpList, snapshotCtx, findCardByUid,
+                 resolveCost, COST_VALIDATORS, COST_APPLIERS },
   };
 })(window);
