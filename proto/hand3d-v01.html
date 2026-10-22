@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MHR Hand 3D — prototype</title>
+<style>
+  :root { --bg-0:#03060c; --bg-1:#061020; --bg-2:#0a1c3a; --cyan:#4dd0e1; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%; overflow: hidden;
+    background: radial-gradient(120% 95% at 50% 0%, var(--bg-2) 0%, var(--bg-1) 40%, var(--bg-0) 100%);
+    color: #e6eefb;
+    font-family: Inter, -apple-system, "Segoe UI", "Noto Sans HK", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #stage { position: absolute; inset: 0; }
+  canvas { display: block; }
+
+  .hud {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 10px 18px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    pointer-events: none; z-index: 10;
+  }
+  .hud .info { font-size: 11px; letter-spacing: .04em; color: rgba(180,210,240,.62); }
+  .hud .info b { color: var(--cyan); font-weight: 700; }
+  .hud .btns { display: flex; gap: 8px; pointer-events: auto; }
+  .btn {
+    border: 1px solid rgba(77,208,225,.5);
+    background: linear-gradient(180deg, rgba(30,74,124,.95), rgba(13,36,64,.95));
+    color: #dff6ff; border-radius: 6px; padding: 6px 13px;
+    font-family: inherit; font-size: 11px; font-weight: 700; letter-spacing: .04em;
+    cursor: pointer;
+    clip-path: polygon(6px 0, calc(100% - 6px) 0, 100% 6px, 100% calc(100% - 6px),
+                       calc(100% - 6px) 100%, 6px 100%, 0 calc(100% - 6px), 0 6px);
+    transition: filter .14s, transform .1s;
+  }
+  .btn:hover { filter: brightness(1.35); }
+  .btn:active { transform: translateY(1px); }
+  .btn:disabled { opacity: .35; cursor: default; }
+
+  .cardtip {
+    position: absolute; z-index: 30; width: 250px; padding: 11px 13px;
+    background: linear-gradient(180deg, #0e1c34, #091220);
+    border: 1px solid rgba(77,208,225,.45); border-radius: 9px;
+    box-shadow: 0 14px 40px rgba(0,0,0,.75);
+    font-size: 11px; line-height: 1.55;
+    pointer-events: none; opacity: 0; transition: opacity .15s;
+  }
+  .cardtip.show { opacity: 1; }
+  .cardtip .tn { font-weight: 800; font-size: 12px; margin-bottom: 5px; color: #fff; }
+  .cardtip .ts { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 7px; }
+  .cardtip .tc {
+    padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600;
+    background: rgba(77,208,225,.2); color: var(--cyan);
+    border: 1px solid rgba(77,208,225,.3);
+  }
+  .cardtip .te { white-space: pre-wrap; color: rgba(200,222,248,.9); }
+
+  .loading {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 13px; color: rgba(180,210,240,.6); letter-spacing: .1em; z-index: 50;
+    transition: opacity .4s;
+  }
+  .err {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    padding: 30px; font-size: 12px; line-height: 1.7; color: #ff8b96;
+    text-align: center; z-index: 60; white-space: pre-wrap;
+  }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div class="loading" id="loading">載入 3D 場景…</div>
+<div class="cardtip" id="cardtip"></div>
+<div class="hud">
+  <div class="info">手牌 <b id="n-hand">0</b> · DECK <b id="n-deck">42</b></div>
+  <div class="btns">
+    <button class="btn" id="btn-draw">抽牌</button>
+    <button class="btn" id="btn-discard">蓋牌</button>
+    <button class="btn" id="btn-play">出牌</button>
+    <button class="btn" id="btn-reset">重置</button>
+  </div>
+</div>
+
+<!-- importmap：所有絕對路徑都映射到 jsdelivr，避免瀏覽器以頁面 origin 解析 -->
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://cdn.jsdelivr.net/npm/react@18.3.1/+esm",
+    "react-dom/client": "https://cdn.jsdelivr.net/npm/react-dom@18.3.1/client/+esm",
+    "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/+esm",
+
+    "/npm/react@18.3.1/+esm": "https://cdn.jsdelivr.net/npm/react@18.3.1/+esm",
+    "/npm/react@18.3.1/jsx-runtime/+esm": "https://cdn.jsdelivr.net/npm/react@18.3.1/jsx-runtime/+esm",
+    "/npm/react-dom@18.3.1/client/+esm": "https://cdn.jsdelivr.net/npm/react-dom@18.3.1/client/+esm",
+    "/npm/three@0.169.0/+esm": "https://cdn.jsdelivr.net/npm/three@0.169.0/+esm",
+    "/npm/scheduler@0.21.0/+esm": "https://cdn.jsdelivr.net/npm/scheduler@0.21.0/+esm",
+    "/npm/suspend-react@0.1.3/+esm": "https://cdn.jsdelivr.net/npm/suspend-react@0.1.3/+esm",
+    "/npm/its-fine@1.2.5/+esm": "https://cdn.jsdelivr.net/npm/its-fine@1.2.5/+esm",
+    "/npm/debounce@1.2.1/+esm": "https://cdn.jsdelivr.net/npm/debounce@1.2.1/+esm",
+
+    "/npm/react@18.2.0/+esm": "https://cdn.jsdelivr.net/npm/react@18.3.1/+esm",
+    "/npm/react@18.0.0/+esm": "https://cdn.jsdelivr.net/npm/react@18.3.1/+esm",
+    "/npm/react@18.2.0/jsx-runtime/+esm": "https://cdn.jsdelivr.net/npm/react@18.3.1/jsx-runtime/+esm",
+    "/npm/react@18.0.0/jsx-runtime/+esm": "https://cdn.jsdelivr.net/npm/react@18.3.1/jsx-runtime/+esm",
+
+    "/npm/react-reconciler@0.27.0/+esm": "https://cdn.jsdelivr.net/npm/react-reconciler@0.27.0/+esm",
+    "/npm/react-reconciler@0.27.0/constants/+esm": "https://cdn.jsdelivr.net/npm/react-reconciler@0.27.0/constants/+esm",
+    "/npm/zustand@3.7.2/+esm": "https://cdn.jsdelivr.net/npm/zustand@3.7.2/+esm",
+    "/npm/zustand@3.7.2/middleware/+esm": "https://cdn.jsdelivr.net/npm/zustand@3.7.2/middleware/+esm"
+  }
+}
+</script>
+
+<script type="module">
+const errBox = (msg) => {
+  const d = document.createElement('div');
+  d.className = 'err';
+  d.textContent = '3D 載入失敗\n\n' + msg;
+  document.body.appendChild(d);
+  const l = document.getElementById('loading');
+  if (l) l.style.display = 'none';
+};
+window.addEventListener('error', e => { if (e.message) console.error('[win]', e.message); });
+
+try {
+  const React = await import('react');
+  const { createRoot } = await import('react-dom/client');
+  const THREE = await import('three');
+  const R3F = await import('https://cdn.jsdelivr.net/npm/@react-three/fiber@8.17.10/+esm');
+  const { Canvas, useFrame, useThree } = R3F;
+  const { useState, useRef, useMemo, useCallback, useEffect } = React;
+
+  /* ---------- 示範卡 ---------- */
+  const CARD_POOL = [
+    { no:'BP01-001', name:'「Pulse Assembler」Iron Man', lv:3, p:3500, r:2, color:'Blue', feat:'Avenger',
+      effect:'TRIG【FIELD】：When this card enters the field by calling, you prune 1 of your opponent\'s characters with Lv2 or below in BATTLE.' },
+    { no:'BP01-003', name:'「Starving」Venom', lv:4, p:4000, r:1, color:'Red', feat:'Symbiote',
+      effect:'TRIG【WING】:When your turn ends, if this card did not attack in this turn, 1 of your opponent\'s characters in BATTLE gets Power-X in this turn.' },
+    { no:'BP01-005', name:'「Scarlet Witch」', lv:2, p:2000, r:3, color:'Red', feat:'Avenger',
+      effect:'TRIG【HAND】:When your red character attacks, you may discard this card in HAND. If you do, that character gets Power+2000 in this turn.' },
+    { no:'SP01-021', name:'「Spider-Man」', lv:3, p:3000, r:2, color:'Blue', feat:'Web',
+      effect:'ACTI【VOID/ONCE PER TURN】:You may place this card from VOID into your BASE.' },
+    { no:'BP01-008', name:'「Iron Fist」', lv:2, p:2500, r:1, color:'Yellow', feat:'Hero for Hire',
+      effect:'TRIG【FIELD】：When this card enters the field, you may prune all your characters with Lv1 in BATTLE.' },
+    { no:'BP01-017', name:'「Thor」', lv:5, p:5000, r:3, color:'Blue', feat:'Asgardian',
+      effect:'TRIG【FIELD】:When this card enters the field by calling, you may draw 1 card. If you do, this card may attack 2 times in this turn.' },
+    { no:'SD01-003', name:'「Captain America」', lv:4, p:4500, r:2, color:'Blue', feat:'Avenger',
+      effect:'TRIG【BATTLE/ONCE PER TURN】: When the R or the Power of your character increase, 1 of your opponent\'s characters in BATTLE gets Power-1000 in this turn.' },
+    { no:'PB01-001', name:'「Star-Lord」', lv:3, p:3000, r:2, color:'Green', feat:'GOTG',
+      effect:'TRIG【BATTLE】:When this card wins the fight, all your characters with 【GOTG】 in their features in BATTLE except this card get R+1 in this turn.' },
+  ];
+  const COLOR_HEX = { Red:'#ff5d6c', Blue:'#4da3ff', Yellow:'#f5c542', Green:'#4dd08a' };
+
+  /* ---------- 卡面 canvas texture ---------- */
+  const texCache = new Map();
+  function makeCardTexture(card) {
+    if (texCache.has(card.no)) return texCache.get(card.no);
+    const W = 512, H = 716;
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const g = cv.getContext('2d');
+    const accent = COLOR_HEX[card.color] || '#4dd0e1';
+
+    const grad = g.createLinearGradient(0, 0, W * 0.6, H);
+    grad.addColorStop(0, '#1e3a5c');
+    grad.addColorStop(1, '#0a1520');
+    g.fillStyle = grad; g.fillRect(0, 0, W, H);
+
+    // 斜切角邊框
+    const ch = 26;
+    g.strokeStyle = accent; g.globalAlpha = .55; g.lineWidth = 5;
+    g.beginPath();
+    g.moveTo(ch,3); g.lineTo(W-ch,3); g.lineTo(W-3,ch);
+    g.lineTo(W-3,H-ch); g.lineTo(W-ch,H-3); g.lineTo(ch,H-3);
+    g.lineTo(3,H-ch); g.lineTo(3,ch); g.closePath(); g.stroke();
+    g.globalAlpha = 1;
+
+    // 頂部色帶
+    g.fillStyle = accent; g.globalAlpha = .16;
+    g.fillRect(3, 3, W-6, 118); g.globalAlpha = 1;
+
+    // 卡號 + 稀有度點
+    g.fillStyle = accent;
+    g.font = 'bold 27px Inter, sans-serif';
+    g.fillText(card.no, 34, 48);
+    g.beginPath(); g.arc(W-46, 40, 11, 0, Math.PI*2); g.fill();
+
+    // 名稱
+    g.fillStyle = '#f2f8ff';
+    g.font = 'bold 33px Inter, "Noto Sans HK", sans-serif';
+    const nm = card.name.length > 20 ? card.name.slice(0,19)+'…' : card.name;
+    g.fillText(nm, 34, 92);
+
+    // 卡圖區
+    const artY = 132, artH = 352;
+    const ag = g.createLinearGradient(34, artY, W-34, artY+artH);
+    ag.addColorStop(0, accent + '3a'); ag.addColorStop(1, '#061020');
+    g.fillStyle = ag; g.fillRect(34, artY, W-68, artH);
+    g.strokeStyle = accent; g.globalAlpha = .3; g.lineWidth = 2;
+    g.strokeRect(34, artY, W-68, artH); g.globalAlpha = 1;
+
+    // 中央大符號
+    g.globalAlpha = .15; g.fillStyle = accent;
+    g.font = 'bold 128px Inter, sans-serif'; g.textAlign = 'center';
+    g.fillText((card.feat || 'MHR').slice(0,3).toUpperCase(), W/2, artY + artH/2 + 44);
+    g.textAlign = 'left'; g.globalAlpha = 1;
+
+    // 數值
+    const statY = artY + artH + 50;
+    [['Lv', card.lv], ['P', card.p], ['R', card.r]].forEach(([k,v], i) => {
+      const x = 40 + i * 150;
+      g.fillStyle = accent; g.font = 'bold 19px Inter, sans-serif';
+      g.fillText(k, x, statY - 26);
+      g.fillStyle = '#eaf4ff'; g.font = 'bold 42px Inter, sans-serif';
+      g.fillText(String(v), x, statY + 12);
+    });
+
+    // 效果文字
+    g.fillStyle = 'rgba(198,222,248,.80)';
+    g.font = '18px Inter, "Noto Sans HK", sans-serif';
+    let line = '', y = statY + 58;
+    for (const chr of (card.effect || '')) {
+      if (line.length >= 31) { g.fillText(line, 34, y); line = ''; y += 24; if (y > H-58) break; }
+      line += chr;
+    }
+    if (line && y <= H-58) g.fillText(line, 34, y);
+
+    // 底部
+    g.fillStyle = accent; g.globalAlpha = .22;
+    g.fillRect(3, H-44, W-6, 41); g.globalAlpha = 1;
+    g.fillStyle = 'rgba(180,212,244,.65)';
+    g.font = 'bold 19px Inter, sans-serif';
+    g.fillText(card.color + ' · ' + (card.feat || ''), 34, H-16);
+
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 8;
+    texCache.set(card.no, tex);
+    return tex;
+  }
+
+  /* ---------- 單卡 ---------- */
+  const CARD_W = 1.4;
+  const CARD_H = CARD_W / 0.716;
+
+  function Card3D({ card, index, total, hoveredIndex, setHovered, onSelect, fan }) {
+    const ref = useRef();
+    const tex = useMemo(() => makeCardTexture(card), [card.no]);
+    const isHovered = hoveredIndex === index;
+
+    const target = useMemo(() => {
+      const t = total <= 1 ? 0 : (index - (total-1)/2) / Math.max(1,(total-1)/2);
+      return {
+        x: t * fan.spreadX,
+        y: -Math.abs(t) * fan.arcDrop,
+        z: index * 0.008,
+        rotY: -t * fan.maxRot,
+        rotZ: -t * fan.maxRot * 0.35,
+      };
+    }, [index, total, fan]);
+
+    useFrame((state, dt) => {
+      const m = ref.current;
+      if (!m) return;
+      const k = Math.min(1, dt * 11);
+      const tx = isHovered ? target.x * 0.86 : target.x;
+      const ty = isHovered ? target.y + fan.hoverLift : target.y;
+      const tz = isHovered ? 0.62 : target.z;
+      m.position.x += (tx - m.position.x) * k;
+      m.position.y += (ty - m.position.y) * k;
+      m.position.z += (tz - m.position.z) * k;
+      const s = isHovered ? 1.28 : 1.0;
+      m.scale.x += (s - m.scale.x) * k;
+      m.scale.y += (s - m.scale.y) * k;
+      m.scale.z += (s - m.scale.z) * k;
+      const tRy = isHovered ? 0 : target.rotY;
+      const tRz = isHovered ? 0 : target.rotZ;
+      m.rotation.y += (tRy - m.rotation.y) * k;
+      m.rotation.z += (tRz - m.rotation.z) * k;
+    });
+
+    return (
+      React.createElement('mesh', {
+        ref,
+        position: [target.x, target.y, target.z],
+        rotation: [0, target.rotY, target.rotZ],
+        onPointerOver: (e) => { e.stopPropagation(); setHovered(index); document.body.style.cursor='pointer'; },
+        onPointerOut: () => { setHovered(null); document.body.style.cursor='default'; },
+        onClick: (e) => { e.stopPropagation(); onSelect && onSelect(index); },
+      },
+        React.createElement('planeGeometry', { args: [CARD_W, CARD_H] }),
+        React.createElement('meshStandardMaterial', {
+          map: tex, transparent: true, toneMapped: false, side: THREE.DoubleSide,
+        })
+      )
+    );
+  }
+
+  /* ---------- 牌扇 ---------- */
+  function HandScene({ cards, hovered, setHovered, onSelect }) {
+    const g = useRef();
+    const { viewport } = useThree();
+    const fan = useMemo(() => {
+      const n = Math.max(1, cards.length);
+      const avail = viewport.width * 0.82;
+      return {
+        spreadX: Math.min(1.05, (avail / n) * 0.9),
+        maxRot: 0.30, arcDrop: 0.22, hoverLift: 0.62,
+      };
+    }, [cards.length, viewport.width]);
+
+    useFrame((state, dt) => {
+      const el = g.current;
+      if (!el) return;
+      const k = Math.min(1, dt * 4);
+      el.rotation.y += (state.pointer.x * 0.16 - el.rotation.y) * k;
+      el.rotation.x += (-state.pointer.y * 0.10 - el.rotation.x) * k;
+    });
+
+    return React.createElement('group', { ref: g },
+      cards.map((card, i) => React.createElement(Card3D, {
+        key: card.uid, card, index: i, total: cards.length,
+        hoveredIndex: hovered, setHovered, onSelect, fan,
+      }))
+    );
+  }
+
+  /* ---------- App ---------- */
+  let uidSeq = 0;
+  const mkCard = (src) => ({ ...src, uid: 'c' + (uidSeq++) });
+  const h = React.createElement;
+
+  function App() {
+    const [hand, setHand] = useState(CARD_POOL.map(mkCard));
+    const [deck, setDeck] = useState(42);
+    const [hovered, setHovered] = useState(null);
+    const [ptr, setPtr] = useState({ x: 0, y: 0 });
+
+    useEffect(() => {
+      const f = (e) => setPtr({ x: e.clientX, y: e.clientY });
+      window.addEventListener('pointermove', f);
+      return () => window.removeEventListener('pointermove', f);
+    }, []);
+
+    const drawOne = useCallback(() => {
+      setDeck(d => { if (d <= 0) return d; return d - 1; });
+      setHand(prev => {
+        if (prev.length >= 12) return prev;
+        const src = CARD_POOL[Math.floor(Math.random()*CARD_POOL.length)];
+        return [...prev, mkCard(src)];
+      });
+    }, []);
+    const discardOne = useCallback(() => setHand(p => p.slice(0, -1)), []);
+    const playOne = useCallback(() => setHand(p => p.slice(0, -1)), []);
+    const reset = useCallback(() => { uidSeq = 0; setHand(CARD_POOL.map(mkCard)); setDeck(42); }, []);
+
+    useEffect(() => {
+      document.getElementById('n-hand').textContent = hand.length;
+      document.getElementById('n-deck').textContent = deck;
+    }, [hand.length, deck]);
+
+    useEffect(() => {
+      const fn = (e) => {
+        const a = e.detail;
+        if (a === 'draw') drawOne();
+        else if (a === 'discard') discardOne();
+        else if (a === 'play') playOne();
+        else if (a === 'reset') reset();
+      };
+      window.addEventListener('mhr:action', fn);
+      return () => window.removeEventListener('mhr:action', fn);
+    }, [drawOne, discardOne, playOne, reset]);
+
+    // loading 收起
+    useEffect(() => {
+      const l = document.getElementById('loading');
+      if (l) { l.style.opacity = 0; setTimeout(() => l.style.display = 'none', 400); }
+    }, []);
+
+    const tipCard = hovered != null ? hand[hovered] : null;
+
+    return h(React.Fragment, null,
+      h(Canvas, {
+        camera: { position: [0, -2.1, 4.4], fov: 42 },
+        dpr: [1, 2],
+        gl: { antialias: true, alpha: true },
+        onPointerMissed: () => setHovered(null),
+      },
+        h('color', { attach: 'background', args: ['#03060c'] }),
+        h('fog', { attach: 'fog', args: ['#03060c', 6, 13] }),
+        h('ambientLight', { intensity: 0.55 }),
+        h('directionalLight', { position: [3,5,6], intensity: 1.35, color: '#cfe6ff' }),
+        h('directionalLight', { position: [-4,2,3], intensity: 0.55, color: '#4da3ff' }),
+        h('pointLight', { position: [0,0,4], intensity: 0.6, color: '#4dd0e1' }),
+        h(HandScene, {
+          cards: hand, hovered, setHovered,
+          onSelect: (i) => { setHand(p => p.filter((_, idx) => idx !== i)); setHovered(null); },
+        })
+      ),
+      h('div', {
+        id: 'cardtip',
+        className: 'cardtip' + (tipCard ? ' show' : ''),
+        style: {
+          left: Math.min(ptr.x + 18, window.innerWidth - 268),
+          top: Math.max(12, ptr.y - 120),
+        },
+      },
+        tipCard && h(React.Fragment, null,
+          h('div', { className: 'tn' }, tipCard.name),
+          h('div', { className: 'ts' },
+            h('span', { className: 'tc' }, 'Lv' + tipCard.lv),
+            h('span', { className: 'tc' }, 'P' + tipCard.p),
+            h('span', { className: 'tc' }, 'R' + tipCard.r),
+            h('span', { className: 'tc' }, tipCard.color),
+            h('span', { className: 'tc' }, tipCard.feat)
+          ),
+          h('div', { className: 'te' }, tipCard.effect)
+        )
+      )
+    );
+  }
+
+  createRoot(document.getElementById('stage')).render(h(App));
+
+  const fire = (n) => window.dispatchEvent(new CustomEvent('mhr:action', { detail: n }));
+  document.getElementById('btn-draw').onclick = () => fire('draw');
+  document.getElementById('btn-discard').onclick = () => fire('discard');
+  document.getElementById('btn-play').onclick = () => fire('play');
+  document.getElementById('btn-reset').onclick = () => fire('reset');
+
+  // 標記載入成功（供自動測試讀取）
+  window.__MHR3D_READY = true;
+
+} catch (e) {
+  console.error(e);
+  errBox(e && (e.message + '\n' + (e.stack || '')));
+}
+</script>
+</body>
+</html>

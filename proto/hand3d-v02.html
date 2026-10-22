@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MHR Hand 3D — three.js + React</title>
+<style>
+  :root { --bg-0:#03060c; --bg-1:#061020; --bg-2:#0a1c3a; --cyan:#4dd0e1; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%; overflow: hidden;
+    background: radial-gradient(120% 95% at 50% 0%, var(--bg-2) 0%, var(--bg-1) 40%, var(--bg-0) 100%);
+    color: #e6eefb;
+    font-family: Inter, -apple-system, "Segoe UI", "Noto Sans HK", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #root { width: 100vw; height: 100dvh; position: relative; }
+  #gl { position: absolute; inset: 0; }
+  canvas { display: block; }
+
+  .hud {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 10px 18px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    pointer-events: none; z-index: 10;
+  }
+  .hud .info { font-size: 11px; letter-spacing: .04em; color: rgba(180,210,240,.62); }
+  .hud .info b { color: var(--cyan); font-weight: 700; }
+  .hud .btns { display: flex; gap: 8px; pointer-events: auto; }
+  .btn {
+    border: 1px solid rgba(77,208,225,.5);
+    background: linear-gradient(180deg, rgba(30,74,124,.95), rgba(13,36,64,.95));
+    color: #dff6ff; border-radius: 6px; padding: 6px 13px;
+    font-family: inherit; font-size: 11px; font-weight: 700; letter-spacing: .04em;
+    cursor: pointer;
+    clip-path: polygon(6px 0, calc(100% - 6px) 0, 100% 6px, 100% calc(100% - 6px),
+                       calc(100% - 6px) 100%, 6px 100%, 0 calc(100% - 6px), 0 6px);
+    transition: filter .14s, transform .1s;
+  }
+  .btn:hover { filter: brightness(1.35); }
+  .btn:active { transform: translateY(1px); }
+
+  .cardtip {
+    position: absolute; z-index: 30; width: 250px; padding: 11px 13px;
+    background: linear-gradient(180deg, #0e1c34, #091220);
+    border: 1px solid rgba(77,208,225,.45); border-radius: 9px;
+    box-shadow: 0 14px 40px rgba(0,0,0,.75);
+    font-size: 11px; line-height: 1.55;
+    pointer-events: none; opacity: 0; transition: opacity .15s;
+  }
+  .cardtip.show { opacity: 1; }
+  .cardtip .tn { font-weight: 800; font-size: 12px; margin-bottom: 5px; color: #fff; }
+  .cardtip .ts { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 7px; }
+  .cardtip .tc {
+    padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600;
+    background: rgba(77,208,225,.2); color: var(--cyan);
+    border: 1px solid rgba(77,208,225,.3);
+  }
+  .cardtip .te { white-space: pre-wrap; color: rgba(200,222,248,.9); }
+
+  .loading {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 13px; color: rgba(180,210,240,.6); letter-spacing: .1em; z-index: 50;
+    transition: opacity .4s;
+  }
+  .err {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    padding: 30px; font-size: 12px; line-height: 1.7; color: #ff8b96;
+    text-align: center; z-index: 60; white-space: pre-wrap;
+  }
+</style>
+</head>
+<body>
+<div id="root">
+  <div id="gl"></div>
+  <div class="loading" id="loading">載入 3D 場景…</div>
+  <div class="cardtip" id="cardtip"></div>
+  <div class="hud">
+    <div class="info">手牌 <b id="n-hand">0</b> · DECK <b id="n-deck">42</b></div>
+    <div class="btns">
+      <button class="btn" id="btn-draw">抽牌</button>
+      <button class="btn" id="btn-discard">蓋牌</button>
+      <button class="btn" id="btn-play">出牌</button>
+      <button class="btn" id="btn-reset">重置</button>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://cdn.jsdelivr.net/npm/react@18.3.1/+esm",
+    "react-dom/client": "https://cdn.jsdelivr.net/npm/react-dom@18.3.1/client/+esm",
+    "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/+esm"
+  }
+}
+</script>
+
+<script type="module">
+const showErr = (msg) => {
+  const d = document.createElement('div');
+  d.className = 'err'; d.textContent = msg;
+  document.body.appendChild(d);
+  const l = document.getElementById('loading');
+  if (l) l.style.display = 'none';
+};
+
+try {
+  const React = (await import('react')).default;
+  const { useState, useRef, useMemo, useCallback, useEffect, createElement: h } = React;
+  const { createRoot } = await import('react-dom/client');
+  const THREE = await import('three');
+
+  /* ---------------- 卡資料 ---------------- */
+  const CARD_POOL = [
+    { no:'BP01-001', name:'「Pulse Assembler」Iron Man', lv:3, p:3500, r:2, color:'Blue', feat:'Avenger',
+      effect:'TRIG【FIELD】：When this card enters the field by calling, you prune 1 of your opponent\'s characters with Lv2 or below in BATTLE.' },
+    { no:'BP01-003', name:'「Starving」Venom', lv:4, p:4000, r:1, color:'Red', feat:'Symbiote',
+      effect:'TRIG【WING】:When your turn ends, if this card did not attack in this turn, 1 of your opponent\'s characters in BATTLE gets Power-X in this turn.' },
+    { no:'BP01-005', name:'「Scarlet Witch」', lv:2, p:2000, r:3, color:'Red', feat:'Avenger',
+      effect:'TRIG【HAND】:When your red character attacks, you may discard this card in HAND. If you do, that character gets Power+2000 in this turn.' },
+    { no:'SP01-021', name:'「Spider-Man」', lv:3, p:3000, r:2, color:'Blue', feat:'Web',
+      effect:'ACTI【VOID/ONCE PER TURN】:You may place this card from VOID into your BASE.' },
+    { no:'BP01-008', name:'「Iron Fist」', lv:2, p:2500, r:1, color:'Yellow', feat:'Hero for Hire',
+      effect:'TRIG【FIELD】：When this card enters the field, you may prune all your characters with Lv1 in BATTLE.' },
+    { no:'BP01-017', name:'「Thor」', lv:5, p:5000, r:3, color:'Blue', feat:'Asgardian',
+      effect:'TRIG【FIELD】:When this card enters the field by calling, you may draw 1 card. If you do, this card may attack 2 times in this turn.' },
+    { no:'SD01-003', name:'「Captain America」', lv:4, p:4500, r:2, color:'Blue', feat:'Avenger',
+      effect:'TRIG【BATTLE/ONCE PER TURN】: When the R or the Power of your character increase, 1 of your opponent\'s characters in BATTLE gets Power-1000 in this turn.' },
+    { no:'PB01-001', name:'「Star-Lord」', lv:3, p:3000, r:2, color:'Green', feat:'GOTG',
+      effect:'TRIG【BATTLE】:When this card wins the fight, all your characters with 【GOTG】 in their features in BATTLE except this card get R+1 in this turn.' },
+  ];
+  const COLOR_HEX = { Red:'#ff5d6c', Blue:'#4da3ff', Yellow:'#f5c542', Green:'#4dd08a' };
+
+  /* ---------------- 卡面 texture ---------------- */
+  const texCache = new Map();
+  function makeCardTexture(card) {
+    if (texCache.has(card.no)) return texCache.get(card.no);
+    const W = 512, H = 716;
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const g = cv.getContext('2d');
+    const accent = COLOR_HEX[card.color] || '#4dd0e1';
+
+    const grad = g.createLinearGradient(0, 0, W*0.6, H);
+    grad.addColorStop(0, '#2a4d75'); grad.addColorStop(1, '#0f1e30');
+    g.fillStyle = grad; g.fillRect(0, 0, W, H);
+
+    const ch = 26;
+    g.strokeStyle = accent; g.globalAlpha = .55; g.lineWidth = 5;
+    g.beginPath();
+    g.moveTo(ch,3); g.lineTo(W-ch,3); g.lineTo(W-3,ch); g.lineTo(W-3,H-ch);
+    g.lineTo(W-ch,H-3); g.lineTo(ch,H-3); g.lineTo(3,H-ch); g.lineTo(3,ch);
+    g.closePath(); g.stroke(); g.globalAlpha = 1;
+
+    g.fillStyle = accent; g.globalAlpha = .30; g.fillRect(3,3,W-6,124); g.globalAlpha = 1;
+
+    // 卡號 + 名稱放最頂，扇形重疊時露出的頂部已可見
+    g.fillStyle = accent; g.font = 'bold 30px Inter, sans-serif';
+    g.fillText(card.no, 34, 52);
+    g.beginPath(); g.arc(W-46, 42, 12, 0, Math.PI*2); g.fill();
+
+    g.fillStyle = '#ffffff';
+    g.font = 'bold 36px Inter, "Noto Sans HK", sans-serif';
+    g.fillText(card.name.length > 19 ? card.name.slice(0,18)+'…' : card.name, 34, 100);
+
+    const artY = 132, artH = 352;
+    const ag = g.createLinearGradient(34, artY, W-34, artY+artH);
+    ag.addColorStop(0, accent + '55'); ag.addColorStop(1, '#0a1828');
+    g.fillStyle = ag; g.fillRect(34, artY, W-68, artH);
+    g.strokeStyle = accent; g.globalAlpha = .3; g.lineWidth = 2;
+    g.strokeRect(34, artY, W-68, artH); g.globalAlpha = 1;
+
+    g.globalAlpha = .07; g.fillStyle = accent;
+    g.font = 'bold 96px Inter, sans-serif'; g.textAlign = 'center';
+    g.fillText((card.feat || 'MHR').slice(0,3).toUpperCase(), W/2, artY+artH/2+44);
+    g.textAlign = 'left'; g.globalAlpha = 1;
+
+    const statY = artY + artH + 50;
+    [['Lv',card.lv],['P',card.p],['R',card.r]].forEach(([k,v],i) => {
+      const x = 40 + i*150;
+      g.fillStyle = accent; g.font = 'bold 19px Inter, sans-serif';
+      g.fillText(k, x, statY-26);
+      g.fillStyle = '#eaf4ff'; g.font = 'bold 42px Inter, sans-serif';
+      g.fillText(String(v), x, statY+12);
+    });
+
+    g.fillStyle = 'rgba(214,234,252,.92)';
+    g.font = '18px Inter, "Noto Sans HK", sans-serif';
+    let line = '', y = statY + 58;
+    for (const chr of (card.effect || '')) {
+      if (line.length >= 31) { g.fillText(line, 34, y); line=''; y+=24; if (y > H-58) break; }
+      line += chr;
+    }
+    if (line && y <= H-58) g.fillText(line, 34, y);
+
+    g.fillStyle = accent; g.globalAlpha = .22; g.fillRect(3, H-44, W-6, 41); g.globalAlpha = 1;
+    g.fillStyle = 'rgba(180,212,244,.65)'; g.font = 'bold 19px Inter, sans-serif';
+    g.fillText(card.color + ' · ' + (card.feat || ''), 34, H-16);
+
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 8;
+    texCache.set(card.no, tex);
+    return tex;
+  }
+
+  /* ---------------- three.js 場景管理 ---------------- */
+  const CARD_W = 2.1;
+  const CARD_H = CARD_W / 0.716;
+
+  class Hand3D {
+    constructor(container) {
+      this.container = container;
+      this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+      this.renderer.setSize(container.clientWidth, container.clientHeight);
+      this.renderer.toneMapping = THREE.NoToneMapping;
+      container.appendChild(this.renderer.domElement);
+
+      this.scene = new THREE.Scene();
+      this.scene.background = null;
+      this.scene.fog = new THREE.Fog('#03060c', 9, 20);
+
+      this.camera = new THREE.PerspectiveCamera(42, container.clientWidth/container.clientHeight, 0.1, 100);
+      this.camera.position.set(0, -0.45, 6.4);
+      this.camera.lookAt(0, 0, 0);
+
+      this.scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+      const d1 = new THREE.DirectionalLight('#e8f4ff', 1.9); d1.position.set(3,5,6); this.scene.add(d1);
+      const d2 = new THREE.DirectionalLight('#4da3ff', 0.55); d2.position.set(-4,2,3); this.scene.add(d2);
+      const p1 = new THREE.PointLight('#4dd0e1', 0.6); p1.position.set(0,0,4); this.scene.add(p1);
+
+      this.group = new THREE.Group();
+      this.scene.add(this.group);
+
+      this.cards = [];          // { mesh, index, base, target }
+      this.hovered = null;
+      this.expanded = false;
+      this.pointer = new THREE.Vector2(999, 999);
+      this.raycaster = new THREE.Raycaster();
+      this.parallax = { x: 0, y: 0 };
+
+      this._bind();
+      this._animate = this._animate.bind(this);
+      this.clock = new THREE.Clock();
+      this._raf = requestAnimationFrame(this._animate);
+    }
+
+    _bind() {
+      const el = this.renderer.domElement;
+      // v3: 用 window 監聽 —— canvas 可能被 HUD / tooltip 覆蓋，直接綁 canvas 收唔到事件
+      this._onMove = (e) => {
+        const r = el.getBoundingClientRect();
+        this.pointer.x = ((e.clientX - r.left) / r.width) * 2 - 1;
+        this.pointer.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+        this.parallax.x = this.pointer.x;
+        this.parallax.y = this.pointer.y;
+        // 滑鼠喺畫面下半部 = 想睇手牌 → 展開
+        this.expanded = this.pointer.y < -0.05;
+        this._pick();
+      };
+      this._onLeave = () => {
+        this.pointer.set(999, 999);
+        this.hovered = null;
+        this.expanded = false;
+        this.onHover && this.onHover(null);
+      };
+      this._onClick = (e) => {
+        // 只在 canvas 範圍內才處理
+        const r = el.getBoundingClientRect();
+        if (e.clientX < r.left || e.clientX > r.right ||
+            e.clientY < r.top || e.clientY > r.bottom) return;
+        // 避開按鈕
+        const tag = (e.target.tagName || '').toLowerCase();
+        if (tag === 'button' || (e.target.closest && e.target.closest('.hud'))) return;
+        if (this.hovered != null && this.onSelect) this.onSelect(this.hovered);
+      };
+      window.addEventListener('pointermove', this._onMove);
+      window.addEventListener('pointerleave', this._onLeave, true);
+      window.addEventListener('click', this._onClick);
+      document.addEventListener('pointerleave', this._onLeave);
+      window.addEventListener('blur', this._onLeave);
+      this._onResize = () => this.resize();
+      window.addEventListener('resize', this._onResize);
+    }
+
+    _pick() {
+      this.raycaster.setFromCamera(this.pointer, this.camera);
+      const meshes = this.cards.map(c => c.mesh);
+      const hit = this.raycaster.intersectObjects(meshes, false)[0];
+      const idx = hit ? hit.object.userData.index : null;
+      if (idx !== this.hovered) {
+        this.hovered = idx;
+        document.body.style.cursor = idx != null ? 'pointer' : 'default';
+        this.onHover && this.onHover(idx);
+      }
+    }
+
+    /* 設定手牌；帶入場動畫 */
+    setHand(cards, animateIn = false) {
+      // 移走舊的
+      for (const c of this.cards) {
+        this.group.remove(c.mesh);
+        c.mesh.geometry.dispose();
+        c.mesh.material.dispose();
+      }
+      this.cards = [];
+      const n = cards.length;
+      const vw = this.container.clientWidth;
+      const availWorld = this._visibleWidth() * 0.95;
+      // 展開時每張間距 = 卡寬 42%（露出 42% 卡面），但唔可以超視野
+          const idealSpread = CARD_W * 0.42;
+          const maxSpread = (availWorld / Math.max(1, n - 1));
+          const spreadX = Math.min(idealSpread, maxSpread);
+      const maxRot = 0.30;
+
+      // 兩行排列：每行上限 5 張，避免單行 8 張必然重疊（實測單行最多露 34%）
+      const PER_ROW = 5;
+      const rows = [];
+      for (let r = 0; r * PER_ROW < n; r++) {
+        rows.push(cards.slice(r * PER_ROW, (r + 1) * PER_ROW));
+      }
+      const rowSpread = CARD_W * 0.62;     // 每張露 62%，一行 5 張剛好
+
+      let flat = 0;
+      rows.forEach((rowCards, r) => {
+        const rn = rowCards.length;
+        rowCards.forEach((card, j) => {
+          const i = flat++;
+          const tex = makeCardTexture(card);
+          const geo = new THREE.PlaneGeometry(CARD_W, CARD_H);
+          const mat = new THREE.MeshStandardMaterial({
+            map: tex, transparent: true, side: THREE.DoubleSide, toneMapped: false,
+          });
+          const mesh = new THREE.Mesh(geo, mat);
+          mesh.userData.index = i;
+
+          const t = rn <= 1 ? 0 : (j - (rn-1)/2) / Math.max(1,(rn-1)/2);
+          const rowY = (rows.length === 1) ? 0 : (0.62 - r * 1.24);
+          // 每張之間嘅實際間距：一行 rn 張，總跨度 = (rn-1)*gap，置中
+          // gap = CARD_W * 0.62 → 每張露出 62%，剩 38% 被鄰卡覆蓋
+          const gap = CARD_W * 0.80;
+          const xPos = (j - (rn - 1) / 2) * gap;
+          const collapsed = {
+            x: -rowSpread * 0.5 + j * 0.055,
+            y: rowY - j * 0.020,
+            z: i * 0.004,
+            rotY: 0, rotZ: 0,
+          };
+          const expanded = {
+            x: xPos,
+            y: rowY,
+            z: -i * 0.006,
+            rotY: 0, rotZ: 0,
+          };
+          const base = { ...expanded, collapsed };
+        if (animateIn) {
+          // 由牌堆位置飛入
+          mesh.position.set(spreadX * 0.6, -1.6, 0.9);
+          mesh.scale.setScalar(0.55);
+          mesh.rotation.set(0, 0.7, 0.35);
+        } else {
+          mesh.position.set(base.x, base.y, base.z);
+          mesh.scale.setScalar(1);
+          mesh.rotation.set(0, base.rotY, base.rotZ);
+        }
+          this.group.add(mesh);
+          this.cards.push({ mesh, base, card });
+        });
+      });
+    }
+
+    _visibleWidth() {
+      const vFov = this.camera.fov * Math.PI / 180;
+      const dist = Math.abs(this.camera.position.z);
+      const h = 2 * Math.tan(vFov/2) * dist;
+      return h * this.camera.aspect;
+    }
+
+    resize() {
+      const w = this.container.clientWidth, hgt = this.container.clientHeight;
+      this.renderer.setSize(w, hgt);
+      this.camera.aspect = w / hgt;
+      this.camera.updateProjectionMatrix();
+    }
+
+    destroy() {
+      cancelAnimationFrame(this._raf);
+      window.removeEventListener('pointermove', this._onMove);
+      window.removeEventListener('pointerleave', this._onLeave, true);
+      window.removeEventListener('click', this._onClick);
+      document.removeEventListener('pointerleave', this._onLeave);
+      window.removeEventListener('blur', this._onLeave);
+      window.removeEventListener('resize', this._onResize);
+      this.renderer.dispose();
+      if (this.renderer.domElement.parentNode)
+        this.renderer.domElement.parentNode.removeChild(this.renderer.domElement);
+    }
+
+    _animate() {
+      this._raf = requestAnimationFrame(this._animate);
+      const dt = Math.min(0.05, this.clock.getDelta());
+      const k = Math.min(1, dt * 11);
+
+      this.cards.forEach((c, i) => {
+        const m = c.mesh, b = c.base;
+        const isH = this.hovered === i;
+        const src = this.expanded ? b : b.collapsed;
+        const tx = isH ? src.x * 0.86 : src.x;
+        const ty = isH ? src.y + 0.62 : src.y;
+        const tz = isH ? 0.62 : src.z;
+        m.position.x += (tx - m.position.x) * k;
+        m.position.y += (ty - m.position.y) * k;
+        m.position.z += (tz - m.position.z) * k;
+        const s = isH ? 1.28 : 1.0;
+        m.scale.x += (s - m.scale.x) * k;
+        m.scale.y += (s - m.scale.y) * k;
+        m.scale.z += (s - m.scale.z) * k;
+        const tRy = isH ? 0 : src.rotY;
+        const tRz = isH ? 0 : src.rotZ;
+        m.rotation.y += (tRy - m.rotation.y) * k;
+        m.rotation.z += (tRz - m.rotation.z) * k;
+      });
+
+      // parallax
+      const pk = Math.min(1, dt * 4);
+      this.group.rotation.y += (this.parallax.x * 0.16 - this.group.rotation.y) * pk;
+      this.group.rotation.x += (-this.parallax.y * 0.10 - this.group.rotation.x) * pk;
+
+      this.renderer.render(this.scene, this.camera);
+    }
+  }
+
+  /* ---------------- React App ---------------- */
+  let uidSeq = 0;
+  const mkCard = (src) => ({ ...src, uid: 'c' + (uidSeq++) });
+  const POOL = CARD_POOL;
+
+  function App() {
+    const glRef = useRef(null);
+    const engRef = useRef(null);
+    const [hand, setHand] = useState(() => CARD_POOL.map(mkCard));
+    const [deck, setDeck] = useState(42);
+    const [hovered, setHovered] = useState(null);
+    const [ptr, setPtr] = useState({ x: 0, y: 0 });
+    const prevLen = useRef(hand.length);
+
+    // 初始化 three
+    useEffect(() => {
+      const eng = new Hand3D(glRef.current);
+      engRef.current = eng;
+      eng.onHover = (i) => setHovered(i);
+      window.__ENG = eng;   // debug / 自動測試用
+      eng.setHand(hand, false);
+      const l = document.getElementById('loading');
+      if (l) { l.style.opacity = 0; setTimeout(() => l.style.display = 'none', 400); }
+      return () => eng.destroy();
+    }, []);
+
+    // hand 變動 → 更新 3D（新增時帶入場動畫）
+    useEffect(() => {
+      const eng = engRef.current;
+      if (!eng) return;
+      const grew = hand.length > prevLen.current;
+      eng.setHand(hand, grew);
+      prevLen.current = hand.length;
+      document.getElementById('n-hand').textContent = hand.length;
+    }, [hand]);
+
+    useEffect(() => {
+      document.getElementById('n-deck').textContent = deck;
+    }, [deck]);
+
+    // 點擊卡 = 出牌
+    useEffect(() => {
+      const eng = engRef.current;
+      if (!eng) return;
+      eng.onSelect = (i) => {
+        setHand(h => h.filter((_, idx) => idx !== i));
+        setHovered(null);
+      };
+    }, []);
+
+    useEffect(() => {
+      const f = (e) => setPtr({ x: e.clientX, y: e.clientY });
+      window.addEventListener('pointermove', f);
+      return () => window.removeEventListener('pointermove', f);
+    }, []);
+
+    const draw = useCallback(() => {
+      setDeck(d => (d > 0 ? d-1 : d));
+      setHand(h => {
+        if (h.length >= 12) return h;
+        const src = POOL[Math.floor(Math.random()*POOL.length)];
+        return [...h, mkCard(src)];
+      });
+    }, []);
+    const discard = useCallback(() => setHand(h => h.slice(0,-1)), []);
+    const play = useCallback(() => setHand(h => h.slice(0,-1)), []);
+    const reset = useCallback(() => { uidSeq = 0; setHand(CARD_POOL.map(mkCard)); setDeck(42); }, []);
+
+    useEffect(() => {
+      const fn = (e) => {
+        const a = e.detail;
+        if (a==='draw') draw(); else if (a==='discard') discard();
+        else if (a==='play') play(); else if (a==='reset') reset();
+      };
+      window.addEventListener('mhr:action', fn);
+      return () => window.removeEventListener('mhr:action', fn);
+    }, [draw, discard, play, reset]);
+
+    const tipCard = hovered != null ? hand[hovered] : null;
+
+    return h(React.Fragment, null,
+      h('div', { ref: glRef, id: 'gl3d', style: { position:'absolute', inset:0 } }),
+      h('div', {
+        id: 'cardtip',
+        className: 'cardtip' + (tipCard ? ' show' : ''),
+        style: {
+          left: Math.min(ptr.x + 18, window.innerWidth - 268),
+          top: Math.max(12, ptr.y - 120),
+        },
+      },
+        tipCard && h(React.Fragment, null,
+          h('div', { className:'tn' }, tipCard.name),
+          h('div', { className:'ts' },
+            h('span', { className:'tc' }, 'Lv'+tipCard.lv),
+            h('span', { className:'tc' }, 'P'+tipCard.p),
+            h('span', { className:'tc' }, 'R'+tipCard.r),
+            h('span', { className:'tc' }, tipCard.color),
+            h('span', { className:'tc' }, tipCard.feat)
+          ),
+          h('div', { className:'te' }, tipCard.effect)
+        )
+      )
+    );
+  }
+
+  // 只掛 App 到獨立容器，唔好清空 #root（會抹走 HUD）
+  const appHost = document.createElement('div');
+  appHost.style.cssText = 'position:absolute;inset:0;';
+  document.getElementById('root').insertBefore(appHost, document.getElementById('root').firstChild);
+  createRoot(appHost).render(h(App));
+
+  const fire = (n) => window.dispatchEvent(new CustomEvent('mhr:action', { detail: n }));
+  document.getElementById('btn-draw').onclick = () => fire('draw');
+  document.getElementById('btn-discard').onclick = () => fire('discard');
+  document.getElementById('btn-play').onclick = () => fire('play');
+  document.getElementById('btn-reset').onclick = () => fire('reset');
+
+  window.__MHR3D_READY = true;
+
+} catch (e) {
+  console.error(e);
+  showErr('3D 載入失敗\n\n' + (e && (e.message + '\n' + (e.stack || '').split('\n').slice(0,4).join('\n'))));
+}
+</script>
+</body>
+</html>
