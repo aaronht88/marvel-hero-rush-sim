@@ -1,0 +1,460 @@
+/* ============================================================
+   MHR PLAYMAT v08 — v05 視覺語言 + 3D 手牌 + 真卡圖
+
+   保留 v05 的圖形語言：
+     · 斜切角框（chamfer + 雙層 ::before/::after）
+     · 兩層青色網格（4.2cqw 細 / 16.8cqw 主幹）
+     · 圓形編號徽章（白底深藍數字）
+     · 極粗白字區域名
+     · 官方配色 #0a1c3a / #12325e / #4dd0e1
+
+   改動：
+     · 手牌由 2D mini-slot 改為 3D 扇形（three.js，浮喺 playmat 下層）
+     · BASE 6 格由底部移到原本 hand-row 的位置（頂部中央）
+     · 所有卡顯示真卡圖（img/cards-thumb/）
+     · 支援 drag 卡到戰區
+
+   佈局沿用 v05 絕對百分比（來源：figcraft 原稿實測）
+   ============================================================ */
+
+:root {
+  --bg-0: #03060c;
+  --bg-1: #061020;
+  --bg-2: #0a1c3a;
+  --bg-3: #12325e;
+
+  --p1-deep: rgba(150, 26, 38, .30);
+  --p2-deep: rgba(16, 78, 150, .30);
+
+  --cyan-1: #4dd0e1;
+  --cyan-dim: rgba(77, 208, 225, .34);
+
+  --t-hi: #ffffff;
+  --t-mid: rgba(198, 224, 250, .82);
+  --t-lo: rgba(150, 190, 228, .48);
+
+  --frame: rgba(77, 208, 225, .42);
+  --frame-dim: rgba(77, 208, 225, .20);
+
+  --chamfer: 10px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%; overflow: hidden;
+  background: var(--bg-0);
+  color: var(--t-hi);
+  font-family: Inter, "Rajdhani", ui-sans-serif, -apple-system, "Segoe UI", "Noto Sans HK", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#mat { position: relative; width: 100vw; height: 100dvh; overflow: hidden; }
+
+/* 工作區：v05 原本鎖 804:730，v08 改為自適應但仍用百分比定位 */
+.stage {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  container-type: size;
+  overflow: hidden;
+}
+
+/* ---------- 背景（v05 相同） ---------- */
+.bg-base {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(120% 90% at 50% 0%, var(--bg-3) 0%, var(--bg-2) 34%, var(--bg-1) 68%, var(--bg-0) 100%);
+}
+.bg-grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(var(--cyan-dim) 1px, transparent 1px),
+    linear-gradient(90deg, var(--cyan-dim) 1px, transparent 1px);
+  background-size: 4.2cqw 4.2cqw;
+  opacity: .30;
+  mask-image: radial-gradient(85% 75% at 50% 46%, #000 0%, rgba(0,0,0,.55) 62%, transparent 100%);
+  -webkit-mask-image: radial-gradient(85% 75% at 50% 46%, #000 0%, rgba(0,0,0,.55) 62%, transparent 100%);
+  pointer-events: none;
+}
+.bg-grid-major {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(var(--cyan-dim) 1px, transparent 1px),
+    linear-gradient(90deg, var(--cyan-dim) 1px, transparent 1px);
+  background-size: 16.8cqw 16.8cqw;
+  opacity: .22;
+  mask-image: radial-gradient(85% 75% at 50% 46%, #000, transparent 96%);
+  -webkit-mask-image: radial-gradient(85% 75% at 50% 46%, #000, transparent 96%);
+  pointer-events: none;
+}
+.tint { position: absolute; inset: 0; pointer-events: none; }
+.tint-p1 {
+  background: linear-gradient(133deg, var(--p1-deep) 0%, rgba(150,26,38,.14) 34%, transparent 58%);
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+.tint-p2 {
+  background: linear-gradient(313deg, var(--p2-deep) 0%, rgba(16,78,150,.14) 34%, transparent 58%);
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+}
+.axis {
+  position: absolute; left: 50%; top: 50%;
+  width: 152%; height: 2px;
+  transform: translate(-50%, -50%) rotate(-42.3deg);
+  background: linear-gradient(90deg,
+    transparent 0 18%, rgba(77,208,225,.20) 26%, var(--cyan-1) 33%,
+    transparent 39% 61%, var(--cyan-1) 67%, rgba(77,208,225,.20) 74%, transparent 82% 100%);
+  filter: drop-shadow(0 0 5px rgba(77,208,225,.55));
+  pointer-events: none; z-index: 2;
+}
+
+/* ---------- 斜切角（v05 相同） ---------- */
+.chamfer {
+  clip-path: polygon(
+    var(--chamfer) 0, calc(100% - var(--chamfer)) 0,
+    100% var(--chamfer), 100% calc(100% - var(--chamfer)),
+    calc(100% - var(--chamfer)) 100%, var(--chamfer) 100%,
+    0 calc(100% - var(--chamfer)), 0 var(--chamfer));
+}
+.framed { position: relative; }
+.framed::before {
+  content: ""; position: absolute; inset: 0;
+  background: var(--frame); clip-path: inherit; pointer-events: none;
+}
+.framed::after {
+  content: ""; position: absolute; inset: 1.5px;
+  background: linear-gradient(180deg, rgba(18,50,94,.90), rgba(6,16,32,.95));
+  clip-path: inherit; pointer-events: none;
+}
+.framed > * { position: relative; z-index: 1; }
+
+.corner-mark {
+  position: absolute; width: 9px; height: 9px;
+  border-color: var(--cyan-1); border-style: solid;
+  opacity: .55; pointer-events: none;
+}
+.corner-mark.tl { left: -1px; top: -1px; border-width: 1.5px 0 0 1.5px; }
+.corner-mark.tr { right: -1px; top: -1px; border-width: 1.5px 1.5px 0 0; }
+.corner-mark.bl { left: -1px; bottom: -1px; border-width: 0 0 1.5px 1.5px; }
+.corner-mark.br { right: -1px; bottom: -1px; border-width: 0 1.5px 1.5px 0; }
+
+/* ============================================================
+   戰區（維持 v05 座標，尺寸縮細讓位俾手牌層）
+   ============================================================ */
+.field-slot {
+  position: absolute;
+  width: 13.0%;
+  height: 15.8%;
+  --chamfer: 10px;
+  display: flex; align-items: center; justify-content: center;
+  transition: filter .18s, box-shadow .18s;
+  cursor: pointer;
+  overflow: hidden;
+}
+.field-slot:hover { filter: brightness(1.35) drop-shadow(0 0 8px rgba(77,208,225,.5)); }
+.field-slot[data-tier="1"] { --frame: rgba(77,208,225,.80); }
+.field-slot[data-tier="2"] { --frame: rgba(77,208,225,.42); }
+.field-slot[data-tier="3"] { --frame: rgba(77,208,225,.26); }
+.field-slot.hot {
+  --frame: rgba(34,211,238,1);
+  filter: brightness(1.45) drop-shadow(0 0 18px rgba(77,208,225,.85));
+  box-shadow: inset 0 0 24px rgba(77,208,225,.35);
+}
+
+.field-slot .zname {
+  position: absolute; left: 0; right: 0; bottom: 8%;
+  text-align: center;
+  font-size: clamp(7px, 1vmin, 12px); font-weight: 900;
+  letter-spacing: -.01em;
+  color: var(--t-hi);
+  text-shadow: 0 0 8px rgba(77,208,225,.45), 0 1px 3px rgba(0,0,0,.9);
+  text-transform: uppercase;
+  pointer-events: none; z-index: 3;
+}
+.field-slot .rval {
+  position: absolute; right: 7%; bottom: 7%;
+  font-size: clamp(5px, .75vmin, 9px); font-weight: 800;
+  color: var(--cyan-1); opacity: .85;
+  pointer-events: none; z-index: 3;
+}
+.field-slot .zbadge {
+  position: absolute; top: 6%; left: 50%; transform: translateX(-50%);
+  min-width: clamp(11px, 1.4vmin, 17px);
+  height: clamp(11px, 1.4vmin, 17px);
+  border-radius: 50%;
+  background: #fff; color: var(--bg-2);
+  font-size: clamp(6px, .85vmin, 10px); font-weight: 900;
+  line-height: clamp(11px, 1.4vmin, 17px); text-align: center;
+  box-shadow: 0 0 8px rgba(77,208,225,.6);
+  pointer-events: none; z-index: 3;
+}
+/* 放入嘅真卡圖 */
+.field-slot .incard {
+  position: absolute; inset: 2px;
+  border-radius: 5px;
+  background-size: cover;
+  background-position: center;
+  z-index: 1;
+}
+.field-slot .incard::after {
+  content: ""; position: absolute; inset: 0;
+  border-radius: 5px;
+  box-shadow: inset 0 0 16px rgba(0,0,0,.5);
+}
+
+/* 座標：v05 原本實測值（P1 左上 / P2 右下，FRONT 面對面） */
+.s-p1-front { left: 16.54%; top: 21.50%; }
+.s-p1-w1    { left: 0.00%;  top: 30.98%; }
+.s-p1-w2    { left: 33.33%; top: 32.07%; }
+.s-p1-back  { left: 16.54%; top: 42.12%; }
+.s-p2-front { left: 56.47%; top: 37.80%; }
+.s-p2-w1    { left: 39.93%; top: 47.10%; }
+.s-p2-w2    { left: 73.26%; top: 48.20%; }
+.s-p2-back  { left: 56.47%; top: 59.00%; }
+
+/* ============================================================
+   Pile（v05 座標）
+   ============================================================ */
+.pile {
+  position: absolute;
+  --chamfer: 7px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  transition: filter .16s;
+}
+.pile:hover { filter: brightness(1.4); }
+.pile .pl {
+  font-size: clamp(5px, .7vmin, 9px); font-weight: 800;
+  letter-spacing: .13em;
+  color: var(--cyan-1);
+  text-transform: uppercase;
+}
+.pile .pc {
+  font-size: clamp(11px, 1.6vmin, 19px); font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  color: var(--t-hi);
+  line-height: 1;
+  text-shadow: 0 0 8px rgba(77,208,225,.4);
+}
+.p1-deck, .p1-void, .p1-retreat { width: 10.5%; height: 8.5%; }
+.p1-deck    { left: 0.3%; top: 2.5%; }
+.p1-void    { left: 0.3%; top: 46.0%; }
+.p1-retreat { left: 0.3%; top: 55.5%; }
+
+.p2-void, .p2-retreat, .p2-deck { width: 10.5%; height: 8.5%; }
+.p2-void    { right: 0.4%; top: 40.0%; }
+.p2-retreat { right: 0.4%; top: 49.5%; }
+.p2-deck    { right: 0.4%; top: 59.0%; }
+
+/* ============================================================
+   RUSH（v05 座標）
+   ============================================================ */
+.rush {
+  position: absolute; z-index: 30;
+  left: 38.18%; top: 46.5%;
+  --chamfer: 8px;
+  display: flex; align-items: center;
+  gap: clamp(4px, .8vmin, 9px);
+  padding: clamp(2px, .45vmin, 5px) clamp(8px, 1.2vmin, 15px);
+  white-space: nowrap;
+}
+.rush .rl { font-size: clamp(5px, .75vmin, 9px); font-weight: 800; letter-spacing: .16em; color: var(--cyan-1); }
+.rush .rs { font-size: clamp(12px, 2.1vmin, 26px); font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; text-shadow: 0 0 10px currentColor; }
+.rush .rs.p1 { color: #ff5d6c; }
+.rush .rs.p2 { color: #4da3ff; }
+.rush .rv { font-size: clamp(7px, .95vmin, 11px); font-weight: 700; color: var(--t-lo); }
+
+/* ============================================================
+   面板（v05 座標：Log 右上 / Ctrl 左下）
+   ============================================================ */
+.panel {
+  position: absolute;
+  --chamfer: 11px;
+  padding: clamp(4px, .7vmin, 9px) clamp(6px, 1vmin, 13px);
+  display: flex; flex-direction: column;
+  min-height: 0;
+}
+.log  { left: 52.11%; top: 20.0%; width: 34%; height: 19.5%; }
+.ctrl { left: 0.87%;  top: 63.5%; width: 34%; height: 19.5%; }
+
+.panel .pt {
+  font-size: clamp(5px, .8vmin, 10px); font-weight: 800;
+  letter-spacing: .15em; text-transform: uppercase;
+  color: var(--cyan-1);
+  margin-bottom: clamp(2px, .4vmin, 4px);
+  display: flex; align-items: center; gap: 5px;
+  flex: none;
+}
+.panel .pt::after {
+  content: ""; flex: 1; height: 1px;
+  background: linear-gradient(90deg, var(--frame-dim), transparent);
+}
+.log-lines {
+  flex: 1;
+  font-size: clamp(6px, .8vmin, 9px); line-height: 1.5;
+  color: var(--t-mid);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  overflow: hidden;
+}
+.log-lines div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.log-lines .hl { color: var(--cyan-1); }
+
+.ctrl-btns {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: clamp(2px, .4vmin, 5px);
+  min-height: 0;
+}
+.btn {
+  border: 0; background: none; padding: 0;
+  font-family: inherit; cursor: pointer;
+  position: relative; min-height: clamp(16px, 2.2vmin, 28px);
+}
+.btn .bin {
+  position: absolute; inset: 0;
+  background: rgba(77,208,225,.78);
+  box-shadow: 0 0 8px rgba(77,208,225,.3);
+  clip-path: polygon(6px 0, calc(100% - 6px) 0, 100% 6px, 100% calc(100% - 6px),
+                     calc(100% - 6px) 100%, 6px 100%, 0 calc(100% - 6px), 0 6px);
+}
+.btn .bface {
+  position: absolute; inset: 1px;
+  background: linear-gradient(180deg, #1e4a7c, #0d2440);
+  clip-path: polygon(5px 0, calc(100% - 5px) 0, 100% 5px, 100% calc(100% - 5px),
+                     calc(100% - 5px) 100%, 5px 100%, 0 calc(100% - 5px), 0 5px);
+  display: flex; align-items: center; justify-content: center;
+  font-size: clamp(5px, .8vmin, 10px); font-weight: 800;
+  color: #fff; text-shadow: 0 0 6px rgba(77,208,225,.5);
+}
+.btn:hover .bface { background: linear-gradient(180deg, #2a6299, #14324f); }
+.btn.warn .bin   { background: rgba(245,185,66,.85); }
+.btn.accent .bin { background: rgba(77,208,225,1); }
+.btn.accent .bface { background: linear-gradient(180deg, #1c5f86, #0d3350); color: #d9f7ff; }
+
+/* ============================================================
+   BASE 6 格 —— 由底部移到頂部中央（原本 hand-row 位置）
+   ============================================================ */
+.base-row {
+  position: absolute; z-index: 7;
+  left: 50%; transform: translateX(-50%);
+  top: 3.5%;
+  display: flex; gap: clamp(4px, .6vmin, 10px);
+}
+.base-slot {
+  width: clamp(44px, 5.2vmin, 68px);
+  aspect-ratio: 63 / 88;
+  height: auto;
+  --chamfer: 5px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: clamp(6px, .9vmin, 10px); font-weight: 900;
+  letter-spacing: .08em; text-transform: uppercase;
+  color: rgba(160,205,245,.60);
+  transition: filter .14s, border-color .14s;
+}
+/* framed 嘅 ::after 會蓋住直接文字 → 用 span 提升 z-index */
+.base-slot > span {
+  position: relative; z-index: 2;
+  font-size: clamp(6px, .9vmin, 10px); font-weight: 900;
+  letter-spacing: .08em; text-transform: uppercase;
+  color: rgba(160,205,245,.72);
+}
+.base-slot.occupied { color: var(--cyan-1); }
+
+/* ============================================================
+   3D 手牌層（浮喺下方，唔佔 playmat）
+   ============================================================ */
+#hand3d {
+  position: absolute; z-index: 12;
+  left: 0; right: 0; bottom: 0;
+  height: 24%;
+  pointer-events: none;
+}
+#hand3d canvas { display: block; }
+
+/* drag 幽靈 */
+#ghost {
+  position: fixed; z-index: 100;
+  width: 104px; pointer-events: none;
+  opacity: 0; transform: translate(-50%, -50%) scale(.92);
+  transition: opacity .1s;
+  filter: drop-shadow(0 14px 30px rgba(0,0,0,.85));
+}
+#ghost.on { opacity: .94; }
+#ghost img { width: 100%; display: block; border-radius: 6px; }
+
+/* hover tooltip */
+#cardtip {
+  position: fixed; z-index: 200;
+  width: clamp(170px, 20vw, 258px);
+  max-height: 42vh; overflow-y: auto;
+  padding: 9px 11px;
+  --chamfer: 9px;
+  font-size: 10.5px; line-height: 1.5;
+  pointer-events: none;
+  opacity: 0; transition: opacity .14s;
+}
+#cardtip.show { opacity: 1; }
+#cardtip .tn { font-weight: 800; margin-bottom: 4px; color: #fff; }
+#cardtip .ts { display: flex; gap: 3px; flex-wrap: wrap; margin-bottom: 5px; }
+#cardtip .tc {
+  padding: 1px 5px; border-radius: 3px; font-size: .84em; font-weight: 600;
+  background: rgba(77,208,225,.20); color: var(--cyan-1);
+  border: 1px solid rgba(77,208,225,.30);
+}
+#cardtip .te { white-space: pre-wrap; color: var(--t-mid); }
+
+/* HUD */
+.hud {
+  position: absolute; z-index: 14;
+  right: 1.2%; bottom: 1.2%;
+  display: flex; gap: 12px;
+  font-size: clamp(6px, .8vmin, 10px);
+  color: rgba(180,210,240,.55);
+  letter-spacing: .05em;
+  pointer-events: none;
+}
+.hud b { color: var(--cyan-1); }
+
+.brand {
+  position: absolute; z-index: 15;
+  left: 1.2%; bottom: 1.2%;
+  font-size: clamp(4px, .6vmin, 7px); font-weight: 900;
+  letter-spacing: .18em; text-transform: uppercase;
+  color: var(--t-lo); pointer-events: none;
+}
+.brand span { color: var(--cyan-1); }
+
+.loading {
+  position: absolute; inset: 0; z-index: 90;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: rgba(180,210,240,.6); letter-spacing: .1em;
+  background: var(--bg-0);
+  transition: opacity .35s;
+}
+.err {
+  position: absolute; inset: 0; z-index: 95;
+  display: flex; align-items: center; justify-content: center;
+  padding: 30px; font-size: 11px; line-height: 1.7; color: #ff8b96;
+  text-align: center; white-space: pre-wrap;
+}
+
+/* ============================================================
+   窄畫面
+   ============================================================ */
+@media (max-aspect-ratio: 1/1) {
+  html, body { overflow-y: auto; }
+  #mat { height: auto; min-height: 100dvh; padding: 8px; }
+  .axis, .bg-grid, .bg-grid-major { display: none; }
+  .field-slot, .pile, .panel, .base-row, .rush, .hud, .brand {
+    position: static; width: auto; height: auto;
+  }
+  .p1-field, .p2-field { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin: 8px 0; }
+  .field-slot { width: 62px; height: 86px; }
+  .base-row { justify-content: center; margin: 8px 0; }
+  .base-slot { width: 42px; height: 58px; }
+  .pile { width: 78px; height: 44px; margin: 4px; }
+  .panel { width: 100%; height: 108px; margin: 6px 0; }
+  #hand3d { position: relative; height: 210px; margin-top: 8px; }
+  .rush { margin: 8px auto; }
+}

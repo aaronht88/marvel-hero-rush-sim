@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MHR Playmat v08 — v05 視覺語言 + 3D 手牌</title>
+<link rel="stylesheet" href="v08.css">
+</head>
+<body>
+
+<div id="mat">
+ <div class="stage">
+  <div class="bg-base"></div>
+  <div class="bg-grid"></div>
+  <div class="bg-grid-major"></div>
+  <div class="tint tint-p1"></div>
+  <div class="tint tint-p2"></div>
+  <div class="axis"></div>
+
+  <!-- ===== P1 邊欄（左） ===== -->
+  <div class="pile p1-deck framed chamfer">
+    <span class="pl">DECK</span><span class="pc" id="deck-1">42</span></div>
+  <div class="pile p1-void framed chamfer">
+    <span class="pl">VOID</span><span class="pc" id="void-1">3</span></div>
+  <div class="pile p1-retreat framed chamfer">
+    <span class="pl">RETREAT</span><span class="pc" id="retreat-1">1</span></div>
+
+  <!-- ===== P1 戰區（左上，FRONT 在下貼中央） ===== -->
+  <div class="p1-field">
+    <div class="field-slot s-p1-back framed chamfer" data-tier="3" data-side="1" data-slot="back">
+      <span class="zbadge">3</span><span class="zname">BACK</span><span class="rval">R-3</span></div>
+    <div class="field-slot s-p1-w1 framed chamfer" data-tier="2" data-side="1" data-slot="wing1">
+      <span class="zbadge">2</span><span class="zname">WING</span><span class="rval">R-2</span></div>
+    <div class="field-slot s-p1-w2 framed chamfer" data-tier="2" data-side="1" data-slot="wing2">
+      <span class="zbadge">2</span><span class="zname">WING</span><span class="rval">R-2</span></div>
+    <div class="field-slot s-p1-front framed chamfer" data-tier="1" data-side="1" data-slot="front">
+      <span class="zbadge">1</span><span class="zname">FRONT</span><span class="rval">R-1</span></div>
+  </div>
+
+  <!-- ===== BASE 6 格（頂部中央，原 hand-row 位置） ===== -->
+  <div class="base-row" id="base-row"></div>
+
+  <!-- ===== Battle Log（右上） ===== -->
+  <div class="panel log framed chamfer">
+    <div class="pt">Battle Log</div>
+    <div class="log-lines" id="log-lines">
+      <div class="hl">P1 號召 Iron Man → FRONT</div>
+      <div>P2 抽 2 張</div>
+      <div>P1 攻擊 P2 WING</div>
+      <div>傷害 3500 vs 2800</div>
+      <div>P2 撤退 1 張</div>
+    </div>
+  </div>
+
+  <!-- ===== P2 戰區（右下，FRONT 在上貼中央） ===== -->
+  <div class="p2-field">
+    <div class="field-slot s-p2-front framed chamfer" data-tier="1" data-side="2" data-slot="front">
+      <span class="zbadge">1</span><span class="zname">FRONT</span><span class="rval">R-1</span></div>
+    <div class="field-slot s-p2-w1 framed chamfer" data-tier="2" data-side="2" data-slot="wing1">
+      <span class="zbadge">2</span><span class="zname">WING</span><span class="rval">R-2</span></div>
+    <div class="field-slot s-p2-w2 framed chamfer" data-tier="2" data-side="2" data-slot="wing2">
+      <span class="zbadge">2</span><span class="zname">WING</span><span class="rval">R-2</span></div>
+    <div class="field-slot s-p2-back framed chamfer" data-tier="3" data-side="2" data-slot="back">
+      <span class="zbadge">3</span><span class="zname">BACK</span><span class="rval">R-3</span></div>
+  </div>
+
+  <!-- ===== P2 邊欄（右） ===== -->
+  <div class="pile p2-void framed chamfer">
+    <span class="pl">VOID</span><span class="pc" id="void-2">0</span></div>
+  <div class="pile p2-retreat framed chamfer">
+    <span class="pl">RETREAT</span><span class="pc" id="retreat-2">0</span></div>
+  <div class="pile p2-deck framed chamfer">
+    <span class="pl">DECK</span><span class="pc" id="deck-2">43</span></div>
+
+  <!-- ===== RUSH ===== -->
+  <div class="rush framed chamfer">
+    <span class="rl">RUSH</span>
+    <span class="rs p1" id="score-1">3</span>
+    <span class="rv">:</span>
+    <span class="rs p2" id="score-2">9</span>
+  </div>
+
+  <!-- ===== Battle Control（左下） ===== -->
+  <div class="panel ctrl framed chamfer">
+    <div class="pt">Battle Phase</div>
+    <div class="ctrl-btns">
+      <button class="btn" id="btn-set"><span class="bin"></span><span class="bface">蓋放</span></button>
+      <button class="btn"><span class="bin"></span><span class="bface">移動</span></button>
+      <button class="btn"><span class="bin"></span><span class="bface">攻擊</span></button>
+      <button class="btn"><span class="bin"></span><span class="bface">起動</span></button>
+      <button class="btn warn"><span class="bin"></span><span class="bface">結束回合</span></button>
+      <button class="btn accent" id="btn-draw"><span class="bin"></span><span class="bface">抽牌</span></button>
+    </div>
+  </div>
+
+  <!-- ===== 3D 手牌層 ===== -->
+  <div id="hand3d"></div>
+
+  <div class="hud">
+    <span>手牌 <b id="n-hand">0</b></span>
+    <span>剩餘 <b id="n-deck">42</b></span>
+    <span>拖卡到戰區</span>
+  </div>
+
+  <div class="brand">MARVEL <span>HERO RUSH</span> · SIM</div>
+
+  <div class="loading" id="loading">載入卡牌…</div>
+ </div>
+</div>
+
+<div id="ghost"></div>
+<div id="cardtip" class="framed chamfer"></div>
+
+<script src="../js/cards.js"></script>
+
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://cdn.jsdelivr.net/npm/react@18.3.1/+esm",
+    "react-dom/client": "https://cdn.jsdelivr.net/npm/react-dom@18.3.1/client/+esm",
+    "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/+esm"
+  }
+}
+</script>
+
+<script type="module">
+const showErr = (m) => {
+  const d = document.createElement('div');
+  d.className = 'err'; d.textContent = m;
+  document.getElementById('mat').appendChild(d);
+  document.getElementById('loading').style.display = 'none';
+};
+
+try {
+  const React = (await import('react')).default;
+  const { createRoot } = await import('react-dom/client');
+  const THREE = await import('three');
+
+  /* ---------- 真卡資料 ---------- */
+  const RAW = (window.MHR_DATA && window.MHR_DATA.CARDS) || [];
+  const seen = new Set();
+  const POOL = [];
+  for (const c of RAW) {
+    if (!c.card_no || seen.has(c.card_no)) continue;
+    seen.add(c.card_no);
+    POOL.push({
+      no: c.card_no, name: c.name, lv: +c.level, p: c.power, r: c.attackRange,
+      color: c.attribute, feat: c.feature, effect: c.effect || '',
+      art: (c.art || '').split('/').pop().replace(/\.webp$/, ''),
+      rarity: c.rarity,
+    });
+  }
+  console.log('[v08] 卡池', POOL.length, '張');
+
+  /* ---------- 真卡圖 ---------- */
+  const loader = new THREE.TextureLoader();
+  const artCache = new Map();
+  function artTex(card) {
+    if (!card.art) return null;
+    if (artCache.has(card.art)) return artCache.get(card.art);
+    const t = loader.load('../img/cards-thumb/' + card.art + '.webp');
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = 8;
+    artCache.set(card.art, t);
+    return t;
+  }
+
+  /* ---------- 手牌 3D ---------- */
+  const CARD_W = 2.1;
+  const CARD_H = CARD_W / 0.726;
+
+  class Hand3D {
+    constructor(container) {
+      this.container = container;
+      this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+      this.renderer.setSize(container.clientWidth, container.clientHeight);
+      this.renderer.toneMapping = THREE.NoToneMapping;
+      container.appendChild(this.renderer.domElement);
+      this.renderer.domElement.style.pointerEvents = 'none';
+
+      this.scene = new THREE.Scene();
+      this.camera = new THREE.PerspectiveCamera(
+        40, container.clientWidth / container.clientHeight, 0.1, 100);
+      this.camera.position.set(0, -0.55, 9.6);
+
+      this.scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+      const d1 = new THREE.DirectionalLight('#eaf4ff', 1.75); d1.position.set(3, 5, 6); this.scene.add(d1);
+      const d2 = new THREE.DirectionalLight('#4da3ff', 0.5); d2.position.set(-4, 2, 3); this.scene.add(d2);
+
+      this.group = new THREE.Group();
+      this.scene.add(this.group);
+      this.cards = [];
+      this.hovered = null;
+      this.pointer = new THREE.Vector2(999, 999);
+      this.raycaster = new THREE.Raycaster();
+      this.drag = null;
+      this.lastHand = [];
+      this.parallax = { x: 0, y: 0 };
+
+      this._bind();
+      this.clock = new THREE.Clock();
+      this._animate = this._animate.bind(this);
+      this._raf = requestAnimationFrame(this._animate);
+    }
+
+    _bind() {
+      const el = this.renderer.domElement;
+      this._onMove = (e) => {
+        if (this.drag) {
+          const dx = e.clientX - this.drag.sx, dy = e.clientY - this.drag.sy;
+          if (!this.drag.moved && Math.hypot(dx, dy) > 6) {
+            this.drag.moved = true;
+            const c = this.cards[this.drag.index];
+            const g = document.getElementById('ghost');
+            if (c && c.card.art) {
+              g.innerHTML = '<img src="../img/cards-thumb/' + c.card.art + '.webp">';
+              g.classList.add('on');
+            }
+          }
+          if (this.drag.moved) {
+            const g = document.getElementById('ghost');
+            g.style.left = e.clientX + 'px';
+            g.style.top = e.clientY + 'px';
+            const z = document.elementFromPoint(e.clientX, e.clientY);
+            const zone = z && z.closest ? z.closest('.field-slot') : null;
+            document.querySelectorAll('.field-slot').forEach(x => x.classList.toggle('hot', x === zone));
+            document.body.style.cursor = 'grabbing';
+            return;
+          }
+        }
+        const r = el.getBoundingClientRect();
+        if (e.clientX < r.left || e.clientX > r.right ||
+            e.clientY < r.top || e.clientY > r.bottom) {
+          if (this.hovered != null) { this.hovered = null; this.onHover && this.onHover(null); }
+          return;
+        }
+        this.pointer.x = ((e.clientX - r.left) / r.width) * 2 - 1;
+        this.pointer.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+        this.parallax.x = this.pointer.x;
+        this.parallax.y = this.pointer.y;
+        this._pick(e);
+      };
+
+      this._onDown = (e) => {
+        if (this.hovered == null) return;
+        this.drag = { index: this.hovered, sx: e.clientX, sy: e.clientY, moved: false };
+      };
+
+      this._onUp = (e) => {
+        if (!this.drag) return;
+        const d = this.drag;
+        this.drag = null;
+        document.getElementById('ghost').classList.remove('on');
+        document.querySelectorAll('.field-slot.hot').forEach(z => z.classList.remove('hot'));
+        document.body.style.cursor = 'default';
+        if (!d.moved) { this.onSelect && this.onSelect(d.index); return; }
+        const el2 = document.elementFromPoint(e.clientX, e.clientY);
+        const zone = el2 && el2.closest ? el2.closest('.field-slot') : null;
+        if (zone && this.onDrop) {
+          this.onDrop(d.index, zone.dataset.side + '-' + zone.dataset.slot, zone);
+        } else {
+          this.setHand(this.lastHand, false);
+        }
+      };
+
+      window.addEventListener('pointermove', this._onMove);
+      window.addEventListener('pointerdown', this._onDown);
+      window.addEventListener('pointerup', this._onUp);
+      this._onResize = () => this.resize();
+      window.addEventListener('resize', this._onResize);
+    }
+
+    _pick(e) {
+      this.raycaster.setFromCamera(this.pointer, this.camera);
+      const hit = this.raycaster.intersectObjects(this.cards.map(c => c.mesh), false)[0];
+      const idx = hit ? hit.object.userData.index : null;
+      if (idx !== this.hovered) {
+        this.hovered = idx;
+        document.body.style.cursor = idx != null ? 'pointer' : 'default';
+        this.onHover && this.onHover(idx, e);
+      }
+    }
+
+    setHand(cards, animateIn = false) {
+      this.lastHand = cards;
+      for (const c of this.cards) {
+        this.group.remove(c.mesh);
+        c.mesh.geometry.dispose();
+        c.mesh.material.dispose();
+      }
+      this.cards = [];
+      const n = cards.length;
+      if (!n) return;
+
+      const R = 11.0;
+      const gapArc = CARD_W * 0.42;
+      const dTheta = gapArc / R;
+      const totalAng = dTheta * Math.max(0, n - 1);
+
+      cards.forEach((card, i) => {
+        const tex = artTex(card);
+        const geo = new THREE.PlaneGeometry(CARD_W, CARD_H);
+        const mat = new THREE.MeshStandardMaterial({
+          map: tex, transparent: true, side: THREE.DoubleSide, toneMapped: false,
+        });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.userData.index = i;
+
+        const ang = -totalAng / 2 + i * dTheta;
+        const base = {
+          x: R * Math.sin(ang),
+          y: R * Math.cos(ang) - R - 0.15,
+          z: i * 0.006,
+          rotZ: -ang,
+        };
+        if (animateIn) {
+          mesh.position.set(6, -2.2, 0.8);
+          mesh.scale.setScalar(0.45);
+          mesh.rotation.set(0, 0.8, 0.4);
+        } else {
+          mesh.position.set(base.x, base.y, base.z);
+          mesh.scale.setScalar(1);
+          mesh.rotation.set(0, 0, base.rotZ);
+        }
+        this.group.add(mesh);
+        this.cards.push({ mesh, base, card });
+      });
+    }
+
+    resize() {
+      const w = this.container.clientWidth, h = this.container.clientHeight;
+      if (!w || !h) return;
+      this.renderer.setSize(w, h);
+      this.camera.aspect = w / h;
+      this.camera.updateProjectionMatrix();
+    }
+
+    _animate() {
+      this._raf = requestAnimationFrame(this._animate);
+      const dt = Math.min(0.05, this.clock.getDelta());
+      const k = Math.min(1, dt * 11);
+      this.cards.forEach((c, i) => {
+        const m = c.mesh, b = c.base;
+        const isH = this.hovered === i && !this.drag;
+        const isDragging = this.drag && this.drag.moved && this.drag.index === i;
+        const tx = isH ? b.x * 0.94 : b.x;
+        const ty = isH ? b.y + 0.70 : (isDragging ? b.y + 0.5 : b.y);
+        const tz = isH || isDragging ? 0.7 : b.z;
+        m.position.x += (tx - m.position.x) * k;
+        m.position.y += (ty - m.position.y) * k;
+        m.position.z += (tz - m.position.z) * k;
+        const s = isH ? 1.06 : 1.0;
+        m.scale.x += (s - m.scale.x) * k;
+        m.scale.y += (s - m.scale.y) * k;
+        m.scale.z += (s - m.scale.z) * k;
+        m.rotation.z += ((isH ? 0 : b.rotZ) - m.rotation.z) * k;
+      });
+      const pk = Math.min(1, dt * 4);
+      this.group.rotation.y += (this.parallax.x * 0.12 - this.group.rotation.y) * pk;
+      this.group.rotation.x += (-this.parallax.y * 0.08 - this.group.rotation.x) * pk;
+      this.renderer.render(this.scene, this.camera);
+    }
+  }
+
+  /* ---------- React ---------- */
+  let uid = 0;
+  const mk = (c) => ({ ...c, uid: 'c' + (uid++) });
+  const h = React.createElement;
+
+  function App() {
+    const hostRef = React.useRef(null);
+    const engRef = React.useRef(null);
+    const handRef = React.useRef([]);
+    const [hand, setHand] = React.useState(() => POOL.slice(0, 8).map(mk));
+    const [deck, setDeck] = React.useState(42);
+    const prevLen = React.useRef(hand.length);
+    handRef.current = hand;
+
+    React.useEffect(() => {
+      const eng = new Hand3D(hostRef.current);
+      engRef.current = eng;
+      eng.setHand(handRef.current, false);
+
+      eng.onHover = (i) => {
+        if (i == null || !eng.cards[i]) {
+          document.getElementById('cardtip').classList.remove('show');
+          return;
+        }
+        const c = eng.cards[i].card;
+        const v = new THREE.Vector3();
+        eng.cards[i].mesh.getWorldPosition(v);
+        v.project(eng.camera);
+        const r = eng.renderer.domElement.getBoundingClientRect();
+        tipShow(c,
+          r.left + (v.x * 0.5 + 0.5) * r.width,
+          r.top + (-v.y * 0.5 + 0.5) * r.height);
+      };
+
+      eng.onSelect = (i) => { setHand(p => p.filter((_, k) => k !== i)); };
+
+      eng.onDrop = (i, zoneKey, zoneEl) => {
+        const card = handRef.current[i];
+        if (!card) return;
+        const old = zoneEl.querySelector('.incard');
+        if (old) old.remove();
+        const img = document.createElement('div');
+        img.className = 'incard';
+        img.style.backgroundImage = 'url(../img/cards-thumb/' + card.art + '.webp)';
+        zoneEl.insertBefore(img, zoneEl.firstChild);
+        setHand(p => p.filter((_, k) => k !== i));
+        document.getElementById('cardtip').classList.remove('show');
+        log('P1 出牌 ' + card.no + ' → ' + zoneKey.toUpperCase());
+      };
+
+      const ld = document.getElementById('loading');
+      ld.style.opacity = 0;
+      setTimeout(() => ld.style.display = 'none', 360);
+
+      return () => { cancelAnimationFrame(eng._raf); eng.renderer.dispose(); };
+    }, []);
+
+    React.useEffect(() => {
+      const eng = engRef.current;
+      if (!eng) return;
+      const grew = hand.length > prevLen.current;
+      eng.setHand(hand, grew);
+      prevLen.current = hand.length;
+      document.getElementById('n-hand').textContent = hand.length;
+    }, [hand]);
+
+    React.useEffect(() => { document.getElementById('n-deck').textContent = deck; }, [deck]);
+
+    const draw = React.useCallback(() => {
+      setDeck(d => (d > 0 ? d - 1 : d));
+      setHand(p => {
+        if (p.length >= 10) return p;
+        return [...p, mk(POOL[Math.floor(Math.random() * POOL.length)])];
+      });
+    }, []);
+    React.useEffect(() => { document.getElementById('btn-draw').onclick = draw; }, [draw]);
+
+    return h('div', { style: { position: 'absolute', inset: 0 } },
+      h('div', { ref: hostRef, style: { position: 'absolute', inset: 0 } }));
+  }
+
+  /* tooltip */
+  const tipEl = document.getElementById('cardtip');
+  function tipShow(c, x, y) {
+    tipEl.className = 'framed chamfer show';
+    tipEl.innerHTML =
+      '<div class="tn">' + c.name + '</div>' +
+      '<div class="ts">' +
+        '<span class="tc">Lv' + c.lv + '</span>' +
+        '<span class="tc">P' + c.p + '</span>' +
+        '<span class="tc">R' + c.r + '</span>' +
+        (c.rarity ? '<span class="tc">' + c.rarity + '</span>' : '') +
+        '<span class="tc">' + c.color + '</span>' +
+      '</div>' +
+      '<div class="te">' + (c.effect || '—') + '</div>';
+    tipEl.style.left = Math.min(x + 118, window.innerWidth - 278) + 'px';
+    tipEl.style.top = Math.max(10, Math.min(y - 88, window.innerHeight - 236)) + 'px';
+  }
+
+  /* log */
+  function log(msg) {
+    const box = document.getElementById('log-lines');
+    if (!box) return;
+    const d = document.createElement('div');
+    d.className = 'hl';
+    d.textContent = msg;
+    box.insertBefore(d, box.firstChild);
+    while (box.children.length > 6) box.removeChild(box.lastChild);
+  }
+
+  /* mount */
+  const host = document.createElement('div');
+  host.style.cssText = 'position:absolute;inset:0;';
+  document.getElementById('hand3d').appendChild(host);
+  createRoot(host).render(h(App));
+
+  /* BASE 6 格 */
+  const baseRow = document.getElementById('base-row');
+  for (let i = 0; i < 6; i++) {
+    const d = document.createElement('div');
+    d.className = 'base-slot framed chamfer';
+    d.innerHTML = '<span>BASE</span>';
+    d.dataset.idx = i;
+    baseRow.appendChild(d);
+  }
+
+  window.__MHR_V08 = true;
+  console.log('[v08] ready');
+
+} catch (e) {
+  console.error(e);
+  showErr('載入失敗\n\n' + (e && e.message));
+}
+</script>
+</body>
+</html>
