@@ -58,6 +58,47 @@
   }
   .cardtip .te { white-space: pre-wrap; color: rgba(200,222,248,.9); }
 
+  /* ---------- Playmat 放置區 ---------- */
+  #mat {
+    position: absolute; z-index: 5;
+    left: 50%; top: 2.5%; transform: translateX(-50%);
+    width: min(700px, 68vw);
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    pointer-events: auto;     /* 要接收 drag 判斷 */
+  }
+  .mzone {
+    aspect-ratio: 63 / 88;
+    border: 1.5px dashed rgba(77,208,225,.30);
+    border-radius: 10px;
+    background: rgba(10, 28, 58, .38);
+    display: flex; align-items: flex-end; justify-content: center;
+    padding-bottom: 8px;
+    font-size: 10px; font-weight: 800; letter-spacing: .12em;
+    color: rgba(77,208,225,.45);
+    transition: border-color .16s, background .16s, box-shadow .16s, transform .16s;
+  }
+  .mzone.hot {
+    border-color: rgba(77,208,225,.95);
+    border-style: solid;
+    background: rgba(30, 74, 124, .55);
+    box-shadow: 0 0 24px rgba(77,208,225,.45), inset 0 0 24px rgba(77,208,225,.15);
+    transform: scale(1.05);
+  }
+  .mzone.occupied { border-style: solid; border-color: rgba(77,208,225,.6); }
+
+  /* drag 時嘅幽靈卡 */
+  #ghost {
+    position: fixed; z-index: 100;
+    width: 118px; pointer-events: none;
+    opacity: 0; transform: translate(-50%, -50%) scale(.9);
+    transition: opacity .12s;
+    filter: drop-shadow(0 14px 30px rgba(0,0,0,.8));
+  }
+  #ghost.on { opacity: .92; }
+  #ghost img { width: 100%; display: block; border-radius: 7px; }
+
   .loading {
     position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
     font-size: 13px; color: rgba(180,210,240,.6); letter-spacing: .1em; z-index: 50;
@@ -73,7 +114,16 @@
 <body>
 <div id="root">
   <div id="gl"></div>
+
+  <!-- Playmat 放置區（drag target） -->
+  <div id="mat" aria-hidden="true">
+    <div class="mzone" data-zone="front"><span>FRONT</span></div>
+    <div class="mzone" data-zone="wing1"><span>WING</span></div>
+    <div class="mzone" data-zone="wing2"><span>WING</span></div>
+    <div class="mzone" data-zone="back"><span>BACK</span></div>
+  </div>
   <div class="loading" id="loading">載入 3D 場景…</div>
+  <div id="ghost"></div>
   <div class="cardtip" id="cardtip"></div>
   <div class="hud">
     <div class="info">手牌 <b id="n-hand">0</b> · DECK <b id="n-deck">42</b></div>
@@ -201,6 +251,7 @@ try {
     const tex = new THREE.CanvasTexture(cv);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = 8;
+    tex.__canvas = cv;          // 供 drag ghost 用
     texCache.set(card.no, tex);
     return tex;
   }
@@ -236,9 +287,10 @@ try {
 
       this.cards = [];          // { mesh, index, base, target }
       this.hovered = null;
-      this.expanded = false;
+      this.expanded = true;    // 永遠扇形，唔再疊起（Aaron 要求）
       this.pointer = new THREE.Vector2(999, 999);
       this.raycaster = new THREE.Raycaster();
+      this.drag = null;        // { index, startX, startY, moved, ghost }
       this.parallax = { x: 0, y: 0 };
 
       this._bind();
@@ -251,34 +303,82 @@ try {
       const el = this.renderer.domElement;
       // v3: 用 window 監聽 —— canvas 可能被 HUD / tooltip 覆蓋，直接綁 canvas 收唔到事件
       this._onMove = (e) => {
+        // drag 進行中：跟隨游標 + 標示 zone
+        if (this.drag) {
+          const dx = e.clientX - this.drag.startX;
+          const dy = e.clientY - this.drag.startY;
+          if (!this.drag.moved && Math.hypot(dx, dy) > 6) {
+            this.drag.moved = true;
+            const g = document.getElementById('ghost');
+            const c = this.cards[this.drag.index];
+            if (c && c.texCanvas) {
+              g.innerHTML = '<img src="' + c.texCanvas.toDataURL('image/png') + '">';
+              g.classList.add('on');
+            }
+          }
+          if (this.drag.moved) {
+            const g = document.getElementById('ghost');
+            g.style.left = e.clientX + 'px';
+            g.style.top = e.clientY + 'px';
+            const zoneEl = document.elementFromPoint(e.clientX, e.clientY);
+            const zone = zoneEl && zoneEl.closest ? zoneEl.closest('.mzone') : null;
+            document.querySelectorAll('.mzone').forEach(z => {
+              z.classList.toggle('hot', z === zone);
+            });
+            document.body.style.cursor = 'grabbing';
+            return;
+          }
+        }
         const r = el.getBoundingClientRect();
         this.pointer.x = ((e.clientX - r.left) / r.width) * 2 - 1;
         this.pointer.y = -((e.clientY - r.top) / r.height) * 2 + 1;
         this.parallax.x = this.pointer.x;
         this.parallax.y = this.pointer.y;
-        // 滑鼠喺畫面下半部 = 想睇手牌 → 展開
-        this.expanded = this.pointer.y < -0.05;
         this._pick();
       };
       this._onLeave = () => {
         this.pointer.set(999, 999);
         this.hovered = null;
-        this.expanded = false;
         this.onHover && this.onHover(null);
       };
-      this._onClick = (e) => {
-        // 只在 canvas 範圍內才處理
+      this._onDown = (e) => {
         const r = el.getBoundingClientRect();
         if (e.clientX < r.left || e.clientX > r.right ||
             e.clientY < r.top || e.clientY > r.bottom) return;
-        // 避開按鈕
         const tag = (e.target.tagName || '').toLowerCase();
         if (tag === 'button' || (e.target.closest && e.target.closest('.hud'))) return;
-        if (this.hovered != null && this.onSelect) this.onSelect(this.hovered);
+        if (this.hovered == null) return;
+        this.drag = {
+          index: this.hovered,
+          startX: e.clientX,
+          startY: e.clientY,
+          moved: false,
+        };
       };
+      this._onUp = (e) => {
+        if (!this.drag) return;
+        const d = this.drag;
+        this.drag = null;
+        document.getElementById('ghost').classList.remove('on');
+        document.querySelectorAll('.mzone.hot').forEach(z => z.classList.remove('hot'));
+
+        if (!d.moved) {
+          // 冇拖 = 普通點擊（出牌）
+          if (this.onSelect) this.onSelect(d.index);
+          return;
+        }
+        // 判斷放喺邊個 zone
+        const zoneEl = document.elementFromPoint(e.clientX, e.clientY);
+        const zone = zoneEl && zoneEl.closest ? zoneEl.closest('.mzone') : null;
+        if (zone && this.onPlayToZone) {
+          this.onPlayToZone(d.index, zone.dataset.zone);
+        }
+      };
+      window.addEventListener('pointerdown', this._onDown);
+      window.addEventListener('pointerup', this._onUp);
       window.addEventListener('pointermove', this._onMove);
       window.addEventListener('pointerleave', this._onLeave, true);
-      window.addEventListener('click', this._onClick);
+
       document.addEventListener('pointerleave', this._onLeave);
       window.addEventListener('blur', this._onLeave);
       this._onResize = () => this.resize();
@@ -335,20 +435,13 @@ try {
         const fx = R * Math.sin(ang);
         const fy = R * Math.cos(ang) - R - 0.15;   // 整體下移，留空間俾 hover 抽出
 
-        const collapsed = {
-          x: i * 0.045 - n * 0.0225,
-          y: -0.55 - i * 0.016,
-          z: i * 0.004,
-          rotY: 0, rotZ: 0,
-        };
-        const expanded = {
+        const base = {
           x: fx,
           y: fy,
           z: i * 0.006,
           rotY: 0,
-          rotZ: -ang,          // 切線方向 → 真扇形
+          rotZ: -ang,          // 切線方向 → 真扇形（永遠展開）
         };
-        const base = { ...expanded, collapsed };
 
         if (animateIn) {
           mesh.position.set(i * 0.04 - n * 0.02, -1.9, 0.9);
@@ -360,7 +453,7 @@ try {
           mesh.rotation.set(0, base.rotY, base.rotZ);
         }
         this.group.add(mesh);
-        this.cards.push({ mesh, base, card });
+        this.cards.push({ mesh, base, card, texCanvas: tex.__canvas });
       });
     }
 
@@ -380,9 +473,11 @@ try {
 
     destroy() {
       cancelAnimationFrame(this._raf);
+      window.removeEventListener('pointerdown', this._onDown);
+      window.removeEventListener('pointerup', this._onUp);
       window.removeEventListener('pointermove', this._onMove);
       window.removeEventListener('pointerleave', this._onLeave, true);
-      window.removeEventListener('click', this._onClick);
+
       document.removeEventListener('pointerleave', this._onLeave);
       window.removeEventListener('blur', this._onLeave);
       window.removeEventListener('resize', this._onResize);
@@ -399,15 +494,15 @@ try {
       this.cards.forEach((c, i) => {
         const m = c.mesh, b = c.base;
         const isH = this.hovered === i;
-        const src = this.expanded ? b : b.collapsed;
+        const src = b;
         // hover = 由扇形向上抽出
         const tx = isH ? src.x * 0.94 : src.x;
-        const ty = isH ? src.y + 1.05 : src.y;
-        const tz = isH ? 1.15 : src.z;
+        const ty = isH ? src.y + 0.72 : src.y;
+        const tz = isH ? 0.7 : src.z;
         m.position.x += (tx - m.position.x) * k;
         m.position.y += (ty - m.position.y) * k;
         m.position.z += (tz - m.position.z) * k;
-        const s = isH ? 1.16 : 1.0;
+        const s = isH ? 1.06 : 1.0;
         m.scale.x += (s - m.scale.x) * k;
         m.scale.y += (s - m.scale.y) * k;
         m.scale.z += (s - m.scale.z) * k;
@@ -440,6 +535,8 @@ try {
     const [ptr, setPtr] = useState({ x: 0, y: 0 });
     const [tipPos, setTipPos] = useState(null);
     const prevLen = useRef(hand.length);
+    const handRef = useRef(hand);
+    useEffect(() => { handRef.current = hand; }, [hand]);
 
     // 初始化 three
     useEffect(() => {
@@ -472,6 +569,23 @@ try {
       const eng = engRef.current;
       if (!eng) return;
       eng.onSelect = (i) => {
+        setHand(h => h.filter((_, idx) => idx !== i));
+        setHovered(null);
+      };
+      // 拖到 playmat zone → 出牌到該區
+      eng.onPlayToZone = (i, zone) => {
+        const card = handRef.current[i];
+        if (!card) return;
+        const zoneEl = document.querySelector('.mzone[data-zone="' + zone + '"]');
+        if (zoneEl) {
+          zoneEl.classList.add('occupied');
+          zoneEl.innerHTML = '<span>' + zone.toUpperCase() + '</span>' +
+            '<div style="position:absolute;inset:4px;display:flex;align-items:center;' +
+            'justify-content:center;font-size:9px;color:#cfe9ff;text-align:center;' +
+            'padding:4px;">' + card.name.replace(/</g,'&lt;') + '</div>';
+          zoneEl.style.position = 'relative';
+          zoneEl.style.overflow = 'hidden';
+        }
         setHand(h => h.filter((_, idx) => idx !== i));
         setHovered(null);
       };
