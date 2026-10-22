@@ -34,8 +34,8 @@
   --gap: clamp(5px, .9vmin, 14px);
 
   /* 領域方塊尺寸：佔畫面寬/高嘅比例，自適應 */
-  --field-w: clamp(200px, 31vw, 480px);
-  --field-h: clamp(170px, 31vh, 400px);
+  --field-w: clamp(250px, 38vw, 600px);
+  --field-h: clamp(220px, 40vh, 520px);
   --edge: clamp(6px, 1vmin, 18px);
 }
 
@@ -121,9 +121,13 @@ html, body {
   position: absolute;
   width: var(--field-w);
   height: var(--field-h);
+  /* 菱形：3x3 grid，四格佔十字位（上下左右），中央留空
+        .   BACK   .
+      WING   .   WING
+        .   FRONT  .                          */
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
   gap: var(--gap);
   z-index: 5;
 }
@@ -136,16 +140,24 @@ html, body {
   bottom: var(--edge);
 }
 
-/* P1：BACK 左上、WING 右上、WING 左下、FRONT 右下（貼中央） */
-.domain-p1 .slot-back  { grid-area: 1 / 1; }
-.domain-p1 .slot-wing1 { grid-area: 1 / 2; }
-.domain-p1 .slot-wing2 { grid-area: 2 / 1; }
-.domain-p1 .slot-front { grid-area: 2 / 2; }
-/* P2：FRONT 左上（貼中央）、WING 右上、WING 左下、BACK 右下 */
-.domain-p2 .slot-front { grid-area: 1 / 1; }
-.domain-p2 .slot-wing1 { grid-area: 1 / 2; }
-.domain-p2 .slot-wing2 { grid-area: 2 / 1; }
-.domain-p2 .slot-back  { grid-area: 2 / 2; }
+/* ---- 菱形排列（十字位）----
+   P1 領域（左上）：BACK 上、WING 左右、FRONT 下（貼中央）
+       .   BACK   .
+     WING   .   WING
+       .   FRONT  .
+   P2 領域（右下）：上下翻轉，FRONT 上（貼中央）
+       .   FRONT  .
+     WING   .   WING
+       .   BACK   .                                                     */
+.domain-p1 .slot-back  { grid-area: 1 / 2; }
+.domain-p1 .slot-wing1 { grid-area: 2 / 1; }
+.domain-p1 .slot-wing2 { grid-area: 2 / 3; }
+.domain-p1 .slot-front { grid-area: 3 / 2; }
+
+.domain-p2 .slot-front { grid-area: 1 / 2; }
+.domain-p2 .slot-wing1 { grid-area: 2 / 1; }
+.domain-p2 .slot-wing2 { grid-area: 2 / 3; }
+.domain-p2 .slot-back  { grid-area: 3 / 2; }
 
 .zone {
   --chamfer: 10px;
